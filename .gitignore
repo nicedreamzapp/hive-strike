@@ -6,3 +6,16 @@ __pycache__/
 node_modules/
 tools/orient_full.json.bak
 *.tmp
+
+# build output — regenerate with `npm run build`
+dist/
+# capacitor native build artifacts
+ios/App/Pods/
+ios/App/App/public/
+ios/App/build/
+android/app/src/main/assets/public/
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+*.xcuserdatad

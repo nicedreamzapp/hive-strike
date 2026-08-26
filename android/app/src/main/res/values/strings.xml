@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Hive Strike</string>
+    <string name="title_activity_main">Hive Strike</string>
+    <string name="package_name">com.nicedreamz.hivestrike</string>
+    <string name="custom_url_scheme">com.nicedreamz.hivestrike</string>
+</resources>

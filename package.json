@@ -1,0 +1,25 @@
+{
+  "name": "hive-strike",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vertical bug shooter. Every asset generated locally on one Mac.",
+  "scripts": {
+    "build": "python3 tools/build_mobile.py",
+    "build:fast": "python3 tools/build_mobile.py --fast",
+    "test": "node tools/test_walkthrough.mjs",
+    "serve": "python3 -m http.server 8919 --bind 127.0.0.1",
+    "sync": "npm run build && npx cap sync",
+    "ios": "npx cap open ios",
+    "android": "npx cap open android"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^7.0.0"
+  },
+  "dependencies": {
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/ios": "^7.0.0",
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/splash-screen": "^7.0.0",
+    "@capacitor/status-bar": "^7.0.0"
+  }
+}
