@@ -6,7 +6,8 @@ desktop, iOS and Android — `dist/` is the app.
 ## The loop
 
 ```
-npm run build      # tools/build_mobile.py -> dist/  (incremental; --clean forces a full rebuild)
+npm run assemble   # src/*.js -> index.html  (prints the hash; build runs this for you)
+npm run build      # assemble, then tools/build_mobile.py -> dist/  (incremental; --clean forces a full rebuild)
 npm test           # walk all 16 levels headless, report JS errors + draw time
 npx cap sync       # copy dist/ into ios/ and android/
 npm run ios        # open Xcode

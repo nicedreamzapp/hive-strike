@@ -4,13 +4,14 @@
   "private": true,
   "description": "Vertical bug shooter. Every asset generated locally on one Mac.",
   "scripts": {
-    "build": "python3 tools/build_mobile.py",
-    "build:fast": "python3 tools/build_mobile.py --fast",
+    "build": "python3 tools/assemble.py && python3 tools/build_mobile.py",
+    "build:fast": "python3 tools/assemble.py && python3 tools/build_mobile.py --fast",
     "test": "node tools/test_walkthrough.mjs",
     "serve": "python3 -m http.server 8919 --bind 127.0.0.1",
     "sync": "npm run build && npx cap sync",
     "ios": "npx cap open ios",
-    "android": "npx cap open android"
+    "android": "npx cap open android",
+    "assemble": "python3 tools/assemble.py"
   },
   "devDependencies": {
     "@capacitor/cli": "^7.0.0"

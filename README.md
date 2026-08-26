@@ -20,6 +20,12 @@ kinds of insect, and every single asset in it was generated on the Mac sitting o
 
 *Real frames, straight off the canvas. Nothing here is a mockup.*
 
+<p align="center">
+  <img src="docs/shots/iphone_title.jpg" width="230" alt="Hive Strike running on iPhone">
+  <br><em>Running as a native app on an iPhone 17 Pro. The controls panel reads
+  differently on a phone because the game knows it is on one.</em>
+</p>
+
 ## Made entirely with local AI
 
 No cloud API was called to make this game. Everything below ran on one Mac, offline,
@@ -59,8 +65,15 @@ whether you chase the green rings.
 
 ## How it is built
 
-One file. `index.html` is the entire game — canvas 2D, no engine, no build step, no
-dependencies. Assets sit next to it in `art/` and `music/`.
+Canvas 2D. No engine, no framework, no dependencies. The game ships as a single
+`index.html` with the assets beside it in `art/` and `music/`.
+
+You edit it in `src/` though — twenty-one files split at the code's own section
+boundaries (`01_audio.js`, `11_bosses.js`, `14_update.js`, and so on) instead of one
+1,600-line scroll. `python3 tools/assemble.py` concatenates them back into
+`index.html`. The join is plain concatenation in filename order, so the result is
+byte-identical to what the pieces came from — the splitter refused to write until it
+had proved that, and `assemble.py` prints the before/after hash every time it runs.
 
 The loop is a fixed 60 Hz accumulator with a spiral-of-death clamp, so the game runs at
 the same speed on a 60 Hz laptop and a 120 Hz display. Background video is loaded in a
@@ -79,6 +92,17 @@ Drives a headless browser through all 16 levels — normal play, the boss warnin
 fight, the rage phase, the kill — and reports JS errors and draw time per frame. Current
 run: 16/16 levels to the win screen, 0 errors, 0.36 ms/frame.
 
+## Shipping to phones
+
+`ios/` and `android/` are Capacitor shells around the same `dist/` build. See
+[docs/SHIPPING.md](docs/SHIPPING.md) for the build loop, what the compression does
+(185 MB of source assets become a 61.5 MB bundle, ~69 MB installed), and what is
+still needed before either store will accept it.
+
+The iOS app builds and runs today. Android is scaffolded and portrait-locked but
+needs Android Studio and a JDK installed to compile.
+
 ## Status
 
-Playable start to finish. Being prepared for the App Store and Google Play.
+Playable start to finish, on desktop and on a phone. Being prepared for the App
+Store and Google Play.
