@@ -1,7 +1,7 @@
 // Walk all 6 levels headlessly: play shot, warning card, boss fight; record JS errors + draw timing.
-import {spawn} from 'node:child_process';
 import fs from 'node:fs';
-const SP='/private/tmp/claude-501/-Users-dtribe/9549784c-4d6b-410e-921b-c62f33ae2550/scratchpad';
+import {spawn} from 'node:child_process';
+const SP=process.env.HS_OUT||fs.mkdtempSync((process.env.TMPDIR||'/tmp')+'/hive-strike-test-');
 const PROF=SP+'/brave-prof';fs.mkdirSync(PROF,{recursive:true});
 const br=spawn('/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',['--headless=new','--mute-audio','--no-first-run','--remote-debugging-port=9333','--user-data-dir='+PROF,'--window-size=520,760','--autoplay-policy=no-user-gesture-required','about:blank'],{stdio:'ignore'});
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));

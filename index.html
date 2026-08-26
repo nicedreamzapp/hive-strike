@@ -287,15 +287,22 @@ function music(name){MUSIC.want=name?musicPick(name):null;}
 function musicTick(){for(const k in MUSIC.tracks){const a=MUSIC.tracks[k],boss=k.startsWith('boss'),target=(k===MUSIC.want&&(state==='play'||k==='title')&&!paused&&MUSIC.on&&!(k==='win'&&a.ended))?VOL*(boss?MUSIC.vol*1.1:k==='win'?MUSIC.vol*1.3:MUSIC.vol):0;if(target>0&&a.paused){if(a.bad){MUSIC.want=k.startsWith('boss')?'boss':'main';return;}a.play().catch(()=>{});}a.volume+= (target-a.volume)*.04;if(a.volume<.004&&target===0&&!a.paused){a.pause();a.volume=0;}}}
 musicLoad();
 // ---------- painted art: art/level1..6.png (one per world) + art/splash.png. STATIC — the background never moves.
-const ART={};for(const k of Array.from({length:16},(_,i)=>'level'+(i+1)).concat(['splash'])){const im=new Image();im.onload=()=>{ART[k]=im;};im.src='art/'+k+'.png';}
+const ART={};for(const k of Array.from({length:16},(_,i)=>'level'+(i+1)).concat(['splash'])){const im=new Image();im.onload=()=>{ART[k]=im;};im.onerror=()=>missing('art/'+k+'.png');im.src='art/'+k+'.png';}
 // rendered level loops: when art/clip/levelN.mp4 exists it replaces the still, and the scene animates
 // for real instead of being faked with canvas warps. only the level being played is decoding.
-const MASKS={};for(const n of [2,3,6,7,10,12,13,14,15,16]){const im=new Image();im.onload=()=>{MASKS[n]=im;};im.src='art/mask'+n+'.png';}
-const VID={};for(let n=1;n<=16;n++){const v=document.createElement('video');v.src='art/clip/level'+n+'.mp4';v.muted=true;v.loop=true;v.playsInline=true;v.preload='auto';v.addEventListener('canplay',()=>{VID['level'+n]=v;},{once:true});v.addEventListener('error',()=>{});}
-function vidTick(){const k='level'+((stage-1)%NL+1);for(const j in VID){const v=VID[j];if(j===k){if(v.paused)v.play().catch(()=>{});}else if(!v.paused)v.pause();}}
+const MASKS={};for(const n of [2,3,6,7,10,12,13,14,15,16]){const im=new Image();im.onload=()=>{MASKS[n]=im;};im.onerror=()=>missing('art/mask'+n+'.png');im.src='art/mask'+n+'.png';}
+// backgrounds are ~3MB of h264 each. buffering all 16 at boot cost 53MB of decode memory and a
+// slow first frame for 15 clips nobody was watching. keep a sliding window around the live level.
+const VID={},VIDEL={},VIDWIN=1;
+function vidEl(n){let v=VIDEL[n];if(v)return v;v=document.createElement('video');v.muted=true;v.defaultMuted=true;v.loop=true;v.playsInline=true;v.setAttribute('playsinline','');v.setAttribute('webkit-playsinline','');v.preload='auto';v.addEventListener('canplay',()=>{VID['level'+n]=v;},{once:true});v.addEventListener('error',()=>{v.bad=true;delete VID['level'+n];});v.src='art/clip/level'+n+'.mp4';VIDEL[n]=v;return v;}
+function vidRelease(n){const v=VIDEL[n];if(!v)return;try{v.pause();v.removeAttribute('src');v.load();}catch(e){}delete VIDEL[n];delete VID['level'+n];}
+function vidSync(){const c=(stage-1)%NL+1,want=new Set();for(let d=0;d<=VIDWIN;d++){want.add((c-1+d)%NL+1);want.add((c-1-d+NL*2)%NL+1);}for(const n of want)vidEl(n);for(const k in VIDEL)if(!want.has(+k))vidRelease(+k);}
+function vidTick(){vidSync();const k='level'+((stage-1)%NL+1);for(const j in VID){const v=VID[j];if(j===k){if(v.paused&&!document.hidden&&!paused)v.play().catch(()=>{});}else if(!v.paused)v.pause();}}
 const SPLASHV=document.createElement('video');SPLASHV.src='art/clip/splash.mp4';SPLASHV.muted=true;SPLASHV.loop=true;SPLASHV.playsInline=true;SPLASHV.preload='auto';SPLASHV.ok=false;SPLASHV.addEventListener('canplay',()=>{SPLASHV.ok=true;});SPLASHV.addEventListener('error',()=>{SPLASHV.ok=false;});
 function splashFrame(){if(SPLASHV.ok&&SPLASHV.readyState>=2){if(SPLASHV.paused)SPLASHV.play().catch(()=>{});return SPLASHV;}return ART.splash;}
-const SPR={};function loadSprites(){const names=Object.keys(ET).concat(Array.from({length:16},(_,i)=>'boss'+i)).concat(['centihead1','centiseg1']);for(const k of names){const im=new Image();im.onload=()=>{SPR[k]=im;};im.src='art/sprites/'+k+'.png';}}
+const SPR={},MISSING=[];
+function missing(path){MISSING.push(path);console.warn('[hive-strike] asset missing:',path);}
+function loadSprites(){const names=Object.keys(ET).concat(Array.from({length:16},(_,i)=>'boss'+i)).concat(['centihead1','centiseg1']);for(const k of names){const im=new Image();im.onload=()=>{SPR[k]=im;};im.onerror=()=>missing('art/sprites/'+k+'.png');im.src='art/sprites/'+k+'.png';}}
 // sprites are ~800px tall and get drawn at 35-80px. drawImage has no mipmaps, so that 12-25x
 // downscale shimmered every frame as the bug moved. halve the source until it is close to the
 // drawn size, cache each step, and the final draw is never worse than a 2x reduction.
@@ -309,7 +316,14 @@ function drawArt(im,alpha=1,soft=false){const iw=im.videoWidth||im.width,ih=im.v
 // ---------- state ----------
 const R=(a,b)=>a+Math.random()*(b-a),RI=(a,b)=>Math.floor(R(a,b+1)),clamp=(v,a,b)=>v<a?a:v>b?b:v;
 let flash=0,bossIntro=0,bossWarn=0,levelIntro=0,levelClear=0,armed=false,startStage=+localStorage.hs_start||1;
-function pickStage(n){startStage=clamp(n,1,16);localStorage.hs_start=startStage;click(1200,.02);}
+// progression: you only get to jump to a level you have actually reached.
+let unlocked=Math.max(1,Math.min(16,+localStorage.hs_unlocked||1));
+function unlockUpTo(n){const u=n>16?16:Math.max(1,Math.min(16,n));if(u>unlocked){unlocked=u;localStorage.hs_unlocked=u;}}
+const bestFor=n=>+localStorage['hs_best'+n]||0;
+function recordBest(n,sc){if(n>=1&&n<=16&&sc>bestFor(n))localStorage['hs_best'+n]=sc;}
+const STAT={runs:+localStorage.hs_runs||0,bosses:+localStorage.hs_bosses||0,deepest:+localStorage.hs_deepest||1};
+function statSave(){localStorage.hs_runs=STAT.runs;localStorage.hs_bosses=STAT.bosses;localStorage.hs_deepest=STAT.deepest;}
+function pickStage(n){n=clamp(n,1,16);if(n>unlocked){say('LEVEL '+n+' LOCKED  \u2014  REACH IT TO PLAY IT');noise(.12,.025,300,1.2,140,'lowpass');return;}startStage=n;localStorage.hs_start=startStage;click(1200,.02);}
 const TILE=(i)=>({x:26+(i%8)*54,y:H-150+Math.floor(i/8)*44,w:48,h:38});
 function arm(){armed=true;ctx();music('title');}
 function continueGame(){state='play';stage++;stageT=0;loop++;levelIntro=200;nextWave=0;rushDone=false;bossAlive=false;boss=null;enemies=[];ebullets=[];pickups=[];buildDecor((stage-1)%NL);SFX.levelStart();music('main');}let state='title',paused=false,t=0,score=0,hi=+localStorage.hs_hi||0,stage=1,stageT=0,bossAlive=false,shake=0,wantBomb=0,msg='',msgT=0,loop=0;
@@ -345,7 +359,7 @@ const WKEYS=Object.keys(WEAPONS);const randWeapon=()=>{const o=WKEYS.filter(k=>k
 const P={x:W/2,y:H-100,px:W/2,py:H-100,r:12,lives:5,wpn:'honey',lvl:1,bombs:3,inv:0,fireT:0,dead:0,shots:0};
 let bullets=[],ebullets=[],enemies=[],pickups=[],parts=[],boss=null,lashT=null;
 
-function start(){learned.clear();factT=0;chain=0;chainT=0;chainBest=0;grazed=0;nextExt=0;state='play';score=0;stage=startStage;stageT=0;loop=0;bossAlive=false;boss=null;bullets=[];ebullets=[];enemies=[];pickups=[];parts=[];Object.assign(P,{x:W/2,y:H-100,lives:5,wpn:'honey',lvl:1,bombs:3,inv:120,fireT:0,dead:0,webbed:0});bossWarn=0;levelClear=0;levelIntro=200;nextWave=0;rushDone=false;nextCloud=500;buildDecor((stage-1)%NL);palA=palB=(stage-1)%NL;palMix=1;SFX.levelStart();music('main');}
+function start(){STAT.runs++;statSave();learned.clear();factT=0;chain=0;chainT=0;chainBest=0;grazed=0;nextExt=0;state='play';score=0;stage=startStage;stageT=0;loop=0;bossAlive=false;boss=null;bullets=[];ebullets=[];enemies=[];pickups=[];parts=[];Object.assign(P,{x:W/2,y:H-100,lives:5,wpn:'honey',lvl:1,bombs:3,inv:120,fireT:0,dead:0,webbed:0});bossWarn=0;levelClear=0;levelIntro=200;nextWave=0;rushDone=false;nextCloud=500;buildDecor((stage-1)%NL);palA=palB=(stage-1)%NL;palMix=1;SFX.levelStart();music('main');}
 function say(s){msg=s;msgT=150;}
 function sparks(x,y,c,n=8,sp=9){for(let i=0;i<n;i++){const a=R(0,Math.PI*2),s=R(sp*.5,sp);parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,l:R(8,18),c,r:R(1,2),spark:1});}}
 let muzzle=[];function flashMuzzle(x,y,c){muzzle.push({x,y,c,l:4});}
@@ -807,9 +821,10 @@ function hitPlayer(){if(P.inv>0||P.dead)return;if(P.bombs>0){bomb();P.inv=90;say
 // ---------- update ----------
 function update(){t++;if(shake>0)shake--;if(msgT>0)msgT--;bugChorus();if(P.lives===0&&!P.dead&&t%64===0)SFX.heartbeat();
  if(P.dead>0){P.dead--;if(P.dead===0){P.x=W/2;P.y=H-100;P.inv=240;}}
- else{const s=(keys.ShiftLeft||keys.ShiftRight?2.5:4.5)*(P.webbed>0?.35:1);
+ else{const s=(keys.ShiftLeft||keys.ShiftRight||PAD.slow?2.5:4.5)*(P.webbed>0?.35:1);
   if(keys.ArrowLeft||keys.KeyA)P.x-=s;if(keys.ArrowRight||keys.KeyD)P.x+=s;if(keys.ArrowUp||keys.KeyW)P.y-=s;if(keys.ArrowDown||keys.KeyS)P.y+=s;
-  const kb=keys.ArrowLeft||keys.KeyA||keys.ArrowRight||keys.KeyD||keys.ArrowUp||keys.KeyW||keys.ArrowDown||keys.KeyS;
+  if(PAD.x||PAD.y){P.x+=PAD.x*s;P.y+=PAD.y*s;}
+  const kb=keys.ArrowLeft||keys.KeyA||keys.ArrowRight||keys.KeyD||keys.ArrowUp||keys.KeyW||keys.ArrowDown||keys.KeyS||PAD.x||PAD.y;
   if(target&&!kb){if(P.webbed>0){const drag=.018+.032*(1-Math.min(1,P.webbed/190));P.x+=(target.x-P.x)*drag;P.y+=(target.y-P.y)*drag;}else{P.x=target.x;P.y=target.y;}}
   worldForce();
  P.x=clamp(P.x,14,W-14);P.y=clamp(P.y,30,H-20);
@@ -818,7 +833,7 @@ function update(){t++;if(shake>0)shake--;if(msgT>0)msgT--;bugChorus();if(P.lives
   if(P.fireT>0)P.fireT--;else fire();
   if(keys.KeyX||keys.KeyB||wantBomb){if(!P.bt)bomb();P.bt=1;}else P.bt=0;wantBomb=0;}
  // stage flow: intro -> waves -> WARNING -> boss -> LEVEL CLEAR -> next
- if(levelClear>0){levelClear--;if(levelClear===0){if(stage%NL===0&&loop===0){state='won';music('title');if(score>hi){hi=score;localStorage.hs_hi=hi;}return;}stage++;stageT=0;if((stage-1)%NL===0){loop++;}levelIntro=200;nextWave=0;rushDone=false;nextCloud=400;buildDecor((stage-1)%NL);SFX.levelStart();}}
+ if(levelClear>0){levelClear--;if(levelClear===0){recordBest((stage-1)%NL+1,score);if(stage%NL===0&&loop===0){unlockUpTo(16);state='won';music('title');if(score>hi){hi=score;localStorage.hs_hi=hi;}return;}stage++;stageT=0;unlockUpTo((stage-1)%NL+1);if(stage>STAT.deepest){STAT.deepest=stage;}statSave();if((stage-1)%NL===0){loop++;}levelIntro=200;nextWave=0;rushDone=false;nextCloud=400;buildDecor((stage-1)%NL);SFX.levelStart();}}
  else if(!bossAlive){
   if(levelIntro>0){levelIntro--;if(levelIntro===0)music('main');}
   else if(bossWarn>0){bossWarn--;if(bossWarn%45===0){swell(70,.5,'sine',.07,.08);rumble(.5,.04);}if(bossWarn===0)spawnBoss();}
@@ -826,7 +841,7 @@ function update(){t++;if(shake>0)shake--;if(msgT>0)msgT--;bugChorus();if(P.lives
  else if(boss&&boss.dying>0){boss.dying--;boss.fl=2;boss.x+=R(-3,3);if(boss.dying%7===0){boom(boss.x+R(-40,40),boss.y+R(-40,40),['#fff','#ffd166',boss.col][RI(0,2)],18,6);shake=8;rumble(.35,.06);noise(.12,.03,900,.7,250,'lowpass');click(R(1500,3000),.02);}if(boss.dying%20===0)hiss(.3,.03,R(2000,5000),800);if(boss.dying===0){boss.hp=0;}}
  else if(boss){updBoss(boss);if(boss.hp<=0&&boss.dying==null){boss.dying=90;ebullets=[];say(boss.name+' IS GOING DOWN!');rumble(1.5,.07);swell(80,1.4,'triangle',.05,.3,30);return;}if(boss.hp<=0){addScore(5000*(stage+loop));boom(boss.x,boss.y,boss.col,80,9);boom(boss.x,boss.y,'#fff',40,5);sparks(boss.x,boss.y,'#fff',40,12);flash=.6;shake=22;rumble(1.8,.1);swell(60,1.8,'sine',.07,.2,30);noise(.6,.05,700,.6,120,'lowpass');jingle([660,880,1108,1318,1760],'sine',.03,.09);
   for(let i=0;i<3;i++)drop(clamp(boss.x-80+i*80,50,W-50),boss.y+i*10,i===0?'nectar':i===1?randWeapon():['nectar','bomb','bomb',(stage%2===0?'life':'bomb')][RI(0,3)]);
-  boss=null;bossAlive=false;ebullets=[];enemies=[];levelClear=220;msgT=0;SFX.levelClear();const w=MUSIC.tracks.win;if(w&&!w.bad){w.currentTime=0;music('win');}else music(null);}}
+  boss=null;bossAlive=false;ebullets=[];enemies=[];levelClear=220;msgT=0;STAT.bosses++;statSave();SFX.levelClear();const w=MUSIC.tracks.win;if(w&&!w.bad){w.currentTime=0;music('win');}else music(null);}}
  // bullets
  for(const b of bullets){if(b.home){let best=null,bd=1e9;for(const e of enemies){const d=(e.x-b.x)**2+(e.y-b.y)**2;if(d<bd){bd=d;best=e;}}if(boss&&boss.y>0){const d=(boss.x-b.x)**2+(boss.y-b.y)**2;if(d<bd){bd=d;best=boss;}}
    if(best){const a=Math.atan2(best.y-b.y,best.x-b.x),ca=Math.atan2(b.vy,b.vx);let da=a-ca;while(da>Math.PI)da-=2*Math.PI;while(da<-Math.PI)da+=2*Math.PI;const na=ca+clamp(da,-.12,.12);b.vx=Math.cos(na)*7;b.vy=Math.sin(na)*7;}}
@@ -1653,12 +1668,73 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
    X.restore();}
   X.textAlign='center';
   X.textAlign='center';X.fillStyle='#ffd23f';X.font='bold 12px '+FONT;X.fillText('CHOOSE YOUR WORLD   ←  →   (1 – 8 keys pick the first row)',W/2,H-160);
-  for(let i=0;i<16;i++){const tl=TILE(i),sel=startStage===i+1,th=THEMES[i];panel(tl.x,tl.y,tl.w,tl.h,6);if(sel){X.strokeStyle='#ffd23f';X.lineWidth=2.5;X.beginPath();X.roundRect(tl.x,tl.y,tl.w,tl.h,6);X.stroke();}X.fillStyle=sel?'#ffd23f':'#cfe8ff';X.font='bold 14px '+FONT;X.fillText(String(i+1),tl.x+tl.w/2,tl.y+17);X.font='7px '+FONT;X.fillStyle=sel?'#fff':'rgba(255,255,255,.7)';X.fillText(th.name.replace('THE ',''),tl.x+tl.w/2,tl.y+30);}
+  for(let i=0;i<16;i++){const tl=TILE(i),sel=startStage===i+1,th=THEMES[i],lock=(i+1)>unlocked,bs=bestFor(i+1);panel(tl.x,tl.y,tl.w,tl.h,6);
+   if(lock){X.fillStyle='rgba(0,0,0,.45)';X.beginPath();X.roundRect(tl.x,tl.y,tl.w,tl.h,6);X.fill();}
+   if(sel&&!lock){X.strokeStyle='#ffd23f';X.lineWidth=2.5;X.beginPath();X.roundRect(tl.x,tl.y,tl.w,tl.h,6);X.stroke();}
+   X.fillStyle=lock?'rgba(255,255,255,.35)':sel?'#ffd23f':'#cfe8ff';X.font='bold 14px '+FONT;X.fillText(lock?'\uD83D\uDD12':String(i+1),tl.x+tl.w/2,tl.y+17);
+   X.font='7px '+FONT;X.fillStyle=lock?'rgba(255,255,255,.3)':sel?'#fff':'rgba(255,255,255,.7)';X.fillText(th.name.replace('THE ',''),tl.x+tl.w/2,tl.y+30);
+   if(!lock&&bs>0){X.font='6px '+FONT;X.fillStyle='rgba(255,210,63,.85)';X.fillText(bs>=1000?(bs/1000).toFixed(bs>=10000?0:1)+'k':String(bs),tl.x+tl.w/2,tl.y+37);}}
   X.shadowBlur=0;}
- if(paused){X.fillStyle='#0008';X.fillRect(0,0,W,H);X.fillStyle='#fff';X.font='bold 30px '+FONT;X.textAlign='center';X.fillText('PAUSED',W/2,H/2);}
+ if(resumeCountdown>0){X.fillStyle='#0008';X.fillRect(0,0,W,H);X.textAlign='center';X.fillStyle='#fff';X.font='bold 22px '+FONT;X.fillText('GET READY',W/2,H/2-40);X.fillStyle='#ffd23f';X.font='bold 64px '+FONT;X.fillText(String(Math.ceil(resumeCountdown/60)),W/2,H/2+30);}
+ else if(paused){X.fillStyle='#0008';X.fillRect(0,0,W,H);X.fillStyle='#fff';X.font='bold 30px '+FONT;X.textAlign='center';X.fillText('PAUSED',W/2,H/2);X.font='11px '+FONT;X.fillStyle='rgba(255,255,255,.75)';X.fillText('P or START to resume',W/2,H/2+26);}
 }
 buildDecor(0);
+
+// ---------- gamepad ----------
+// firing is automatic, so a pad only needs: move, bomb, slow, pause, confirm.
+const PAD={x:0,y:0,slow:0,on:false,_bomb:0,_start:0,_ok:0,_lr:0};
+function padTick(){
+ if(!navigator.getGamepads)return;
+ let g=null;const gs=navigator.getGamepads();
+ for(let i=0;i<gs.length;i++){if(gs[i]&&gs[i].connected){g=gs[i];break;}}
+ if(!g){if(PAD.on){PAD.on=false;PAD.x=PAD.y=PAD.slow=0;}return;}
+ if(!PAD.on){PAD.on=true;say('CONTROLLER CONNECTED');}
+ const dz=v=>Math.abs(v)<.22?0:(v-Math.sign(v)*.22)/.78, b=g.buttons, pressed=i=>!!(b[i]&&b[i].pressed);
+ const dl=pressed(14),dr=pressed(15),du=pressed(12),dd=pressed(13);
+ PAD.x=Math.max(-1,Math.min(1,dz(g.axes[0]||0)+(dr?1:0)-(dl?1:0)));
+ PAD.y=Math.max(-1,Math.min(1,dz(g.axes[1]||0)+(dd?1:0)-(du?1:0)));
+ PAD.slow=(pressed(6)||pressed(4))?1:0;                        // LT / LB = precision move
+ const bomb=(pressed(0)||pressed(1)||pressed(5)||pressed(7))?1:0;  // A / B / RB / RT = bomb
+ const start=pressed(9)?1:0, ok=(pressed(0)||pressed(9))?1:0;
+ if(state==='play'){if(bomb&&!PAD._bomb)wantBomb=1;
+  if(start&&!PAD._start){if(resumeCountdown>0){resumeCountdown=0;paused=false;}else paused=!paused;}}
+ else{
+  const lr=(PAD.x>.5?1:PAD.x<-.5?-1:0);
+  if(lr&&!PAD._lr)pickStage(startStage+lr);
+  PAD._lr=lr;
+  if(ok&&!PAD._ok){audioWake();if(state==='won')continueGame();else if(!armed)arm();else start();}
+ }
+ PAD._bomb=bomb;PAD._start=start;PAD._ok=ok;
+}
+
+// ---------- suspend / resume ----------
+// phones and laptops background this app constantly. two things break when they do:
+// the browser freezes the WebAudio clock and never restarts it, and the player comes back
+// mid-boss already taking hits. handle both.
+let resumeCountdown=0,wasPaused=false;
+function audioWake(){if(AC&&AC.state!=='running')AC.resume().catch(()=>{});}
+for(const ev of ['pointerdown','keydown','touchstart'])addEventListener(ev,audioWake,{passive:true});
+function goDark(){
+ wasPaused=paused;paused=true;resumeCountdown=0;
+ for(const k in MUSIC.tracks){const a=MUSIC.tracks[k];if(!a.paused){a.pause();a.volume=0;}}
+ for(const j in VID){const v=VID[j];if(v&&!v.paused)v.pause();}
+ if(SPLASHV&&!SPLASHV.paused)SPLASHV.pause();
+ if(AC&&AC.state==='running')AC.suspend().catch(()=>{});
+}
+function comeBack(){
+ audioWake();last=performance.now();acc=0;
+ if(state==='play'&&!wasPaused)resumeCountdown=180; else paused=wasPaused;
+}
+document.addEventListener('visibilitychange',()=>{document.hidden?goDark():comeBack();});
+addEventListener('pagehide',goDark);
+addEventListener('blur',()=>{if(state==='play'&&!paused)paused=true;});
+addEventListener('focus',()=>{audioWake();last=performance.now();acc=0;});
+
 let acc=0,last=performance.now();const STEP=1000/60;
-function frame(now){acc+=Math.min(100,now-last);last=now;while(acc>=STEP){acc-=STEP;if(state==='play'&&!paused)update();else t++;}musicTick();ambTick();if(state==='play'&&!SPLASHV.paused)SPLASHV.pause();draw();requestAnimationFrame(frame);}
+function frame(now){acc+=Math.min(100,now-last);last=now;padTick();
+ while(acc>=STEP){acc-=STEP;
+  if(resumeCountdown>0){resumeCountdown--;if(resumeCountdown===0)paused=false;t++;}
+  else if(state==='play'&&!paused)update();else t++;}
+ musicTick();ambTick();if(state==='play'&&!SPLASHV.paused)SPLASHV.pause();draw();requestAnimationFrame(frame);}
 requestAnimationFrame(frame);
 </script></body></html>
