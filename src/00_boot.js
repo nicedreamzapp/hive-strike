@@ -1,6 +1,10 @@
 const C=document.getElementById('c');let X=C.getContext('2d');const W=480,H=720;
 const DPR=Math.min(3,window.devicePixelRatio||1);C.width=W*DPR;C.height=H*DPR;C.style.width=W+'px';C.style.height=H+'px';X.setTransform(DPR,0,0,DPR,0,0);
 const FONT='"Avenir Next Condensed","Futura","Arial Narrow","Helvetica Neue",sans-serif';
+// stamped by tools/assemble.py from the version in package.json and the git commit --
+// never edit by hand. It is how you tell at a glance whether the phone in your hand is
+// running the same build as the one next to it.
+const BUILD='dev';
 // letterbox the play field inside whatever the device actually gives us, safe-area padding
 // already removed by the body. visualViewport is the honest number on iOS.
 function fit(){const cs=getComputedStyle(document.body),

@@ -16,6 +16,10 @@ canvas{background:#5ec8f5;aspect-ratio:480/720;max-height:100vh;max-height:100dv
 const C=document.getElementById('c');let X=C.getContext('2d');const W=480,H=720;
 const DPR=Math.min(3,window.devicePixelRatio||1);C.width=W*DPR;C.height=H*DPR;C.style.width=W+'px';C.style.height=H+'px';X.setTransform(DPR,0,0,DPR,0,0);
 const FONT='"Avenir Next Condensed","Futura","Arial Narrow","Helvetica Neue",sans-serif';
+// stamped by tools/assemble.py from the version in package.json and the git commit --
+// never edit by hand. It is how you tell at a glance whether the phone in your hand is
+// running the same build as the one next to it.
+const BUILD='v1.0.0  ·  b867b3a+  ·  Aug 26';
 // letterbox the play field inside whatever the device actually gives us, safe-area padding
 // already removed by the body. visualViewport is the honest number on iOS.
 function fit(){const cs=getComputedStyle(document.body),
@@ -1809,6 +1813,10 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
     for(let i=1;i<5;i++){X.fillStyle='rgba(0,0,0,.30)';X.fillRect(b.x+b.w*i/5,b.y+2,1,b.h-4);}
     X.textAlign='left';X.font='9px '+FONT;X.fillStyle='rgba(255,255,255,.55)';X.fillText(Math.round(v*100)+'%',b.x+b.w+7,b.y+11);};
    bar(BARS.mus,'MUSIC',MUSLV,'#7fd4ff'); bar(BARS.sfx,'FX',SFXLV,'#ffd23f');}
+  // build stamp: centred at the very bottom, between the left and right HUD text,
+  // small and dim enough to disappear unless you go looking for it
+  {X.save();X.textAlign='center';X.font='8px '+FONT;X.fillStyle='rgba(255,255,255,.30)';
+   X.shadowColor='rgba(0,0,0,.8)';X.shadowBlur=3;X.fillText(BUILD,W/2,H-9);X.restore();}
   X.textAlign='center';X.fillStyle='#ffd23f';X.font='bold 12px '+FONT;X.fillText(touchMode?'CHOOSE YOUR WORLD   ·   tap a world you have reached':'CHOOSE YOUR WORLD   ←  →   (1 – 8 keys pick the first row)',W/2,H-160);
   for(let i=0;i<16;i++){const tl=TILE(i),sel=startStage===i+1,th=THEMES[i],lock=(i+1)>unlocked,bs=bestFor(i+1);panel(tl.x,tl.y,tl.w,tl.h,6);
    if(lock){X.fillStyle='rgba(0,0,0,.45)';X.beginPath();X.roundRect(tl.x,tl.y,tl.w,tl.h,6);X.fill();}

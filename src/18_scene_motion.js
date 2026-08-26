@@ -454,6 +454,10 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
     for(let i=1;i<5;i++){X.fillStyle='rgba(0,0,0,.30)';X.fillRect(b.x+b.w*i/5,b.y+2,1,b.h-4);}
     X.textAlign='left';X.font='9px '+FONT;X.fillStyle='rgba(255,255,255,.55)';X.fillText(Math.round(v*100)+'%',b.x+b.w+7,b.y+11);};
    bar(BARS.mus,'MUSIC',MUSLV,'#7fd4ff'); bar(BARS.sfx,'FX',SFXLV,'#ffd23f');}
+  // build stamp: centred at the very bottom, between the left and right HUD text,
+  // small and dim enough to disappear unless you go looking for it
+  {X.save();X.textAlign='center';X.font='8px '+FONT;X.fillStyle='rgba(255,255,255,.30)';
+   X.shadowColor='rgba(0,0,0,.8)';X.shadowBlur=3;X.fillText(BUILD,W/2,H-9);X.restore();}
   X.textAlign='center';X.fillStyle='#ffd23f';X.font='bold 12px '+FONT;X.fillText(touchMode?'CHOOSE YOUR WORLD   ·   tap a world you have reached':'CHOOSE YOUR WORLD   ←  →   (1 – 8 keys pick the first row)',W/2,H-160);
   for(let i=0;i<16;i++){const tl=TILE(i),sel=startStage===i+1,th=THEMES[i],lock=(i+1)>unlocked,bs=bestFor(i+1);panel(tl.x,tl.y,tl.w,tl.h,6);
    if(lock){X.fillStyle='rgba(0,0,0,.45)';X.beginPath();X.roundRect(tl.x,tl.y,tl.w,tl.h,6);X.fill();}

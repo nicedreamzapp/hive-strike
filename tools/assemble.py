@@ -45,11 +45,33 @@ def join():
     new_body = "".join(open(os.path.join(SRC,f), encoding="utf-8").read() for f in files)
     return html[:s] + open_tag + new_body + close_tag + html[e:]
 
+def stamp(html):
+    """Write the real version into BUILD so a screen can never claim the wrong build."""
+    import json, subprocess, datetime
+    try: ver = json.load(open(os.path.join(ROOT,"package.json")))["version"]
+    except Exception: ver = "0.0.0"
+    try:
+        sha = subprocess.run(["git","-C",ROOT,"rev-parse","--short=7","HEAD"],
+                             capture_output=True,text=True).stdout.strip() or "nogit"
+        # index.html is the file we are about to stamp, so it being modified is not a
+        # reason to call the build dirty -- otherwise every build is dirty by definition.
+        dirty = [l for l in subprocess.run(["git","-C",ROOT,"status","--porcelain"],
+                 capture_output=True,text=True).stdout.splitlines()
+                 if l[3:].strip() not in ("index.html",)]
+        if dirty: sha += "+"
+    except Exception: sha = "nogit"
+    day = datetime.date.today().strftime("%b %-d")
+    build = f"v{ver}  \u00b7  {sha}  \u00b7  {day}"
+    out, n = re.subn(r"const BUILD='[^']*';", "const BUILD='"+build+"';", html, count=1)
+    if n != 1: sys.exit("assemble: could not find the BUILD constant to stamp")
+    print("build stamp:", build)
+    return out
+
 if "--split" in sys.argv:
     do_split()
 else:
     if not os.path.isdir(SRC): sys.exit("no src/ yet — run with --split first")
-    out = join()
+    out = stamp(join())
     before = hashlib.sha256(open(HTML,"rb").read()).hexdigest()[:12]
     open(HTML,"w",encoding="utf-8").write(out)
     after = hashlib.sha256(out.encode()).hexdigest()[:12]
