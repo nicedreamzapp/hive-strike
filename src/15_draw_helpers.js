@@ -3,7 +3,23 @@ function ell(x,y,rx,ry,a=0){X.beginPath();X.ellipse(x,y,rx,ry,a,0,7);}
 function rg(x,y,r,c1,c2){const g=X.createRadialGradient(x-r*.3,y-r*.3,r*.1,x,y,r);g.addColorStop(0,c1);g.addColorStop(1,c2);return g;}
 function lerpC(a,b,m){const pa=parseInt(a.slice(1),16),pb=parseInt(b.slice(1),16);const r=(pa>>16)+((pb>>16)-(pa>>16))*m,g=((pa>>8)&255)+(((pb>>8)&255)-((pa>>8)&255))*m,bl=(pa&255)+((pb&255)-(pa&255))*m;return `rgb(${r|0},${g|0},${bl|0})`;}
 // ---- EMBOSS: render a sprite offscreen, then composite ground shadow + drop shadow + light rim + dark rim.
-const OC={};function oc(k,s){let c=OC[k];if(!c){c=OC[k]=document.createElement('canvas');c.width=s*DPR;c.height=s*DPR;c.g=c.getContext('2d');}return c;}
+// This cached one scratch canvas per distinct glow size, forever. Thirty sizes x two
+// slots x DPR3 came to 59 MB of scratch space that nothing ever released. Round the size
+// to a step so near-identical requests share a canvas, and evict least-recently-used
+// past a hard cap. Visually identical, bounded memory.
+// emboss() draws the whole scratch canvas scaled into an SxS box, so the canvas has to be
+// exactly S -- rounding sizes into buckets would silently rescale every sprite. Keep exact
+// sizes and bound the CACHE instead: least-recently-used eviction past a hard cap, with the
+// evicted canvas zeroed so the backing store is actually handed back.
+const OC={},OCLRU=[],OCMAX=10;
+function oc(k,s){
+ let c=OC[k];
+ if(!c){
+  while(OCLRU.length>=OCMAX){const old=OCLRU.shift();const d=OC[old];if(d){d.width=0;d.height=0;}delete OC[old];}
+  c=OC[k]=document.createElement('canvas');c.width=s*DPR;c.height=s*DPR;c.g=c.getContext('2d');
+ } else { const i=OCLRU.indexOf(k); if(i>=0)OCLRU.splice(i,1); }
+ OCLRU.push(k);
+ return c;}
 function emboss(x,y,box,fn,o={}){const S=box|0,A=oc('A'+S,S),B=oc('B'+S,S),a=A.g,b=B.g,alt=o.alt==null?1:o.alt;
  const _X=X;X=a;a.setTransform(DPR,0,0,DPR,0,0);a.clearRect(0,0,S,S);a.save();a.translate(S/2,S/2);fn();a.restore();X=_X;
  const rim=(dx,dy,col)=>{b.setTransform(DPR,0,0,DPR,0,0);b.globalCompositeOperation='source-over';b.clearRect(0,0,S,S);b.drawImage(A,0,0,S,S);b.globalCompositeOperation='source-in';b.fillStyle=col;b.fillRect(0,0,S,S);b.globalCompositeOperation='destination-out';b.drawImage(A,dx,dy,S,S);};

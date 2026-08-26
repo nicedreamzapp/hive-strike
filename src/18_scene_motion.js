@@ -375,7 +375,8 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
   X.textAlign='left';X.globalAlpha=a;
   X.fillStyle=m>=6?'#ff8adf':m>=4?'#ffd23f':'#8dff9a';X.font='bold 15px '+FONT;
   X.fillText('x'+m,8,H-28);
-  X.font='bold 10px '+FONT;X.fillStyle='rgba(255,255,255,.75)';X.fillText(chain+' CHAIN',30,H-28);
+  X.font='7px '+FONT;X.fillStyle='rgba(255,255,255,.5)';X.fillText('MULT',8,H-40);
+  X.font='bold 10px '+FONT;X.fillStyle='rgba(255,255,255,.75)';X.fillText(chain+' KILLS IN A ROW',30,H-28);
   X.globalAlpha=1;}
  X.textAlign='center';X.fillStyle=WEAPONS[P.wpn].col;X.fillText(WEAPONS[P.wpn].name+' Lv'+P.lvl+'   ·   '+WEAPONS[P.wpn].tag,W/2,H-12);
  for(let i=0;i<5;i++){X.fillStyle=i<P.lvl?WEAPONS[P.wpn].col:'rgba(255,255,255,.25)';X.fillRect(W/2-40+i*16,H-34,12,4);}
@@ -394,7 +395,16 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
   X.globalAlpha=1;X.fillStyle=ok?'#ffd23f':'rgba(255,255,255,.3)';X.font='bold 11px '+FONT;X.textAlign='center';
   X.fillText('BOMB',b.x+b.w/2,b.y+b.h/2-1);X.font='bold 13px '+FONT;X.fillText(String(P.bombs),b.x+b.w/2,b.y+b.h/2+14);X.restore();
   const q=TBTN.pause;panel(q.x,q.y,q.w,q.h,6);X.fillStyle='rgba(255,255,255,.75)';X.font='bold 11px '+FONT;X.textAlign='center';X.fillText(paused?'▶':'II',q.x+q.w/2,q.y+15);}
- if(msgT>0){const card=levelClear>0||levelIntro>0||bossWarn>0;X.globalAlpha=Math.min(1,msgT/30);X.fillStyle='#fff';X.shadowColor='#000';X.shadowBlur=8;X.font='bold '+(card?18:24)+'px '+FONT;X.textAlign='center';X.fillText(msg,W/2,card?H-150:H/2-60);X.shadowBlur=0;X.globalAlpha=1;}
+ if(msgT>0){const card=levelClear>0||levelIntro>0||bossWarn>0;
+  // In-play callouts used to hit full opacity at 24px in the middle of the play field,
+  // sitting right on top of the bugs you are trying to read. They are notifications, not
+  // cards: keep them faint and park them under the bee, above the score line, where
+  // nothing is ever happening. Level/boss cards are a deliberate beat and stay put.
+  X.globalAlpha=card?Math.min(1,msgT/30):Math.min(.45,msgT/30*.45);
+  X.fillStyle='#fff';X.shadowColor='#000';X.shadowBlur=card?8:5;
+  X.font='bold '+(card?18:15)+'px '+FONT;X.textAlign='center';
+  X.fillText(msg,W/2,card?H-150:H-56);
+  X.shadowBlur=0;X.globalAlpha=1;}
  if(state==='play'&&!bossAlive&&bossWarn===0&&levelClear===0&&levelIntro===0){const lv=LV(),pr=Math.min(1,stageT/lv.len),x0=70,x1=W-70;panel(x0-10,26,x1-x0+56,46,7);X.textAlign='center';X.fillStyle='rgba(255,255,255,.92)';X.font='bold 18px '+FONT;X.shadowColor='#000';X.shadowBlur=4;X.fillText('LEVEL '+stage+'  ·  '+lv.name,W/2,47);X.fillStyle='rgba(0,0,0,.18)';X.fillRect(x0,55,x1-x0,8);X.fillStyle='rgba(255,210,63,.62)';X.fillRect(x0,55,(x1-x0)*pr,8);X.textAlign='left';X.fillStyle='rgba(255,80,80,.85)';X.font='bold 12px '+FONT;X.fillText('BOSS',x1+6,64);X.shadowBlur=0;bee(x0+(x1-x0)*pr,59,5,'#ffd23f','#1a1a1a','#fff');}
  if(state==='play'&&levelIntro>0){const a=Math.min(1,levelIntro/30,(200-levelIntro)/20),th=LV(),bd=BOSSES[th.boss];
   // no panel behind it -- just the words, outlined so they read over any background, and see-through
