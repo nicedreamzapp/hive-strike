@@ -19,3 +19,12 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# --- Capacitor / WebView bridge ---
+# R8 must not strip or rename anything the JavaScript bridge reaches by name at runtime.
+-keep class com.getcapacitor.** { *; }
+-keep @com.getcapacitor.annotation.CapacitorPlugin class * { @com.getcapacitor.annotation.PermissionCallback <methods>; @com.getcapacitor.PluginMethod <methods>; }
+-keep class * extends com.getcapacitor.Plugin { *; }
+-keepclassmembers class * { @android.webkit.JavascriptInterface <methods>; }
+-keep class com.nicedreamz.hivestrike.** { *; }
+-dontwarn com.getcapacitor.**
