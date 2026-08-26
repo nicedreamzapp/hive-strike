@@ -439,10 +439,12 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
    ).forEach((r,i)=>row(r[0],r[1],colL,i,84));
    [['NECTAR','power up, Lv1 to Lv5'],['S','bomb'],['HEART','extra life'],['GUN DROPS','label says what it does']].forEach((r,i)=>row(r[0],r[1],colR,i,66));
    X.textAlign='center';X.font='11px '+FONT;X.fillStyle='#8dff9a';
-   X.fillText('GREEN RING = grab it        RED GLOW = dodge it',W/2,ty+92);X.textAlign='center';
+   X.fillText('GREEN RING = grab it        RED GLOW = dodge it',W/2,ty+90);X.textAlign='center';
    X.fillStyle='#a8c4e0';X.font='11px '+FONT;
-   X.fillText('fill the top bar to reach the boss   ·   webs tangle you   ·   gnat clouds slow you',W/2,ty+110);
-   X.fillText(touchMode?'the bee rides above your finger   ·   bombs fire themselves when you are about to be hit':'the bee follows your cursor   ·   bombs fire themselves when you are about to be hit',W/2,ty+126);
+   X.font='9px '+FONT;
+   X.fillText('CHAIN  \u00b7  six fast kills = x2 score, up to x8   \u2014   it resets if you stop or get hit',W/2,ty+104);
+   X.fillText('fill the top bar to reach the boss   \u00b7   webs tangle you   \u00b7   gnat clouds slow you',W/2,ty+115);
+   X.fillText(touchMode?'the bee rides above your finger   \u00b7   bombs fire themselves when you are about to be hit':'the bee follows your cursor   \u00b7   bombs fire themselves when you are about to be hit',W/2,ty+126);X.font='11px '+FONT;
    X.restore();}
   X.textAlign='center';
   // two level sliders -- tap anywhere along one to set it

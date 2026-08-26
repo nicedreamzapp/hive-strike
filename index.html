@@ -19,7 +19,7 @@ const FONT='"Avenir Next Condensed","Futura","Arial Narrow","Helvetica Neue",san
 // stamped by tools/assemble.py from the version in package.json and the git commit --
 // never edit by hand. It is how you tell at a glance whether the phone in your hand is
 // running the same build as the one next to it.
-const BUILD='v1.0.0  ·  b867b3a+  ·  Aug 26';
+const BUILD='v1.0.0  ·  c0473e8+  ·  Aug 26';
 // letterbox the play field inside whatever the device actually gives us, safe-area padding
 // already removed by the body. visualViewport is the honest number on iOS.
 function fit(){const cs=getComputedStyle(document.body),
@@ -923,7 +923,12 @@ function addScore(n){score+=Math.round(n*chainMult());
  while(nextExt<EXTENDS.length&&score>=EXTENDS[nextExt]){nextExt++;P.lives++;say('EXTRA LIFE!');
   jingle([880,1174,1568,2093],'sine',.03,.07);}}
 function onKill(){chain++;chainT=190;if(chain>chainBest)chainBest=chain;
- if(chain%6===0){say('CHAIN x'+chainMult());snd(700+chainMult()*90,.06,'sine',.03,1400);}}
+ if(chain%6===0){
+  // Matt built this and still had to ask what x8 was. Name it once, the first time it
+  // pays, then go back to the short form so it stops being noise.
+  say(learned.has('chain')?'CHAIN x'+chainMult():'CHAIN x2  \u00b7  EVERY POINT DOUBLED');
+  learned.add('chain');
+  snd(700+chainMult()*90,.06,'sine',.03,1400);}}
 function breakChain(){if(chain>2)say('CHAIN LOST');chain=0;chainT=0;}
 function chainTick(){if(chainT>0&&--chainT===0)chain=0;}
 // grazing: sliding close past a shot without being hit pays, and tops up your bombs
@@ -932,7 +937,7 @@ function grazeTick(){if(P.dead||P.inv>0)return;
   const dx=P.x-b.x,dy=P.y-b.y,d=Math.hypot(dx,dy),near=P.r+b.r+3,far=P.r+b.r+22;
   if(d>near&&d<far){b.grz=1;grazed++;addScore(60);
    sparks(b.x+(dx?dx/d*6:0),b.y+(dy?dy/d*6:0),'#ffe680',2,4);
-   if(grazed%22===0&&P.bombs<5){P.bombs++;say('BOMB FROM GRAZING');}
+   if(grazed%22===0&&P.bombs<5){P.bombs++;say(learned.has('graze')?'BOMB FROM GRAZING':'FREE BOMB  \u00b7  FOR SLIPPING PAST SHOTS');learned.add('graze');}
    if(grazed%6===0)snd(2200,.03,'sine',.012,3000);}}}
 function hitPlayer(){if(P.inv>0||P.dead)return;if(P.bombs>0){bomb();P.inv=90;say('AUTO SWARM CALL!');return;}breakChain();P.lives--;P.dead=90;shake=20;boom(P.x,P.y,'#ffd166',40,7);noise(.7,.05,1400,.6,200,'lowpass');swell(90,.9,'sine',.08,.05,40);
  P.lvl=Math.max(1,P.lvl-1);ebullets=[];
@@ -1798,10 +1803,12 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
    ).forEach((r,i)=>row(r[0],r[1],colL,i,84));
    [['NECTAR','power up, Lv1 to Lv5'],['S','bomb'],['HEART','extra life'],['GUN DROPS','label says what it does']].forEach((r,i)=>row(r[0],r[1],colR,i,66));
    X.textAlign='center';X.font='11px '+FONT;X.fillStyle='#8dff9a';
-   X.fillText('GREEN RING = grab it        RED GLOW = dodge it',W/2,ty+92);X.textAlign='center';
+   X.fillText('GREEN RING = grab it        RED GLOW = dodge it',W/2,ty+90);X.textAlign='center';
    X.fillStyle='#a8c4e0';X.font='11px '+FONT;
-   X.fillText('fill the top bar to reach the boss   ·   webs tangle you   ·   gnat clouds slow you',W/2,ty+110);
-   X.fillText(touchMode?'the bee rides above your finger   ·   bombs fire themselves when you are about to be hit':'the bee follows your cursor   ·   bombs fire themselves when you are about to be hit',W/2,ty+126);
+   X.font='9px '+FONT;
+   X.fillText('CHAIN  \u00b7  six fast kills = x2 score, up to x8   \u2014   it resets if you stop or get hit',W/2,ty+104);
+   X.fillText('fill the top bar to reach the boss   \u00b7   webs tangle you   \u00b7   gnat clouds slow you',W/2,ty+115);
+   X.fillText(touchMode?'the bee rides above your finger   \u00b7   bombs fire themselves when you are about to be hit':'the bee follows your cursor   \u00b7   bombs fire themselves when you are about to be hit',W/2,ty+126);X.font='11px '+FONT;
    X.restore();}
   X.textAlign='center';
   // two level sliders -- tap anywhere along one to set it
