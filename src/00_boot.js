@@ -1,5 +1,11 @@
 const C=document.getElementById('c');let X=C.getContext('2d');const W=480,H=720;
-const DPR=Math.min(3,window.devicePixelRatio||1);C.width=W*DPR;C.height=H*DPR;C.style.width=W+'px';C.style.height=H+'px';X.setTransform(DPR,0,0,DPR,0,0);
+// RS is the raster scale: how many device pixels the 480x720 play field actually gets.
+// It is NOT devicePixelRatio. On a 12.9" iPad the field is letterboxed up to 1821x2732
+// device px, so a DPR-sized 960x1440 backing store was being stretched 1.9x and every
+// sprite, every bug, the whole game looked soft. On a phone the opposite happened and it
+// rendered ~10% MORE pixels than the screen could show. fit() sets this from the real box.
+let DPR=Math.min(3,window.devicePixelRatio||1);
+C.width=W*DPR;C.height=H*DPR;C.style.width=W+'px';C.style.height=H+'px';X.setTransform(DPR,0,0,DPR,0,0);
 const FONT='"Avenir Next Condensed","Futura","Arial Narrow","Helvetica Neue",sans-serif';
 // stamped by tools/assemble.py from the version in package.json and the git commit --
 // never edit by hand. It is how you tell at a glance whether the phone in your hand is
@@ -13,7 +19,15 @@ function fit(){const cs=getComputedStyle(document.body),
  vv=window.visualViewport,
  aw=Math.max(1,(vv?vv.width:innerWidth)-px), ah=Math.max(1,(vv?vv.height:innerHeight)-py),
  sc=Math.min(aw/W,ah/H);
- C.style.width=Math.round(W*sc)+'px';C.style.height=Math.round(H*sc)+'px';}
+ C.style.width=Math.round(W*sc)+'px';C.style.height=Math.round(H*sc)+'px';
+ // render exactly the pixels this screen will show -- no upscale on a tablet, no waste
+ // on a phone. Capped at 4 so a huge display cannot blow the memory budget.
+ const want=Math.max(1,Math.min(4,+(sc*(window.devicePixelRatio||1)).toFixed(3)));
+ if(Math.abs(want-DPR)>0.01||C.width!==Math.round(W*want)){
+  DPR=want;C.width=Math.round(W*DPR);C.height=Math.round(H*DPR);
+  X.setTransform(DPR,0,0,DPR,0,0);
+  rasterReset();                       // every cached surface was built at the old scale
+ }}
 addEventListener('resize',fit);addEventListener('orientationchange',()=>setTimeout(fit,120));
 if(window.visualViewport)visualViewport.addEventListener('resize',fit);
 fit();

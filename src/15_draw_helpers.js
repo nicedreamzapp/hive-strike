@@ -12,6 +12,17 @@ function lerpC(a,b,m){const pa=parseInt(a.slice(1),16),pb=parseInt(b.slice(1),16
 // sizes and bound the CACHE instead: least-recently-used eviction past a hard cap, with the
 // evicted canvas zeroed so the backing store is actually handed back.
 const OC={},OCLRU=[],OCMAX=10;
+// Called by fit() when the raster scale changes (rotation, window resize, moving between
+// displays). Every cached surface and every mip pyramid was built for the OLD scale, so
+// keeping them would draw the wrong size. Cheap to rebuild, wrong to keep.
+function rasterReset(){
+ try{for(const k in OC){const c=OC[k];if(c){c.width=0;c.height=0;}delete OC[k];}OCLRU.length=0;}catch(e){}
+ try{_WB=null;}catch(e){}
+ try{_MB=null;}catch(e){}
+ try{for(const k in _GM)delete _GM[k];}catch(e){}
+ const drop=o=>{try{for(const k in o){const im=o[k];if(im){if(im._mips)im._mips.length=0;im.dof=null;}}}catch(e){}};
+ try{drop(SPR);}catch(e){} try{drop(ART);}catch(e){} try{drop(MASKS);}catch(e){}
+}
 function oc(k,s){
  let c=OC[k];
  if(!c){
