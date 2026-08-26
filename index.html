@@ -317,12 +317,33 @@ function rumble(dur=1.2,v=.06){try{const a=ctx(),n=a.createBufferSource(),g=a.cr
 function snd(f,t,type='square',v=.05,slide=0,lp=0){v*=gainScale;f*=pitchScale;if(slide)slide*=pitchScale;try{const a=ctx(),o=a.createOscillator(),g=a.createGain(),n=a.currentTime;o.type=type;o.frequency.value=f;if(slide)o.frequency.exponentialRampToValueAtTime(slide,n+t);g.gain.setValueAtTime(0,n);g.gain.linearRampToValueAtTime(v,n+.006);g.gain.exponentialRampToValueAtTime(.001,n+t);let outn=g;if(lp){const f2=a.createBiquadFilter();f2.type='lowpass';f2.frequency.value=lp;g.connect(f2);outn=f2;}o.connect(g);outn.connect(out());o.start();o.stop(n+t+.02);}catch(e){}}
 
 // ---------- music: Song Forge instrumental beds (music/main.mp3 for levels, music/boss.mp3 for boss fights) ----------
-const MUSIC={tracks:{},cur:null,want:null,vol:.045,on:localStorage.hs_music!=null?localStorage.hs_music==='1':true};
+// iOS does not let you set the volume of an <audio> element. It accepts the
+// assignment, then resets to 1 the moment the media loads -- measured on device:
+// "set 0.045 -> reads back 0.045 ... after load: 1". So every bed played at FULL
+// volume instead of 4.5%, the fade-out that stops the previous track never reached
+// zero, and old tracks never paused: level music, boss music and the title theme
+// all stacked on top of each other. Route every track through a GainNode instead.
+// That is honoured on every platform.
+const MUSIC={tracks:{},gains:{},cur:null,want:null,vol:.045,on:localStorage.hs_music!=null?localStorage.hs_music==='1':true};
+function musicGain(k,a){
+ let g=MUSIC.gains[k];
+ if(g!==undefined)return g;
+ try{const ac=ctx();const src=ac.createMediaElementSource(a);g=ac.createGain();g.gain.value=0;src.connect(g).connect(ac.destination);}
+ catch(e){g=null;}                       // fall back to a.volume if the graph refuses
+ MUSIC.gains[k]=g;return g;}
+const mvol=(k,a)=>{const g=MUSIC.gains[k];return g?g.gain.value:a.volume;};
+function msetvol(k,a,v){const g=musicGain(k,a);if(g)g.gain.value=v;else a.volume=v;}
 function musicToggle(){MUSIC.on=!MUSIC.on;localStorage.hs_music=MUSIC.on?'1':'0';say(MUSIC.on?'MUSIC ON':'MUSIC OFF');}
 function musicLoad(){const names=['main','boss','win','title'];for(let n=1;n<=16;n++){names.push('level'+n,'boss'+n);}for(const k of names){const a=new Audio('music/'+k+'.mp3');a.loop=k!=='win';a.volume=0;a.preload='none';a.ok=false;a.addEventListener('canplay',()=>{a.ok=true;});a.addEventListener('error',()=>{a.ok=false;a.bad=true;});MUSIC.tracks[k]=a;}}
 function musicPick(kind){if(kind==='win')return 'win';if(kind==='title')return 'title';const n=(stage-1)%NL+1,k=(kind==='boss'?'boss':'level')+n,a=MUSIC.tracks[k];if(a&&!a.bad){if(a.preload==='none'){a.preload='auto';a.load();}return k;}return kind==='boss'?'boss':'main';}
 function music(name){MUSIC.want=name?musicPick(name):null;}
-function musicTick(){for(const k in MUSIC.tracks){const a=MUSIC.tracks[k],boss=k.startsWith('boss'),target=(k===MUSIC.want&&(state==='play'||k==='title')&&!paused&&MUSIC.on&&!(k==='win'&&a.ended))?VOL*(boss?MUSIC.vol*1.1:k==='win'?MUSIC.vol*1.3:MUSIC.vol):0;if(target>0&&a.paused){if(a.bad){MUSIC.want=k.startsWith('boss')?'boss':'main';return;}a.play().catch(()=>{});}a.volume+= (target-a.volume)*.04;if(a.volume<.004&&target===0&&!a.paused){a.pause();a.volume=0;}}}
+function musicTick(){for(const k in MUSIC.tracks){const a=MUSIC.tracks[k],boss=k.startsWith('boss'),
+  target=(k===MUSIC.want&&(state==='play'||k==='title')&&!paused&&MUSIC.on&&!(k==='win'&&a.ended))?VOL*(boss?MUSIC.vol*1.1:k==='win'?MUSIC.vol*1.3:MUSIC.vol):0;
+  if(target>0&&a.paused){if(a.bad){MUSIC.want=k.startsWith('boss')?'boss':'main';return;}musicGain(k,a);a.play().catch(()=>{});}
+  if(target<=0&&a.paused)continue;                       // nothing to fade on a stopped track
+  const v=mvol(k,a)+(target-mvol(k,a))*.04;
+  msetvol(k,a,v);
+  if(v<.004&&target===0&&!a.paused){a.pause();msetvol(k,a,0);}}}
 musicLoad();
 // ---------- painted art: art/level1..6.png (one per world) + art/splash.png. STATIC — the background never moves.
 const ART={};for(const k of Array.from({length:16},(_,i)=>'level'+(i+1)).concat(['splash'])){const im=new Image();im.onload=()=>{ART[k]=im;};im.onerror=()=>missing('art/'+k+'.png');im.src='art/'+k+'.png';}
@@ -332,12 +353,27 @@ const MASKS={};for(const n of [2,3,6,7,10,12,13,14,15,16]){const im=new Image();
 // backgrounds are ~3MB of h264 each. buffering all 16 at boot cost 53MB of decode memory and a
 // slow first frame for 15 clips nobody was watching. keep a sliding window around the live level.
 const VID={},VIDEL={},VIDWIN=1;
-function vidEl(n){let v=VIDEL[n];if(v)return v;v=document.createElement('video');v.muted=true;v.defaultMuted=true;v.loop=true;v.playsInline=true;v.setAttribute('playsinline','');v.setAttribute('webkit-playsinline','');v.preload='auto';v.addEventListener('canplay',()=>{VID['level'+n]=v;},{once:true});v.addEventListener('error',()=>{v.bad=true;delete VID['level'+n];});v.src='art/clip/level'+n+'.mp4';VIDEL[n]=v;return v;}
+function vidEl(n){let v=VIDEL[n];if(v)return v;v=document.createElement('video');v.muted=true;v.defaultMuted=true;v.loop=true;v.playsInline=true;v.setAttribute('playsinline','');v.setAttribute('webkit-playsinline','');v.setAttribute('muted','');v.preload='auto';
+ const ready=()=>{VID['level'+n]=v;};
+ v.addEventListener('loadeddata',ready);v.addEventListener('canplay',ready);
+ v.addEventListener('error',()=>{v.bad=true;delete VID['level'+n];});v.src='art/clip/level'+n+'.mp4';VIDEL[n]=v;return v;}
 function vidRelease(n){const v=VIDEL[n];if(!v)return;try{v.pause();v.removeAttribute('src');v.load();}catch(e){}delete VIDEL[n];delete VID['level'+n];}
 function vidSync(){const c=(stage-1)%NL+1,want=new Set();for(let d=0;d<=VIDWIN;d++){want.add((c-1+d)%NL+1);want.add((c-1-d+NL*2)%NL+1);}for(const n of want)vidEl(n);for(const k in VIDEL)if(!want.has(+k))vidRelease(+k);}
-function vidTick(){vidSync();const k='level'+((stage-1)%NL+1);for(const j in VID){const v=VID[j];if(j===k){if(v.paused&&!document.hidden&&!paused)v.play().catch(()=>{});}else if(!v.paused)v.pause();}}
-const SPLASHV=document.createElement('video');SPLASHV.src='art/clip/splash.mp4';SPLASHV.muted=true;SPLASHV.loop=true;SPLASHV.playsInline=true;SPLASHV.preload='auto';SPLASHV.ok=false;SPLASHV.addEventListener('canplay',()=>{SPLASHV.ok=true;});SPLASHV.addEventListener('error',()=>{SPLASHV.ok=false;});
-function splashFrame(){if(SPLASHV.ok&&SPLASHV.readyState>=2){if(SPLASHV.paused)SPLASHV.play().catch(()=>{});return SPLASHV;}return ART.splash;}
+// iOS will not buffer a video until something calls play(), so gating play() on
+// canplay -- which only fires once buffered -- deadlocked: the clip never loaded,
+// VID stayed empty, and every level fell back to its still. Drive VIDEL instead:
+// ask the live clip to play unconditionally and promote it the moment it has data.
+function vidTick(){vidSync();const cur=(stage-1)%NL+1;
+ for(const j in VIDEL){const n=+j,v=VIDEL[n],key='level'+n;
+  if(n===cur){
+   if(v.readyState>=2&&!VID[key])VID[key]=v;
+   if(v.paused&&!v.bad&&!document.hidden&&!paused)v.play().catch(()=>{});
+  } else if(!v.paused)v.pause();}}
+const SPLASHV=document.createElement('video');SPLASHV.muted=true;SPLASHV.defaultMuted=true;SPLASHV.loop=true;SPLASHV.playsInline=true;SPLASHV.setAttribute('playsinline','');SPLASHV.setAttribute('webkit-playsinline','');SPLASHV.setAttribute('muted','');SPLASHV.preload='auto';SPLASHV.ok=false;SPLASHV.addEventListener('loadeddata',()=>{SPLASHV.ok=true;});SPLASHV.addEventListener('canplay',()=>{SPLASHV.ok=true;});SPLASHV.addEventListener('error',()=>{SPLASHV.bad=true;SPLASHV.ok=false;});SPLASHV.src='art/clip/splash.mp4';
+function splashFrame(){
+ if(!SPLASHV.bad&&SPLASHV.paused&&!document.hidden)SPLASHV.play().catch(()=>{});   // same deadlock as the levels
+ if(SPLASHV.readyState>=2)return SPLASHV;
+ return ART.splash;}
 const SPR={},MISSING=[];
 function missing(path){MISSING.push(path);console.warn('[hive-strike] asset missing:',path);}
 function loadSprites(){const names=Object.keys(ET).concat(Array.from({length:16},(_,i)=>'boss'+i)).concat(['centihead1','centiseg1']);for(const k of names){const im=new Image();im.onload=()=>{SPR[k]=im;};im.onerror=()=>missing('art/sprites/'+k+'.png');im.src='art/sprites/'+k+'.png';}}
@@ -1694,12 +1730,15 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
   else{X.font='bold 16px '+FONT;X.fillText('sixteen worlds. sixteen bosses. forty-eight bugs. one bee.',W/2,sp?122:335);}
   // instructions as a laid-out table instead of six centred lines running together
   {const ty=sp?392:372,colL=W*.06,colR=W*.53,colW=W*.41;
-   X.save();X.fillStyle='rgba(6,14,28,.72)';X.beginPath();X.roundRect(colL-10,ty-20,W-2*(colL-10),150,10);X.fill();
-   X.strokeStyle='rgba(255,210,63,.34)';X.lineWidth=1;X.beginPath();X.roundRect(colL-10,ty-20,W-2*(colL-10),150,10);X.stroke();
+   X.save();X.fillStyle='rgba(6,14,28,.20)';X.beginPath();X.roundRect(colL-10,ty-20,W-2*(colL-10),150,10);X.fill();
+   X.strokeStyle='rgba(255,210,63,.22)';X.lineWidth=1;X.beginPath();X.roundRect(colL-10,ty-20,W-2*(colL-10),150,10);X.stroke();
+   // the panel stays see-through so the bee reads through it; the text earns its
+   // contrast from a shadow instead of from a slab painted over the art
+   X.shadowColor='rgba(0,0,0,.95)';X.shadowBlur=4;X.shadowOffsetY=1;
    const head=(txt,x)=>{X.textAlign='left';X.font='bold 10px '+FONT;X.fillStyle='#ffd23f';X.fillText(txt,x,ty);
      X.strokeStyle='rgba(255,210,63,.30)';X.beginPath();X.moveTo(x,ty+5);X.lineTo(x+colW,ty+5);X.stroke();};
    const row=(k,v,x,i,off)=>{const y=ty+20+i*15;X.textAlign='left';X.font='bold 10px '+FONT;X.fillStyle='#ffffff';X.fillText(k,x,y);
-     X.font='10px '+FONT;X.fillStyle='#cfe0f2';X.fillText(v,x+off,y);};
+     X.font='10px '+FONT;X.fillStyle='#dceaf7';X.fillText(v,x+off,y);};
    head('CONTROLS',colL);head('PICK UPS',colR);
    (touchMode
      ? [['DRAG','the bee follows your finger'],['BOMB button','bottom right'],['II button','pause'],['♪ / FX','tap to mute']]
@@ -1758,7 +1797,11 @@ function padTick(){
 // the browser freezes the WebAudio clock and never restarts it, and the player comes back
 // mid-boss already taking hits. handle both.
 let resumeCountdown=0,wasPaused=false;
-function audioWake(){if(AC&&AC.state!=='running')AC.resume().catch(()=>{});}
+function audioWake(){
+ if(AC&&AC.state!=='running')AC.resume().catch(()=>{});
+ // a real gesture is the one moment iOS will definitely let media start
+ try{if(SPLASHV&&SPLASHV.paused&&!SPLASHV.bad)SPLASHV.play().catch(()=>{});
+  const v=VIDEL[(stage-1)%NL+1];if(v&&v.paused&&!v.bad)v.play().catch(()=>{});}catch(e){}}
 for(const ev of ['pointerdown','keydown','touchstart'])addEventListener(ev,audioWake,{passive:true});
 function goDark(){
  wasPaused=paused&&!pausedByBlur;pausedByBlur=false;paused=true;resumeCountdown=0;

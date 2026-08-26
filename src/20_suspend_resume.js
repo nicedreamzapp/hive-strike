@@ -3,7 +3,11 @@
 // the browser freezes the WebAudio clock and never restarts it, and the player comes back
 // mid-boss already taking hits. handle both.
 let resumeCountdown=0,wasPaused=false;
-function audioWake(){if(AC&&AC.state!=='running')AC.resume().catch(()=>{});}
+function audioWake(){
+ if(AC&&AC.state!=='running')AC.resume().catch(()=>{});
+ // a real gesture is the one moment iOS will definitely let media start
+ try{if(SPLASHV&&SPLASHV.paused&&!SPLASHV.bad)SPLASHV.play().catch(()=>{});
+  const v=VIDEL[(stage-1)%NL+1];if(v&&v.paused&&!v.bad)v.play().catch(()=>{});}catch(e){}}
 for(const ev of ['pointerdown','keydown','touchstart'])addEventListener(ev,audioWake,{passive:true});
 function goDark(){
  wasPaused=paused&&!pausedByBlur;pausedByBlur=false;paused=true;resumeCountdown=0;

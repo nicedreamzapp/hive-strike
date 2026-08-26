@@ -417,12 +417,15 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
   else{X.font='bold 16px '+FONT;X.fillText('sixteen worlds. sixteen bosses. forty-eight bugs. one bee.',W/2,sp?122:335);}
   // instructions as a laid-out table instead of six centred lines running together
   {const ty=sp?392:372,colL=W*.06,colR=W*.53,colW=W*.41;
-   X.save();X.fillStyle='rgba(6,14,28,.72)';X.beginPath();X.roundRect(colL-10,ty-20,W-2*(colL-10),150,10);X.fill();
-   X.strokeStyle='rgba(255,210,63,.34)';X.lineWidth=1;X.beginPath();X.roundRect(colL-10,ty-20,W-2*(colL-10),150,10);X.stroke();
+   X.save();X.fillStyle='rgba(6,14,28,.20)';X.beginPath();X.roundRect(colL-10,ty-20,W-2*(colL-10),150,10);X.fill();
+   X.strokeStyle='rgba(255,210,63,.22)';X.lineWidth=1;X.beginPath();X.roundRect(colL-10,ty-20,W-2*(colL-10),150,10);X.stroke();
+   // the panel stays see-through so the bee reads through it; the text earns its
+   // contrast from a shadow instead of from a slab painted over the art
+   X.shadowColor='rgba(0,0,0,.95)';X.shadowBlur=4;X.shadowOffsetY=1;
    const head=(txt,x)=>{X.textAlign='left';X.font='bold 10px '+FONT;X.fillStyle='#ffd23f';X.fillText(txt,x,ty);
      X.strokeStyle='rgba(255,210,63,.30)';X.beginPath();X.moveTo(x,ty+5);X.lineTo(x+colW,ty+5);X.stroke();};
    const row=(k,v,x,i,off)=>{const y=ty+20+i*15;X.textAlign='left';X.font='bold 10px '+FONT;X.fillStyle='#ffffff';X.fillText(k,x,y);
-     X.font='10px '+FONT;X.fillStyle='#cfe0f2';X.fillText(v,x+off,y);};
+     X.font='10px '+FONT;X.fillStyle='#dceaf7';X.fillText(v,x+off,y);};
    head('CONTROLS',colL);head('PICK UPS',colR);
    (touchMode
      ? [['DRAG','the bee follows your finger'],['BOMB button','bottom right'],['II button','pause'],['♪ / FX','tap to mute']]

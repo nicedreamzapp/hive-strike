@@ -6,12 +6,27 @@ const MASKS={};for(const n of [2,3,6,7,10,12,13,14,15,16]){const im=new Image();
 // backgrounds are ~3MB of h264 each. buffering all 16 at boot cost 53MB of decode memory and a
 // slow first frame for 15 clips nobody was watching. keep a sliding window around the live level.
 const VID={},VIDEL={},VIDWIN=1;
-function vidEl(n){let v=VIDEL[n];if(v)return v;v=document.createElement('video');v.muted=true;v.defaultMuted=true;v.loop=true;v.playsInline=true;v.setAttribute('playsinline','');v.setAttribute('webkit-playsinline','');v.preload='auto';v.addEventListener('canplay',()=>{VID['level'+n]=v;},{once:true});v.addEventListener('error',()=>{v.bad=true;delete VID['level'+n];});v.src='art/clip/level'+n+'.mp4';VIDEL[n]=v;return v;}
+function vidEl(n){let v=VIDEL[n];if(v)return v;v=document.createElement('video');v.muted=true;v.defaultMuted=true;v.loop=true;v.playsInline=true;v.setAttribute('playsinline','');v.setAttribute('webkit-playsinline','');v.setAttribute('muted','');v.preload='auto';
+ const ready=()=>{VID['level'+n]=v;};
+ v.addEventListener('loadeddata',ready);v.addEventListener('canplay',ready);
+ v.addEventListener('error',()=>{v.bad=true;delete VID['level'+n];});v.src='art/clip/level'+n+'.mp4';VIDEL[n]=v;return v;}
 function vidRelease(n){const v=VIDEL[n];if(!v)return;try{v.pause();v.removeAttribute('src');v.load();}catch(e){}delete VIDEL[n];delete VID['level'+n];}
 function vidSync(){const c=(stage-1)%NL+1,want=new Set();for(let d=0;d<=VIDWIN;d++){want.add((c-1+d)%NL+1);want.add((c-1-d+NL*2)%NL+1);}for(const n of want)vidEl(n);for(const k in VIDEL)if(!want.has(+k))vidRelease(+k);}
-function vidTick(){vidSync();const k='level'+((stage-1)%NL+1);for(const j in VID){const v=VID[j];if(j===k){if(v.paused&&!document.hidden&&!paused)v.play().catch(()=>{});}else if(!v.paused)v.pause();}}
-const SPLASHV=document.createElement('video');SPLASHV.src='art/clip/splash.mp4';SPLASHV.muted=true;SPLASHV.loop=true;SPLASHV.playsInline=true;SPLASHV.preload='auto';SPLASHV.ok=false;SPLASHV.addEventListener('canplay',()=>{SPLASHV.ok=true;});SPLASHV.addEventListener('error',()=>{SPLASHV.ok=false;});
-function splashFrame(){if(SPLASHV.ok&&SPLASHV.readyState>=2){if(SPLASHV.paused)SPLASHV.play().catch(()=>{});return SPLASHV;}return ART.splash;}
+// iOS will not buffer a video until something calls play(), so gating play() on
+// canplay -- which only fires once buffered -- deadlocked: the clip never loaded,
+// VID stayed empty, and every level fell back to its still. Drive VIDEL instead:
+// ask the live clip to play unconditionally and promote it the moment it has data.
+function vidTick(){vidSync();const cur=(stage-1)%NL+1;
+ for(const j in VIDEL){const n=+j,v=VIDEL[n],key='level'+n;
+  if(n===cur){
+   if(v.readyState>=2&&!VID[key])VID[key]=v;
+   if(v.paused&&!v.bad&&!document.hidden&&!paused)v.play().catch(()=>{});
+  } else if(!v.paused)v.pause();}}
+const SPLASHV=document.createElement('video');SPLASHV.muted=true;SPLASHV.defaultMuted=true;SPLASHV.loop=true;SPLASHV.playsInline=true;SPLASHV.setAttribute('playsinline','');SPLASHV.setAttribute('webkit-playsinline','');SPLASHV.setAttribute('muted','');SPLASHV.preload='auto';SPLASHV.ok=false;SPLASHV.addEventListener('loadeddata',()=>{SPLASHV.ok=true;});SPLASHV.addEventListener('canplay',()=>{SPLASHV.ok=true;});SPLASHV.addEventListener('error',()=>{SPLASHV.bad=true;SPLASHV.ok=false;});SPLASHV.src='art/clip/splash.mp4';
+function splashFrame(){
+ if(!SPLASHV.bad&&SPLASHV.paused&&!document.hidden)SPLASHV.play().catch(()=>{});   // same deadlock as the levels
+ if(SPLASHV.readyState>=2)return SPLASHV;
+ return ART.splash;}
 const SPR={},MISSING=[];
 function missing(path){MISSING.push(path);console.warn('[hive-strike] asset missing:',path);}
 function loadSprites(){const names=Object.keys(ET).concat(Array.from({length:16},(_,i)=>'boss'+i)).concat(['centihead1','centiseg1']);for(const k of names){const im=new Image();im.onload=()=>{SPR[k]=im;};im.onerror=()=>missing('art/sprites/'+k+'.png');im.src='art/sprites/'+k+'.png';}}
