@@ -1,93 +1,123 @@
 #!/usr/bin/env python3
-"""Regenerate the 16 level beds, one distinct genre per world, so no two levels sound alike.
-Pauses itself whenever a real Song Forge customer job is running."""
-import json, os, re, subprocess, time, urllib.request
+"""Rebuild the level beds in the only three languages Matt has approved.
 
-M = os.path.expanduser("~/Desktop/PROJECTS/hive-strike/music")
-API = "http://127.0.0.1:8767"
-STYLES = {
- 1:  "bright acoustic folk instrumental, fingerpicked guitar, pennywhistle, hand percussion, sunny major key, 100 bpm",
- 2:  "baroque chamber instrumental, harpsichord and pizzicato strings, elegant waltz in 3/4, 96 bpm",
- 3:  "minimal ambient instrumental, marimba and glass harmonica, soft water pulses, 80 bpm",
- 4:  "warm americana instrumental, banjo, dobro slide, brushed drums, front porch feel, 105 bpm",
- 5:  "dark cinematic instrumental, celesta over low strings, sparse moonlit mystery, 70 bpm",
- 6:  "driving tribal percussion instrumental, taiko and shakers, buzzing synth bass, hypnotic, 128 bpm",
- 7:  "swamp blues instrumental, slide guitar, upright bass, muted trumpet, humid and slow, 85 bpm",
- 8:  "desert rock instrumental, oud and darbuka, phrygian mode, shimmering guitars, 110 bpm",
- 9:  "afro latin jungle groove instrumental, congas, kalimba, bamboo flute, lush, 115 bpm",
- 10: "cavernous instrumental, sparse prepared piano and bowed metal, long reverb, no drone, 62 bpm",
- 11: "alpine orchestral instrumental, french horn and strings, wide open and heroic, 100 bpm",
- 12: "coastal surf rock instrumental, reverb guitar, shaker, breezy and bright, 120 bpm",
- 13: "heavy industrial instrumental, distorted bass, metallic percussion, urgent, 140 bpm",
- 14: "icy synthwave instrumental, glassy pads and cold arpeggios, wide stereo, 95 bpm",
- 15: "night city jazz funk instrumental, rhodes, wah guitar, tight drums, neon, 105 bpm",
- 16: "epic finale instrumental, orchestral electronic hybrid, choir pads, big drums, triumphant, 128 bpm",
+2026-08-26: the previous version of this file chased "one distinct genre per world so
+no two levels sound alike" -- folk with a pennywhistle, surf rock, jazz funk, industrial.
+Matt heard it in the game and called it gimmicky. Asked which of the sixteen actually
+worked he named exactly three: 5, 6 and 10. Every one he rejected is a TUNE with a
+melody hook. All three he kept are ATMOSPHERE. That is the whole rule now.
+
+Levels 5, 6 and 10 are never re-rendered -- they are the wins, kept verbatim.
+The other thirteen are rendered from those three style strings, changed only by the
+one scene word, per [[feedback_dont_iterate_past_a_win]].
+
+Length goes 90s -> 180s because Matt's other complaint was that it "just repeats and
+goes on a loop". The tracks he liked on the radio were 180-200s.
+
+  python3 tools/regen_level_music.py            # the 13
+  ONLY=1,3,4 python3 tools/regen_level_music.py # just those
+"""
+import json, os, re, subprocess, sys, time, urllib.request
+
+API  = "http://127.0.0.1:8767"
+MUSIC= os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "music")
+STAGE= "/private/tmp/claude-501/-Users-dtribe/f91cad9b-e1f1-4345-9017-fd2d1b47d5d9/scratchpad/beds"
+DUR  = 180.0
+KEEP = {5, 6, 10}          # approved 2026-08-26 -- do not regenerate, do not "improve"
+
+# the three approved languages, quoted from the tracks Matt kept
+A = "dark cinematic instrumental, celesta over low strings, sparse {scene} mystery, 70 bpm"
+B = "driving tribal percussion instrumental, taiko and shakers, buzzing synth bass, hypnotic, {scene}, 128 bpm"
+C = "cavernous instrumental, sparse prepared piano and bowed metal, long reverb, no drone, {scene}, 62 bpm"
+
+PLAN = {
+ 1:  (A, "sunlit meadow"),      2:  (C, "walled garden"),   3:  (A, "still water"),
+ 4:  (A, "orchard dusk"),       7:  (B, "humid swamp"),     8:  (B, "desert wind"),
+ 9:  (A, "jungle canopy"),      11: (C, "alpine snow"),     12: (A, "tide pool"),
+ 13: (B, "volcanic"),           14: (C, "frozen tundra"),   15: (B, "night city"),
+ 16: (C, "crystal"),
 }
-WORLDS = {1:"The Meadow",2:"The Garden",3:"The Pond",4:"The Orchard",5:"The Night Wood",6:"The Hive",
- 7:"The Swamp",8:"The Dunes",9:"The Canopy",10:"The Cave",11:"The Alpine",12:"The Tide Pool",
- 13:"The Volcano",14:"The Tundra",15:"The Rooftops",16:"The Crystal"}
+WORLDS = {1:"Meadow",2:"Garden",3:"Pond",4:"Orchard",7:"Swamp",8:"Dunes",9:"Canopy",
+          11:"Alpine",12:"Tide Pool",13:"Volcano",14:"Tundra",15:"Rooftops",16:"Crystal"}
 
-def get(p, t=15):
-    return json.load(urllib.request.urlopen(API + p, timeout=t))
+only = [int(x) for x in os.environ.get("ONLY","").split(",") if x.strip()]
+todo = [n for n in sorted(PLAN) if not only or n in only]
+os.makedirs(STAGE, exist_ok=True)
+
+def get(p, t=15): return json.load(urllib.request.urlopen(API+p, timeout=t))
 
 MINE = set()
 def wait_for_customers():
-    """hold off only for work that is not ours, so a real customer never waits behind the game music"""
+    """a paying customer never waits behind game music"""
     while True:
         try:
             st = get("/api/status", 8)
             outside = st.get("queue_depth", 0) - len(MINE)
-            if outside <= 0:
-                return
-            print("[pause] customer job ahead of us:", outside, flush=True)
+            if outside <= 0: return
+            print(f"  [pause] {outside} customer job(s) ahead of us", flush=True)
         except Exception:
             return
         time.sleep(20)
 
 def submit(n):
-    body = json.dumps({"style": STYLES[n], "title": "Hive Strike " + WORLDS[n],
-                       "lyrics": "[instrumental]", "duration": 90.0, "private": True}).encode()
-    r = urllib.request.Request(API + "/api/song", data=body, headers={"Content-Type": "application/json"})
-    j=json.load(urllib.request.urlopen(r, timeout=30));return j.get("id") or j["ids"][0]
+    tmpl, scene = PLAN[n]
+    style = tmpl.format(scene=scene)
+    body = json.dumps({"style": style, "title": f"Hive Strike {WORLDS[n]}",
+                       "lyrics": "[instrumental]", "duration": DUR, "private": True}).encode()
+    r = urllib.request.Request(API+"/api/song", data=body, headers={"Content-Type":"application/json"})
+    j = json.load(urllib.request.urlopen(r, timeout=30))
+    return (j.get("id") or j["ids"][0]), style
 
-def has_words(wav):
-    subprocess.run(["ffmpeg","-y","-loglevel","error","-i",wav,"-ar","16000","-ac","1","-t","60","/tmp/hs16.wav"])
+def has_words(path):
+    """these are beds, not songs -- any singing is a reject"""
+    tmp = os.path.join(STAGE, "_probe16.wav")
+    subprocess.run(["ffmpeg","-y","-loglevel","error","-i",path,"-ar","16000","-ac","1","-t","70",tmp], check=False)
     r = subprocess.run(["/opt/homebrew/bin/whisper-cli","-m",os.path.expanduser("~/whisper-models/ggml-small.en.bin"),
-                        "-f","/tmp/hs16.wav","-np"], capture_output=True, text=True)
+                        "-f",tmp,"-np"], capture_output=True, text=True)
     w = re.sub(r"\[.*?\]|\(.*?\)|♪|-->|[\d:.\s]", "", "".join(r.stdout.splitlines()))
     return len(w) > 12, w[:70]
 
-done = {}
-for n in range(1, 17):
+got = {}
+for n in todo:
     for attempt in (1, 2):
         wait_for_customers()
-        try:
-            jid = submit(n)
+        try: jid, style = submit(n)
         except Exception as e:
-            print(n, "submit failed", e, flush=True); break
+            print(f"level{n} submit failed: {e}", flush=True); break
         MINE.add(jid)
-        print(f"level{n} submitted {jid} (try {attempt})", flush=True)
-        audio = None
-        for _ in range(200):
+        print(f"level{n} ({WORLDS[n]}) try {attempt}: {style}", flush=True)
+        dst = os.path.join(STAGE, f"level{n}.wav")
+        ok = False
+        for _ in range(260):
             time.sleep(6)
-            try: j = get(f"/api/song/{jid}")
+            try: s = get(f"/api/song/{jid}")
             except Exception: continue
-            if j.get("status") == "error":
-                print(f"level{n} ERROR", j.get("error"), flush=True); break
-            if j.get("status") == "done" and j.get("audio"):
-                audio = j["audio"]; break
-        if not audio:
-            MINE.discard(jid); continue
-        wav = f"{M}/level{n}.new.wav"
-        urllib.request.urlretrieve(API + audio, wav)
-        sung, txt = has_words(wav)
-        if sung:
-            print(f"level{n} had vocals -> retry ({txt})", flush=True)
-            os.remove(wav); MINE.discard(jid); continue
-        subprocess.run(["ffmpeg","-y","-loglevel","error","-i",wav,"-codec:a","libmp3lame","-q:a","4",
-                        f"{M}/level{n}.mp3"])
-        os.remove(wav)
-        MINE.discard(jid)
-        done[n] = "ok"; print(f"level{n} ok  [{len(done)}/16]", flush=True)
+            if s.get("status") == "done":
+                u = s.get("audio") or s.get("url")
+                if not u: break
+                if u.startswith("/"): u = API + u
+                urllib.request.urlretrieve(u, dst); ok = True
+                break
+            if s.get("status") == "error":
+                print(f"  level{n} render error: {s.get('stage')}", flush=True); break
+        if not ok:
+            print(f"  level{n} produced nothing", flush=True); continue
+        words, txt = has_words(dst)
+        if words:
+            print(f"  level{n} REJECTED, singing detected: {txt!r}", flush=True)
+            os.remove(dst); continue
+        got[n] = dst
+        print(f"  level{n} OK -> {dst}", flush=True)
         break
-print("LEVEL MUSIC DONE", json.dumps(done), flush=True)
+
+print(f"\n{len(got)}/{len(todo)} rendered clean")
+if len(got) == len(todo):
+    for n, src in got.items():
+        out = os.path.join(MUSIC, f"level{n}.mp3")
+        subprocess.run(["ffmpeg","-y","-loglevel","error","-i",src,
+                        "-af","loudnorm=I=-22:TP=-1.5:LRA=11","-codec:a","libmp3lame","-b:a","160k",out], check=True)
+        print("installed", out, flush=True)
+    print("\nkept untouched (Matt approved 2026-08-26): levels", sorted(KEEP))
+    print("now run: python3 tools/build_mobile.py && npx cap sync")
+else:
+    print("NOT installing a partial set -- music/ untouched. Re-run to finish.")

@@ -1,6 +1,21 @@
 // ---------- audio ----------
+// VOL is the master level that the - and = keys move. SFX_ON is the FX button, and it
+// must not touch the music -- there is a separate music button for that, which was the
+// whole point Matt made. Two switches, two independent things.
 let AC=null;let NB=null;let MASTER=null,VOL=localStorage.hs_vol!=null?+localStorage.hs_vol:.55;
-function out(){if(!MASTER){MASTER=AC.createGain();MASTER.connect(AC.destination);}MASTER.gain.value=VOL;return MASTER;}
+let SFX_ON=localStorage.hs_sfx!=null?localStorage.hs_sfx==='1':true;
+// The old mix was SFX 0.55 against music 0.55*0.045 = 0.0248 -- the music sat 22x under
+// the bugs. That was right when the beds were filler and wrong now that every bed is one
+// of Matt's own tracks. Two independent levels, both set-able, so nobody has to guess.
+let SFXLV=localStorage.hs_sfxlv!=null?+localStorage.hs_sfxlv:.40;
+let MUSLV=localStorage.hs_muslv!=null?+localStorage.hs_muslv:.55;
+// the ambient bed is a continuous node on the SFX bus, so the bus gain has to be
+// updated the moment the switch moves -- not lazily on the next one-shot sound.
+function applyVol(){if(MASTER)MASTER.gain.value=SFX_ON?VOL*SFXLV:0;}
+function setSfxLv(v){SFXLV=Math.max(0,Math.min(1,+v.toFixed(2)));localStorage.hs_sfxlv=SFXLV;applyVol();}
+function setMusLv(v){MUSLV=Math.max(0,Math.min(1,+v.toFixed(2)));localStorage.hs_muslv=MUSLV;}
+function sfxToggle(){SFX_ON=!SFX_ON;localStorage.hs_sfx=SFX_ON?'1':'0';applyVol();say(SFX_ON?'SOUND EFFECTS ON':'SOUND EFFECTS OFF');}
+function out(){if(!MASTER){MASTER=AC.createGain();MASTER.connect(AC.destination);}MASTER.gain.value=SFX_ON?VOL*SFXLV:0;return MASTER;}
 function ctx(){AC=AC||new (window.AudioContext||webkitAudioContext)();if(!NB){NB=AC.createBuffer(1,AC.sampleRate,AC.sampleRate);const d=NB.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;}return AC;}
 function noise(t,v=.05,f=2000,q=1,slide=0,type='bandpass'){v*=gainScale;try{const a=ctx(),n=a.createBufferSource(),g=a.createGain(),bp=a.createBiquadFilter(),s0=a.currentTime;n.buffer=NB;n.loop=true;n.loopStart=R(0,.5);bp.type=type;bp.frequency.value=f;bp.Q.value=q;if(slide)bp.frequency.exponentialRampToValueAtTime(slide,s0+t);g.gain.setValueAtTime(0,s0);g.gain.linearRampToValueAtTime(v,s0+.008);g.gain.exponentialRampToValueAtTime(.001,s0+t);n.connect(bp).connect(g).connect(out());n.start(s0,R(0,.5));n.stop(s0+t+.02);}catch(e){}}
 const J=(f,p=.08)=>f*(1+R(-p,p));
@@ -150,7 +165,7 @@ function ambTick(){if(state!=='play'||paused){for(const k in AMB.target)AMB.targ
  // gusts, not a drone: three slow waves that fall past zero, so the bed genuinely goes quiet between swells
  for(const k of ['wind','water']){const g=AMB[k].gain,i=k==='wind'?0:1.7;
   const env=Math.max(0,Math.sin(t*.0031+i*2.1)*.5+Math.sin(t*.0013+i*4.7)*.35+Math.sin(t*.0007+i)*.3);
-  g.value+=(AMB.target[k]*VOL*2*env-g.value)*.015;}
+  g.value+=(AMB.target[k]*(SFX_ON?VOL*SFXLV:0)*2*env-g.value)*.015;}
  if(AMB.hum)AMB.hum.gain.value=0;
- if(state==='play'&&!paused&&VOL>0){if(--AMB.ev<=0){const evs=AMBEV[LV().name]||AMBEV['THE MEADOW'];const [fn,lo,hi]=evs[RI(0,evs.length-1)];fn();AMB.ev=RI(lo,hi)*5+(Math.random()<.45?RI(2400,5200):0);}}}
+ if(state==='play'&&!paused&&SFX_ON&&VOL>0){if(--AMB.ev<=0){const evs=AMBEV[LV().name]||AMBEV['THE MEADOW'];const [fn,lo,hi]=evs[RI(0,evs.length-1)];fn();AMB.ev=RI(lo,hi)*5+(Math.random()<.45?RI(2400,5200):0);}}}
 let bossVoiceT=0;function sfxBossIdle(b){if(t<bossVoiceT)return;bossVoiceT=t+RI(35,90);pitchScale=[1,1,1,1,1,1,1,1,.7,1.2,1.3,.6,1.1,1.25,.9,1.15][LV().boss];try{BOSSVOICE[BARCH[LV().boss]]();}finally{pitchScale=1;}}

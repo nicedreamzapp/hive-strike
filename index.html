@@ -28,7 +28,7 @@ function fit(){const cs=getComputedStyle(document.body),
 addEventListener('resize',fit);addEventListener('orientationchange',()=>setTimeout(fit,120));
 if(window.visualViewport)visualViewport.addEventListener('resize',fit);
 fit();
-const keys={};addEventListener('keydown',e=>{keys[e.code]=1;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.code==='KeyP')paused=!paused;if(e.code==='Minus'){VOL=Math.max(0,+(VOL-.05).toFixed(2));localStorage.hs_vol=VOL;say('VOLUME '+Math.round(VOL*100)+'%');}if(e.code==='Equal'){VOL=Math.min(1,+(VOL+.05).toFixed(2));localStorage.hs_vol=VOL;say('VOLUME '+Math.round(VOL*100)+'%');}if(e.code==='KeyN')musicToggle();if(e.code==='KeyM'){VOL=VOL?0:.55;localStorage.hs_vol=VOL;say(VOL?'SOUND ON':'MUTED');}if(state!=='play'){if(e.code==='ArrowLeft')pickStage(startStage-1);if(e.code==='ArrowRight')pickStage(startStage+1);if(/^Digit[1-8]$/.test(e.code))pickStage(+e.code.slice(5));}
+const keys={};addEventListener('keydown',e=>{keys[e.code]=1;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.code==='KeyP')paused=!paused;if(e.code==='Minus'){VOL=Math.max(0,+(VOL-.05).toFixed(2));localStorage.hs_vol=VOL;applyVol();say('VOLUME '+Math.round(VOL*100)+'%');}if(e.code==='Equal'){VOL=Math.min(1,+(VOL+.05).toFixed(2));localStorage.hs_vol=VOL;applyVol();say('VOLUME '+Math.round(VOL*100)+'%');}if(e.code==='KeyN')musicToggle();if(e.code==='KeyM')sfxToggle();if(state!=='play'){if(e.code==='ArrowLeft')pickStage(startStage-1);if(e.code==='ArrowRight')pickStage(startStage+1);if(/^Digit[1-8]$/.test(e.code))pickStage(+e.code.slice(5));}
 if(state!=='play'&&(e.code==='Enter'||e.code==='Space')){if(state==='won')continueGame();else if(!armed){arm();}else start();}});
 addEventListener('keyup',e=>keys[e.code]=0);
 let touch=null,target=null,lastMove=0;
@@ -38,16 +38,34 @@ function ptr(e){const r=C.getBoundingClientRect();const isT=e.pointerType==='tou
  return {x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height-(isT?TOUCH_LIFT:0)};}
 // on-screen controls, only drawn once a finger has actually been used
 const TBTN={bomb:{x:W-64,y:H-124,w:54,h:54},pause:{x:W-40,y:4,w:34,h:22}};
+// title-screen level sliders: Matt tunes the mix himself instead of waiting on a rebuild
+const BARS={mus:{x:112,y:H-196,w:96,h:13},sfx:{x:286,y:H-196,w:96,h:13}};
+// One place that knows where every HUD box is, so the pause button can never be
+// parked on top of the bomb count again. tools/hud_overlap.mjs asserts they are disjoint.
+const pauseGap=()=>(touchMode&&state==='play')?TBTN.pause.w+10:0;
+const HUDR={
+ lives:()=>({x:4,y:4,w:26+Math.min(5,Math.max(1,P.lives))*22+(P.lives>5?24:0),h:22}),
+ bombs:()=>{const n=Math.min(4,Math.max(1,P.bombs)),sh=pauseGap(),ex=(P.bombs>4?24:0);return {x:W-12-n*18-8-sh-ex,y:4,w:n*18+16+ex,h:22};},
+ music:()=>BTN.music, sfx:()=>BTN.sfx,
+ pause:()=>(touchMode&&state==='play')?TBTN.pause:null,
+ bomb :()=>(touchMode&&state==='play')?TBTN.bomb :null,
+};
+const barHit=(p,b)=>p.x>=b.x-8&&p.x<=b.x+b.w+8&&p.y>=b.y-9&&p.y<=b.y+b.h+9;
+const barVal=(p,b)=>Math.max(0,Math.min(1,(p.x-b.x)/b.w));
 C.addEventListener('pointermove',e=>{target=ptr(e);lastMove=t;});
 const BTN={music:{x:W/2-46,y:4,w:40,h:22},sfx:{x:W/2+6,y:4,w:40,h:22}};const inBtn=(p,b)=>p.x>=b.x&&p.x<=b.x+b.w&&p.y>=b.y&&p.y<=b.y+b.h;
 C.addEventListener('pointerdown',e=>{const isT=e.pointerType==='touch',p=ptr(e),raw={x:p.x,y:p.y+(isT?TOUCH_LIFT:0)};
  audioWake();
  if(inBtn(raw,BTN.music)){musicToggle();return;}
- if(inBtn(raw,BTN.sfx)){VOL=VOL?0:.55;localStorage.hs_vol=VOL;say(VOL?'SOUND ON':'MUTED');return;}
+ if(inBtn(raw,BTN.sfx)){sfxToggle();return;}
  if(isT&&state==='play'){
   if(inBtn(raw,TBTN.pause)){if(resumeCountdown>0){resumeCountdown=0;paused=false;}else paused=!paused;return;}
   if(inBtn(raw,TBTN.bomb)){wantBomb=1;return;}
   if(paused||resumeCountdown>0){resumeCountdown=0;paused=false;return;}
+ }
+ if(state!=='play'){
+  if(barHit(raw,BARS.mus)){setMusLv(barVal(raw,BARS.mus));say('MUSIC '+Math.round(MUSLV*100)+'%');return;}
+  if(barHit(raw,BARS.sfx)){setSfxLv(barVal(raw,BARS.sfx));click(1400,.02);say('EFFECTS '+Math.round(SFXLV*100)+'%');return;}
  }
  target=p;lastMove=t;
  if(state!=='play'){for(let i=0;i<16;i++){if(inBtn(raw,TILE(i))){pickStage(i+1);if(!armed)arm();return;}}if(state==='won')continueGame();else if(!armed)arm();else start();return;}
@@ -59,8 +77,23 @@ document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
 C.addEventListener('pointerleave',()=>target=null);
 
 // ---------- audio ----------
+// VOL is the master level that the - and = keys move. SFX_ON is the FX button, and it
+// must not touch the music -- there is a separate music button for that, which was the
+// whole point Matt made. Two switches, two independent things.
 let AC=null;let NB=null;let MASTER=null,VOL=localStorage.hs_vol!=null?+localStorage.hs_vol:.55;
-function out(){if(!MASTER){MASTER=AC.createGain();MASTER.connect(AC.destination);}MASTER.gain.value=VOL;return MASTER;}
+let SFX_ON=localStorage.hs_sfx!=null?localStorage.hs_sfx==='1':true;
+// The old mix was SFX 0.55 against music 0.55*0.045 = 0.0248 -- the music sat 22x under
+// the bugs. That was right when the beds were filler and wrong now that every bed is one
+// of Matt's own tracks. Two independent levels, both set-able, so nobody has to guess.
+let SFXLV=localStorage.hs_sfxlv!=null?+localStorage.hs_sfxlv:.40;
+let MUSLV=localStorage.hs_muslv!=null?+localStorage.hs_muslv:.55;
+// the ambient bed is a continuous node on the SFX bus, so the bus gain has to be
+// updated the moment the switch moves -- not lazily on the next one-shot sound.
+function applyVol(){if(MASTER)MASTER.gain.value=SFX_ON?VOL*SFXLV:0;}
+function setSfxLv(v){SFXLV=Math.max(0,Math.min(1,+v.toFixed(2)));localStorage.hs_sfxlv=SFXLV;applyVol();}
+function setMusLv(v){MUSLV=Math.max(0,Math.min(1,+v.toFixed(2)));localStorage.hs_muslv=MUSLV;}
+function sfxToggle(){SFX_ON=!SFX_ON;localStorage.hs_sfx=SFX_ON?'1':'0';applyVol();say(SFX_ON?'SOUND EFFECTS ON':'SOUND EFFECTS OFF');}
+function out(){if(!MASTER){MASTER=AC.createGain();MASTER.connect(AC.destination);}MASTER.gain.value=SFX_ON?VOL*SFXLV:0;return MASTER;}
 function ctx(){AC=AC||new (window.AudioContext||webkitAudioContext)();if(!NB){NB=AC.createBuffer(1,AC.sampleRate,AC.sampleRate);const d=NB.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;}return AC;}
 function noise(t,v=.05,f=2000,q=1,slide=0,type='bandpass'){v*=gainScale;try{const a=ctx(),n=a.createBufferSource(),g=a.createGain(),bp=a.createBiquadFilter(),s0=a.currentTime;n.buffer=NB;n.loop=true;n.loopStart=R(0,.5);bp.type=type;bp.frequency.value=f;bp.Q.value=q;if(slide)bp.frequency.exponentialRampToValueAtTime(slide,s0+t);g.gain.setValueAtTime(0,s0);g.gain.linearRampToValueAtTime(v,s0+.008);g.gain.exponentialRampToValueAtTime(.001,s0+t);n.connect(bp).connect(g).connect(out());n.start(s0,R(0,.5));n.stop(s0+t+.02);}catch(e){}}
 const J=(f,p=.08)=>f*(1+R(-p,p));
@@ -210,9 +243,9 @@ function ambTick(){if(state!=='play'||paused){for(const k in AMB.target)AMB.targ
  // gusts, not a drone: three slow waves that fall past zero, so the bed genuinely goes quiet between swells
  for(const k of ['wind','water']){const g=AMB[k].gain,i=k==='wind'?0:1.7;
   const env=Math.max(0,Math.sin(t*.0031+i*2.1)*.5+Math.sin(t*.0013+i*4.7)*.35+Math.sin(t*.0007+i)*.3);
-  g.value+=(AMB.target[k]*VOL*2*env-g.value)*.015;}
+  g.value+=(AMB.target[k]*(SFX_ON?VOL*SFXLV:0)*2*env-g.value)*.015;}
  if(AMB.hum)AMB.hum.gain.value=0;
- if(state==='play'&&!paused&&VOL>0){if(--AMB.ev<=0){const evs=AMBEV[LV().name]||AMBEV['THE MEADOW'];const [fn,lo,hi]=evs[RI(0,evs.length-1)];fn();AMB.ev=RI(lo,hi)*5+(Math.random()<.45?RI(2400,5200):0);}}}
+ if(state==='play'&&!paused&&SFX_ON&&VOL>0){if(--AMB.ev<=0){const evs=AMBEV[LV().name]||AMBEV['THE MEADOW'];const [fn,lo,hi]=evs[RI(0,evs.length-1)];fn();AMB.ev=RI(lo,hi)*5+(Math.random()<.45?RI(2400,5200):0);}}}
 let bossVoiceT=0;function sfxBossIdle(b){if(t<bossVoiceT)return;bossVoiceT=t+RI(35,90);pitchScale=[1,1,1,1,1,1,1,1,.7,1.2,1.3,.6,1.1,1.25,.9,1.15][LV().boss];try{BOSSVOICE[BARCH[LV().boss]]();}finally{pitchScale=1;}}
 // ---------- a voice for every bug ----------
 // 27 of the 49 types had no VOICE entry at all and fell through to a fallback that did not exist,
@@ -324,7 +357,7 @@ function snd(f,t,type='square',v=.05,slide=0,lp=0){v*=gainScale;f*=pitchScale;if
 // zero, and old tracks never paused: level music, boss music and the title theme
 // all stacked on top of each other. Route every track through a GainNode instead.
 // That is honoured on every platform.
-const MUSIC={tracks:{},gains:{},cur:null,want:null,vol:.045,on:localStorage.hs_music!=null?localStorage.hs_music==='1':true};
+const MUSIC={tracks:{},gains:{},cur:null,want:null,duck:1,on:localStorage.hs_music!=null?localStorage.hs_music==='1':true};
 function musicGain(k,a){
  let g=MUSIC.gains[k];
  if(g!==undefined)return g;
@@ -336,9 +369,18 @@ function msetvol(k,a,v){const g=musicGain(k,a);if(g)g.gain.value=v;else a.volume
 function musicToggle(){MUSIC.on=!MUSIC.on;localStorage.hs_music=MUSIC.on?'1':'0';say(MUSIC.on?'MUSIC ON':'MUSIC OFF');}
 function musicLoad(){const names=['main','boss','win','title'];for(let n=1;n<=16;n++){names.push('level'+n,'boss'+n);}for(const k of names){const a=new Audio('music/'+k+'.mp3');a.loop=k!=='win';a.volume=0;a.preload='none';a.ok=false;a.addEventListener('canplay',()=>{a.ok=true;});a.addEventListener('error',()=>{a.ok=false;a.bad=true;});MUSIC.tracks[k]=a;}}
 function musicPick(kind){if(kind==='win')return 'win';if(kind==='title')return 'title';const n=(stage-1)%NL+1,k=(kind==='boss'?'boss':'level')+n,a=MUSIC.tracks[k];if(a&&!a.bad){if(a.preload==='none'){a.preload='auto';a.load();}return k;}return kind==='boss'?'boss':'main';}
-function music(name){MUSIC.want=name?musicPick(name):null;}
-function musicTick(){for(const k in MUSIC.tracks){const a=MUSIC.tracks[k],boss=k.startsWith('boss'),
-  target=(k===MUSIC.want&&(state==='play'||k==='title')&&!paused&&MUSIC.on&&!(k==='win'&&a.ended))?VOL*(boss?MUSIC.vol*1.1:k==='win'?MUSIC.vol*1.3:MUSIC.vol):0;
+// A scene change should not be a hard cut between two of Matt's songs. Whenever the
+// wanted track changes -- level to boss, boss to the next world, anything to the title --
+// duck the music down fast and let it climb back slowly underneath the new scene.
+const DUCK_FRAMES=72;
+function musicDuck(f=DUCK_FRAMES){MUSIC.duckT=Math.max(MUSIC.duckT||0,f);}
+function music(name){const w=name?musicPick(name):null;if(w!==MUSIC.want)musicDuck();MUSIC.want=w;}
+function musicTick(){
+ if(MUSIC.duckT>0)MUSIC.duckT--;
+ const dtgt=MUSIC.duckT>0?.12:1;
+ MUSIC.duck+=(dtgt-MUSIC.duck)*(MUSIC.duckT>0?.18:.028);   // dip fast, come back gently
+ for(const k in MUSIC.tracks){const a=MUSIC.tracks[k],boss=k.startsWith('boss'),
+  target=(k===MUSIC.want&&(state==='play'||k==='title')&&!paused&&MUSIC.on&&!(k==='win'&&a.ended))?VOL*MUSLV*MUSIC.duck*(boss?1.08:k==='win'?1.2:1):0;
   if(target>0&&a.paused){if(a.bad){MUSIC.want=k.startsWith('boss')?'boss':'main';return;}musicGain(k,a);a.play().catch(()=>{});}
   if(target<=0&&a.paused)continue;                       // nothing to fade on a stopped track
   const v=mvol(k,a)+(target-mvol(k,a))*.04;
@@ -1693,9 +1735,15 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
  X.textAlign='center';X.fillStyle=WEAPONS[P.wpn].col;X.fillText(WEAPONS[P.wpn].name+' Lv'+P.lvl+'   ·   '+WEAPONS[P.wpn].tag,W/2,H-12);
  for(let i=0;i<5;i++){X.fillStyle=i<P.lvl?WEAPONS[P.wpn].col:'rgba(255,255,255,.25)';X.fillRect(W/2-40+i*16,H-34,12,4);}
  X.shadowBlur=0;
- panel(4,4,26+Math.max(1,P.lives)*22,22,6);for(let i=0;i<Math.max(0,P.lives);i++)bee(20+i*22,15,6,'#ffd23f','#1a1a1a','#fff');
- panel(W-12-Math.max(1,P.bombs)*18-8,4,Math.max(1,P.bombs)*18+16,22,6);for(let i=0;i<P.bombs;i++){X.fillStyle=rg(W-16-i*18,15,6,'#fff','#ffb300');ell(W-16-i*18,15,6,6);X.fill();}
- for(const [k,b] of Object.entries(BTN)){const on=k==='music'?MUSIC.on:VOL>0;panel(b.x,b.y,b.w,b.h,6);X.fillStyle=on?'#ffd23f':'rgba(255,255,255,.35)';X.font='bold 12px '+FONT;X.textAlign='center';X.fillText(k==='music'?(on?'♪ ON':'♪ OFF'):(on?'FX ON':'FX OFF'),b.x+b.w/2,b.y+15);}
+ // cap the bee row at five and count the rest -- eleven lives used to run into the
+ // music button. HUDR below is the single source of truth for where this lands.
+ {const r=HUDR.lives();panel(r.x,r.y,r.w,r.h,6);
+  for(let i=0;i<Math.min(5,Math.max(0,P.lives));i++)bee(20+i*22,15,6,'#ffd23f','#1a1a1a','#fff');
+  if(P.lives>5){X.textAlign='left';X.font='bold 11px '+FONT;X.fillStyle='#ffd23f';X.fillText('\u00d7'+P.lives,4+26+5*22-14,19);}}
+ {const r=HUDR.bombs(),sh=pauseGap(),n=Math.min(4,P.bombs);panel(r.x,r.y,r.w,r.h,6);
+  for(let i=0;i<n;i++){X.fillStyle=rg(W-16-i*18-sh,15,6,'#fff','#ffb300');ell(W-16-i*18-sh,15,6,6);X.fill();}
+  if(P.bombs>4){X.textAlign='left';X.font='bold 11px '+FONT;X.fillStyle='#ffb300';X.fillText('\u00d7'+P.bombs,r.x+8,19);}}
+ for(const [k,b] of Object.entries(BTN)){const on=k==='music'?MUSIC.on:SFX_ON;panel(b.x,b.y,b.w,b.h,6);X.fillStyle=on?'#ffd23f':'rgba(255,255,255,.35)';X.font='bold 12px '+FONT;X.textAlign='center';X.fillText(k==='music'?(on?'♪ ON':'♪ OFF'):(on?'FX ON':'FX OFF'),b.x+b.w/2,b.y+15);}
  if(touchMode&&state==='play'){const b=TBTN.bomb,ok=P.bombs>0;X.save();X.globalAlpha=ok?.62:.28;
   X.beginPath();X.arc(b.x+b.w/2,b.y+b.h/2,b.w/2,0,7);X.fillStyle='#000';X.fill();X.lineWidth=2;X.strokeStyle=ok?'#ffd23f':'#888';X.stroke();
   X.globalAlpha=1;X.fillStyle=ok?'#ffd23f':'rgba(255,255,255,.3)';X.font='bold 11px '+FONT;X.textAlign='center';
@@ -1752,6 +1800,15 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
    X.fillText(touchMode?'the bee rides above your finger   ·   bombs fire themselves when you are about to be hit':'the bee follows your cursor   ·   bombs fire themselves when you are about to be hit',W/2,ty+126);
    X.restore();}
   X.textAlign='center';
+  // two level sliders -- tap anywhere along one to set it
+  {const bar=(b,lab,v,col)=>{
+    X.textAlign='right';X.font='bold 9px '+FONT;X.fillStyle='rgba(255,255,255,.7)';X.fillText(lab,b.x-10,b.y+11);
+    X.fillStyle='rgba(0,0,0,.45)';X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,4);X.fill();
+    X.fillStyle=col;X.beginPath();X.roundRect(b.x,b.y,Math.max(3,b.w*v),b.h,4);X.fill();
+    X.strokeStyle='rgba(255,255,255,.22)';X.lineWidth=1;X.beginPath();X.roundRect(b.x+.5,b.y+.5,b.w-1,b.h-1,4);X.stroke();
+    for(let i=1;i<5;i++){X.fillStyle='rgba(0,0,0,.30)';X.fillRect(b.x+b.w*i/5,b.y+2,1,b.h-4);}
+    X.textAlign='left';X.font='9px '+FONT;X.fillStyle='rgba(255,255,255,.55)';X.fillText(Math.round(v*100)+'%',b.x+b.w+7,b.y+11);};
+   bar(BARS.mus,'MUSIC',MUSLV,'#7fd4ff'); bar(BARS.sfx,'FX',SFXLV,'#ffd23f');}
   X.textAlign='center';X.fillStyle='#ffd23f';X.font='bold 12px '+FONT;X.fillText(touchMode?'CHOOSE YOUR WORLD   ·   tap a world you have reached':'CHOOSE YOUR WORLD   ←  →   (1 – 8 keys pick the first row)',W/2,H-160);
   for(let i=0;i<16;i++){const tl=TILE(i),sel=startStage===i+1,th=THEMES[i],lock=(i+1)>unlocked,bs=bestFor(i+1);panel(tl.x,tl.y,tl.w,tl.h,6);
    if(lock){X.fillStyle='rgba(0,0,0,.45)';X.beginPath();X.roundRect(tl.x,tl.y,tl.w,tl.h,6);X.fill();}

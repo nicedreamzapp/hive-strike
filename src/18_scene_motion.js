@@ -380,9 +380,15 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
  X.textAlign='center';X.fillStyle=WEAPONS[P.wpn].col;X.fillText(WEAPONS[P.wpn].name+' Lv'+P.lvl+'   ·   '+WEAPONS[P.wpn].tag,W/2,H-12);
  for(let i=0;i<5;i++){X.fillStyle=i<P.lvl?WEAPONS[P.wpn].col:'rgba(255,255,255,.25)';X.fillRect(W/2-40+i*16,H-34,12,4);}
  X.shadowBlur=0;
- panel(4,4,26+Math.max(1,P.lives)*22,22,6);for(let i=0;i<Math.max(0,P.lives);i++)bee(20+i*22,15,6,'#ffd23f','#1a1a1a','#fff');
- panel(W-12-Math.max(1,P.bombs)*18-8,4,Math.max(1,P.bombs)*18+16,22,6);for(let i=0;i<P.bombs;i++){X.fillStyle=rg(W-16-i*18,15,6,'#fff','#ffb300');ell(W-16-i*18,15,6,6);X.fill();}
- for(const [k,b] of Object.entries(BTN)){const on=k==='music'?MUSIC.on:VOL>0;panel(b.x,b.y,b.w,b.h,6);X.fillStyle=on?'#ffd23f':'rgba(255,255,255,.35)';X.font='bold 12px '+FONT;X.textAlign='center';X.fillText(k==='music'?(on?'♪ ON':'♪ OFF'):(on?'FX ON':'FX OFF'),b.x+b.w/2,b.y+15);}
+ // cap the bee row at five and count the rest -- eleven lives used to run into the
+ // music button. HUDR below is the single source of truth for where this lands.
+ {const r=HUDR.lives();panel(r.x,r.y,r.w,r.h,6);
+  for(let i=0;i<Math.min(5,Math.max(0,P.lives));i++)bee(20+i*22,15,6,'#ffd23f','#1a1a1a','#fff');
+  if(P.lives>5){X.textAlign='left';X.font='bold 11px '+FONT;X.fillStyle='#ffd23f';X.fillText('\u00d7'+P.lives,4+26+5*22-14,19);}}
+ {const r=HUDR.bombs(),sh=pauseGap(),n=Math.min(4,P.bombs);panel(r.x,r.y,r.w,r.h,6);
+  for(let i=0;i<n;i++){X.fillStyle=rg(W-16-i*18-sh,15,6,'#fff','#ffb300');ell(W-16-i*18-sh,15,6,6);X.fill();}
+  if(P.bombs>4){X.textAlign='left';X.font='bold 11px '+FONT;X.fillStyle='#ffb300';X.fillText('\u00d7'+P.bombs,r.x+8,19);}}
+ for(const [k,b] of Object.entries(BTN)){const on=k==='music'?MUSIC.on:SFX_ON;panel(b.x,b.y,b.w,b.h,6);X.fillStyle=on?'#ffd23f':'rgba(255,255,255,.35)';X.font='bold 12px '+FONT;X.textAlign='center';X.fillText(k==='music'?(on?'♪ ON':'♪ OFF'):(on?'FX ON':'FX OFF'),b.x+b.w/2,b.y+15);}
  if(touchMode&&state==='play'){const b=TBTN.bomb,ok=P.bombs>0;X.save();X.globalAlpha=ok?.62:.28;
   X.beginPath();X.arc(b.x+b.w/2,b.y+b.h/2,b.w/2,0,7);X.fillStyle='#000';X.fill();X.lineWidth=2;X.strokeStyle=ok?'#ffd23f':'#888';X.stroke();
   X.globalAlpha=1;X.fillStyle=ok?'#ffd23f':'rgba(255,255,255,.3)';X.font='bold 11px '+FONT;X.textAlign='center';
@@ -439,6 +445,15 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
    X.fillText(touchMode?'the bee rides above your finger   ·   bombs fire themselves when you are about to be hit':'the bee follows your cursor   ·   bombs fire themselves when you are about to be hit',W/2,ty+126);
    X.restore();}
   X.textAlign='center';
+  // two level sliders -- tap anywhere along one to set it
+  {const bar=(b,lab,v,col)=>{
+    X.textAlign='right';X.font='bold 9px '+FONT;X.fillStyle='rgba(255,255,255,.7)';X.fillText(lab,b.x-10,b.y+11);
+    X.fillStyle='rgba(0,0,0,.45)';X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,4);X.fill();
+    X.fillStyle=col;X.beginPath();X.roundRect(b.x,b.y,Math.max(3,b.w*v),b.h,4);X.fill();
+    X.strokeStyle='rgba(255,255,255,.22)';X.lineWidth=1;X.beginPath();X.roundRect(b.x+.5,b.y+.5,b.w-1,b.h-1,4);X.stroke();
+    for(let i=1;i<5;i++){X.fillStyle='rgba(0,0,0,.30)';X.fillRect(b.x+b.w*i/5,b.y+2,1,b.h-4);}
+    X.textAlign='left';X.font='9px '+FONT;X.fillStyle='rgba(255,255,255,.55)';X.fillText(Math.round(v*100)+'%',b.x+b.w+7,b.y+11);};
+   bar(BARS.mus,'MUSIC',MUSLV,'#7fd4ff'); bar(BARS.sfx,'FX',SFXLV,'#ffd23f');}
   X.textAlign='center';X.fillStyle='#ffd23f';X.font='bold 12px '+FONT;X.fillText(touchMode?'CHOOSE YOUR WORLD   ·   tap a world you have reached':'CHOOSE YOUR WORLD   ←  →   (1 – 8 keys pick the first row)',W/2,H-160);
   for(let i=0;i<16;i++){const tl=TILE(i),sel=startStage===i+1,th=THEMES[i],lock=(i+1)>unlocked,bs=bestFor(i+1);panel(tl.x,tl.y,tl.w,tl.h,6);
    if(lock){X.fillStyle='rgba(0,0,0,.45)';X.beginPath();X.roundRect(tl.x,tl.y,tl.w,tl.h,6);X.fill();}

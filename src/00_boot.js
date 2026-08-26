@@ -13,7 +13,7 @@ function fit(){const cs=getComputedStyle(document.body),
 addEventListener('resize',fit);addEventListener('orientationchange',()=>setTimeout(fit,120));
 if(window.visualViewport)visualViewport.addEventListener('resize',fit);
 fit();
-const keys={};addEventListener('keydown',e=>{keys[e.code]=1;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.code==='KeyP')paused=!paused;if(e.code==='Minus'){VOL=Math.max(0,+(VOL-.05).toFixed(2));localStorage.hs_vol=VOL;say('VOLUME '+Math.round(VOL*100)+'%');}if(e.code==='Equal'){VOL=Math.min(1,+(VOL+.05).toFixed(2));localStorage.hs_vol=VOL;say('VOLUME '+Math.round(VOL*100)+'%');}if(e.code==='KeyN')musicToggle();if(e.code==='KeyM'){VOL=VOL?0:.55;localStorage.hs_vol=VOL;say(VOL?'SOUND ON':'MUTED');}if(state!=='play'){if(e.code==='ArrowLeft')pickStage(startStage-1);if(e.code==='ArrowRight')pickStage(startStage+1);if(/^Digit[1-8]$/.test(e.code))pickStage(+e.code.slice(5));}
+const keys={};addEventListener('keydown',e=>{keys[e.code]=1;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.code==='KeyP')paused=!paused;if(e.code==='Minus'){VOL=Math.max(0,+(VOL-.05).toFixed(2));localStorage.hs_vol=VOL;applyVol();say('VOLUME '+Math.round(VOL*100)+'%');}if(e.code==='Equal'){VOL=Math.min(1,+(VOL+.05).toFixed(2));localStorage.hs_vol=VOL;applyVol();say('VOLUME '+Math.round(VOL*100)+'%');}if(e.code==='KeyN')musicToggle();if(e.code==='KeyM')sfxToggle();if(state!=='play'){if(e.code==='ArrowLeft')pickStage(startStage-1);if(e.code==='ArrowRight')pickStage(startStage+1);if(/^Digit[1-8]$/.test(e.code))pickStage(+e.code.slice(5));}
 if(state!=='play'&&(e.code==='Enter'||e.code==='Space')){if(state==='won')continueGame();else if(!armed){arm();}else start();}});
 addEventListener('keyup',e=>keys[e.code]=0);
 let touch=null,target=null,lastMove=0;
@@ -23,16 +23,34 @@ function ptr(e){const r=C.getBoundingClientRect();const isT=e.pointerType==='tou
  return {x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height-(isT?TOUCH_LIFT:0)};}
 // on-screen controls, only drawn once a finger has actually been used
 const TBTN={bomb:{x:W-64,y:H-124,w:54,h:54},pause:{x:W-40,y:4,w:34,h:22}};
+// title-screen level sliders: Matt tunes the mix himself instead of waiting on a rebuild
+const BARS={mus:{x:112,y:H-196,w:96,h:13},sfx:{x:286,y:H-196,w:96,h:13}};
+// One place that knows where every HUD box is, so the pause button can never be
+// parked on top of the bomb count again. tools/hud_overlap.mjs asserts they are disjoint.
+const pauseGap=()=>(touchMode&&state==='play')?TBTN.pause.w+10:0;
+const HUDR={
+ lives:()=>({x:4,y:4,w:26+Math.min(5,Math.max(1,P.lives))*22+(P.lives>5?24:0),h:22}),
+ bombs:()=>{const n=Math.min(4,Math.max(1,P.bombs)),sh=pauseGap(),ex=(P.bombs>4?24:0);return {x:W-12-n*18-8-sh-ex,y:4,w:n*18+16+ex,h:22};},
+ music:()=>BTN.music, sfx:()=>BTN.sfx,
+ pause:()=>(touchMode&&state==='play')?TBTN.pause:null,
+ bomb :()=>(touchMode&&state==='play')?TBTN.bomb :null,
+};
+const barHit=(p,b)=>p.x>=b.x-8&&p.x<=b.x+b.w+8&&p.y>=b.y-9&&p.y<=b.y+b.h+9;
+const barVal=(p,b)=>Math.max(0,Math.min(1,(p.x-b.x)/b.w));
 C.addEventListener('pointermove',e=>{target=ptr(e);lastMove=t;});
 const BTN={music:{x:W/2-46,y:4,w:40,h:22},sfx:{x:W/2+6,y:4,w:40,h:22}};const inBtn=(p,b)=>p.x>=b.x&&p.x<=b.x+b.w&&p.y>=b.y&&p.y<=b.y+b.h;
 C.addEventListener('pointerdown',e=>{const isT=e.pointerType==='touch',p=ptr(e),raw={x:p.x,y:p.y+(isT?TOUCH_LIFT:0)};
  audioWake();
  if(inBtn(raw,BTN.music)){musicToggle();return;}
- if(inBtn(raw,BTN.sfx)){VOL=VOL?0:.55;localStorage.hs_vol=VOL;say(VOL?'SOUND ON':'MUTED');return;}
+ if(inBtn(raw,BTN.sfx)){sfxToggle();return;}
  if(isT&&state==='play'){
   if(inBtn(raw,TBTN.pause)){if(resumeCountdown>0){resumeCountdown=0;paused=false;}else paused=!paused;return;}
   if(inBtn(raw,TBTN.bomb)){wantBomb=1;return;}
   if(paused||resumeCountdown>0){resumeCountdown=0;paused=false;return;}
+ }
+ if(state!=='play'){
+  if(barHit(raw,BARS.mus)){setMusLv(barVal(raw,BARS.mus));say('MUSIC '+Math.round(MUSLV*100)+'%');return;}
+  if(barHit(raw,BARS.sfx)){setSfxLv(barVal(raw,BARS.sfx));click(1400,.02);say('EFFECTS '+Math.round(SFXLV*100)+'%');return;}
  }
  target=p;lastMove=t;
  if(state!=='play'){for(let i=0;i<16;i++){if(inBtn(raw,TILE(i))){pickStage(i+1);if(!armed)arm();return;}}if(state==='won')continueGame();else if(!armed)arm();else start();return;}

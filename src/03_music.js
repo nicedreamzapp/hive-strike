@@ -6,7 +6,7 @@
 // zero, and old tracks never paused: level music, boss music and the title theme
 // all stacked on top of each other. Route every track through a GainNode instead.
 // That is honoured on every platform.
-const MUSIC={tracks:{},gains:{},cur:null,want:null,vol:.045,on:localStorage.hs_music!=null?localStorage.hs_music==='1':true};
+const MUSIC={tracks:{},gains:{},cur:null,want:null,duck:1,on:localStorage.hs_music!=null?localStorage.hs_music==='1':true};
 function musicGain(k,a){
  let g=MUSIC.gains[k];
  if(g!==undefined)return g;
@@ -18,9 +18,18 @@ function msetvol(k,a,v){const g=musicGain(k,a);if(g)g.gain.value=v;else a.volume
 function musicToggle(){MUSIC.on=!MUSIC.on;localStorage.hs_music=MUSIC.on?'1':'0';say(MUSIC.on?'MUSIC ON':'MUSIC OFF');}
 function musicLoad(){const names=['main','boss','win','title'];for(let n=1;n<=16;n++){names.push('level'+n,'boss'+n);}for(const k of names){const a=new Audio('music/'+k+'.mp3');a.loop=k!=='win';a.volume=0;a.preload='none';a.ok=false;a.addEventListener('canplay',()=>{a.ok=true;});a.addEventListener('error',()=>{a.ok=false;a.bad=true;});MUSIC.tracks[k]=a;}}
 function musicPick(kind){if(kind==='win')return 'win';if(kind==='title')return 'title';const n=(stage-1)%NL+1,k=(kind==='boss'?'boss':'level')+n,a=MUSIC.tracks[k];if(a&&!a.bad){if(a.preload==='none'){a.preload='auto';a.load();}return k;}return kind==='boss'?'boss':'main';}
-function music(name){MUSIC.want=name?musicPick(name):null;}
-function musicTick(){for(const k in MUSIC.tracks){const a=MUSIC.tracks[k],boss=k.startsWith('boss'),
-  target=(k===MUSIC.want&&(state==='play'||k==='title')&&!paused&&MUSIC.on&&!(k==='win'&&a.ended))?VOL*(boss?MUSIC.vol*1.1:k==='win'?MUSIC.vol*1.3:MUSIC.vol):0;
+// A scene change should not be a hard cut between two of Matt's songs. Whenever the
+// wanted track changes -- level to boss, boss to the next world, anything to the title --
+// duck the music down fast and let it climb back slowly underneath the new scene.
+const DUCK_FRAMES=72;
+function musicDuck(f=DUCK_FRAMES){MUSIC.duckT=Math.max(MUSIC.duckT||0,f);}
+function music(name){const w=name?musicPick(name):null;if(w!==MUSIC.want)musicDuck();MUSIC.want=w;}
+function musicTick(){
+ if(MUSIC.duckT>0)MUSIC.duckT--;
+ const dtgt=MUSIC.duckT>0?.12:1;
+ MUSIC.duck+=(dtgt-MUSIC.duck)*(MUSIC.duckT>0?.18:.028);   // dip fast, come back gently
+ for(const k in MUSIC.tracks){const a=MUSIC.tracks[k],boss=k.startsWith('boss'),
+  target=(k===MUSIC.want&&(state==='play'||k==='title')&&!paused&&MUSIC.on&&!(k==='win'&&a.ended))?VOL*MUSLV*MUSIC.duck*(boss?1.08:k==='win'?1.2:1):0;
   if(target>0&&a.paused){if(a.bad){MUSIC.want=k.startsWith('boss')?'boss':'main';return;}musicGain(k,a);a.play().catch(()=>{});}
   if(target<=0&&a.paused)continue;                       // nothing to fade on a stopped track
   const v=mvol(k,a)+(target-mvol(k,a))*.04;

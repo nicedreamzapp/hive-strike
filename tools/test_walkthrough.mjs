@@ -3,7 +3,13 @@ import fs from 'node:fs';
 import {spawn} from 'node:child_process';
 const SP=process.env.HS_OUT||fs.mkdtempSync((process.env.TMPDIR||'/tmp')+'/hive-strike-test-');
 const PROF=SP+'/brave-prof';fs.mkdirSync(PROF,{recursive:true});
-const br=spawn('/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',['--headless=new','--mute-audio','--no-first-run','--remote-debugging-port=9333','--user-data-dir='+PROF,'--window-size=520,760','--autoplay-policy=no-user-gesture-required','about:blank'],{stdio:'ignore'});
+const br=spawn('/Applications/Brave Browser.app/Contents/MacOS/Brave Browser',['--headless=new','--mute-audio','--no-first-run','--remote-debugging-port=9333','--user-data-dir='+PROF,'--window-size=520,760','--autoplay-policy=no-user-gesture-required','about:blank'],{stdio:'ignore',detached:true});
+
+// br.kill() only kills the parent; the GPU helper survives and busy-spins at ~40% CPU.
+// Kill the whole process group, and do it even if we throw or get ctrl-C'd.
+const killBrave=()=>{try{process.kill(-br.pid,'SIGKILL');}catch{}try{br.kill('SIGKILL');}catch{}};
+process.on('exit',killBrave);process.on('SIGINT',()=>{killBrave();process.exit(130);});
+process.on('uncaughtException',e=>{killBrave();console.error(e);process.exit(1);});
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 let list;for(let i=0;i<40;i++){try{list=await (await fetch('http://127.0.0.1:9333/json')).json();break;}catch{await sleep(250);}}
 const pg=list.find(p=>p.type==='page');
@@ -33,4 +39,4 @@ for(let lvl=1;lvl<=16;lvl++){
 }
 const timing=await ev(`(()=>{const t0=performance.now();for(let i=0;i<30;i++)draw();return ((performance.now()-t0)/30).toFixed(2);})()`);
 console.log('draw ms/frame:',timing,'| JS errors:',errs.length,errs.slice(0,3));
-ws.close();br.kill();process.exit(0);
+ws.close();killBrave();process.exit(0);
