@@ -17,7 +17,9 @@ const ws=new WebSocket(pg.webSocketDebuggerUrl);await new Promise(r=>ws.onopen=r
 let id=0;const pend={};const errs=[];ws.onmessage=m=>{const d=JSON.parse(m.data);if(d.id&&pend[d.id]){pend[d.id](d);delete pend[d.id];}if(d.method==='Runtime.exceptionThrown')errs.push(d.params.exceptionDetails.exception?.description||d.params.exceptionDetails.text);};
 const send=(method,params={})=>new Promise(r=>{const i=++id;pend[i]=r;ws.send(JSON.stringify({id:i,method,params}));});
 await send('Page.enable');await send('Runtime.enable');
-await send('Page.navigate',{url:'file:///Users/dtribe/Desktop/PROJECTS/hive-strike/index.html'});await sleep(1500);
+// the repo, not whoever's home directory it was cloned into first
+const ROOT=new URL('..',import.meta.url).href.replace(/\/$/,'');
+await send('Page.navigate',{url:ROOT+'/index.html'});await sleep(1500);
 const ev=async expr=>{const r=await send('Runtime.evaluate',{expression:expr,returnByValue:true,awaitPromise:true});if(r.result.exceptionDetails)throw new Error(JSON.stringify(r.result.exceptionDetails));return r.result.result.value;};
 const shot=async name=>{await ev(`for(let i=0;i<120;i++)draw();1`);await sleep(30);const r=await send('Page.captureScreenshot',{format:'png'});fs.writeFileSync(`${SP}/all_${name}.png`,Buffer.from(r.result.data,'base64'));};
 await ev(`window.__step=n=>{for(let i=0;i<n;i++){if(state==='play'&&!paused)update();else t++;}};`);

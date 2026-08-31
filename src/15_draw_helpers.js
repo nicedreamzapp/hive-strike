@@ -37,8 +37,8 @@ function emboss(x,y,box,fn,o={}){const S=box|0,A=oc('A'+S,S),B=oc('B'+S,S),a=A.g
  // hover: the sprite bobs up and down a few px; its cast shadow on the ground shrinks/grows the opposite way — that separation is what sells the height
  const bob=alt>0?(Math.sin(t*.18+x*.02+y*.01)*.5+.5):0,lift=bob*4*alt;y-=lift;
  X.save();
- if(alt>0){const sh=1-bob*.18;X.globalAlpha=.30*alt*(1-bob*.25);X.fillStyle=LV().shadow;X.filter='blur(5px)';ell(x+8*alt+bob*3,y+box*.24*alt+lift+bob*2,box*.14*sh,box*.052*sh);X.fill();X.filter='none';}
- X.globalAlpha=.34;X.filter='brightness(0) blur(2px)';X.drawImage(A,x-S/2+3,y-S/2+4,S,S);X.filter='none';
+ if(alt>0){const sh=1-bob*.18;X.globalAlpha=.30*alt*(1-bob*.25);X.fillStyle=LV().shadow;if(!LOW)X.filter='blur(5px)';ell(x+8*alt+bob*3,y+box*.24*alt+lift+bob*2,box*.14*sh,box*.052*sh);X.fill();X.filter='none';}
+ if(!LOW){X.globalAlpha=.34;X.filter='brightness(0) blur(2px)';X.drawImage(A,x-S/2+3,y-S/2+4,S,S);X.filter='none';}
  X.globalAlpha=1;if(o.filter)X.filter=o.filter;X.drawImage(A,x-S/2,y-S/2,S,S);X.filter='none';
  rim(1.2,1.8,'#fff');X.globalAlpha=.26;X.drawImage(B,x-S/2,y-S/2,S,S);
  rim(-1.4,-2.0,'#000');X.globalAlpha=.34;X.drawImage(B,x-S/2,y-S/2,S,S);
@@ -314,7 +314,7 @@ function drawBoss(b,portrait){const real=LV().boss,i=BARCH[real];
   // drawn straight to the canvas: emboss renders into a fixed square buffer and casts one huge
   // blurred ellipse, which clipped the long body and left a visible box around it
   X.save();X.translate(b.x,b.y);
-  X.globalAlpha=.28;X.fillStyle=LV().shadow;X.filter='blur(4px)';
+  X.globalAlpha=.28;X.fillStyle=LV().shadow;if(!LOW)X.filter='blur(4px)';
   for(let k=Math.min(b.seg.length-1,150);k>=6;k-=12){const sg=b.seg[k];ell(sg.x-b.x+7,sg.y-b.y+9,17,9);X.fill();}
   X.filter='none';X.globalAlpha=1;
   if(b.fl>0)X.filter='brightness(2) saturate(.5)';

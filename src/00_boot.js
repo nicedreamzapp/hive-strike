@@ -4,6 +4,14 @@ const C=document.getElementById('c');let X=C.getContext('2d');const W=480,H=720;
 // device px, so a DPR-sized 960x1440 backing store was being stretched 1.9x and every
 // sprite, every bug, the whole game looked soft. On a phone the opposite happened and it
 // rendered ~10% MORE pixels than the screen could show. fit() sets this from the real box.
+// LOW is cheap-phone mode. A 480x720 field rendered at full device pixels, plus a live
+// canvas blur under every sprite, costs an iPhone nothing and murders a budget Android:
+// Skia does not GPU-accelerate ctx.filter blur, so each blurred draw is a fresh offscreen
+// layer. LOW caps the raster and drops the blurs. It turns itself on after a slow couple
+// of seconds of real play and remembers the answer for next launch.
+let LOW=false; try{LOW=localStorage.hs_low==='1';}catch(e){}
+const RASTER_MAX=()=>LOW?1.25:4;
+function setLow(v){if(LOW===v)return;LOW=v;try{localStorage.hs_low=v?'1':'0';}catch(e){}fit();}
 let DPR=Math.min(3,window.devicePixelRatio||1);
 C.width=W*DPR;C.height=H*DPR;C.style.width=W+'px';C.style.height=H+'px';X.setTransform(DPR,0,0,DPR,0,0);
 const FONT='"Avenir Next Condensed","Futura","Arial Narrow","Helvetica Neue",sans-serif';
@@ -22,7 +30,7 @@ function fit(){const cs=getComputedStyle(document.body),
  C.style.width=Math.round(W*sc)+'px';C.style.height=Math.round(H*sc)+'px';
  // render exactly the pixels this screen will show -- no upscale on a tablet, no waste
  // on a phone. Capped at 4 so a huge display cannot blow the memory budget.
- const want=Math.max(1,Math.min(4,+(sc*(window.devicePixelRatio||1)).toFixed(3)));
+ const want=Math.max(1,Math.min(RASTER_MAX(),+(sc*(window.devicePixelRatio||1)).toFixed(3)));
  if(Math.abs(want-DPR)>0.01||C.width!==Math.round(W*want)){
   DPR=want;C.width=Math.round(W*DPR);C.height=Math.round(H*DPR);
   X.setTransform(DPR,0,0,DPR,0,0);
@@ -31,7 +39,7 @@ function fit(){const cs=getComputedStyle(document.body),
 addEventListener('resize',fit);addEventListener('orientationchange',()=>setTimeout(fit,120));
 if(window.visualViewport)visualViewport.addEventListener('resize',fit);
 fit();
-const keys={};addEventListener('keydown',e=>{keys[e.code]=1;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.code==='KeyP')paused=!paused;if(e.code==='Minus'){VOL=Math.max(0,+(VOL-.05).toFixed(2));localStorage.hs_vol=VOL;applyVol();say('VOLUME '+Math.round(VOL*100)+'%');}if(e.code==='Equal'){VOL=Math.min(1,+(VOL+.05).toFixed(2));localStorage.hs_vol=VOL;applyVol();say('VOLUME '+Math.round(VOL*100)+'%');}if(e.code==='KeyN')musicToggle();if(e.code==='KeyM')sfxToggle();if(state!=='play'){if(e.code==='ArrowLeft')pickStage(startStage-1);if(e.code==='ArrowRight')pickStage(startStage+1);if(/^Digit[1-8]$/.test(e.code))pickStage(+e.code.slice(5));}
+const keys={};addEventListener('keydown',e=>{keys[e.code]=1;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.code==='KeyP')paused=!paused;if(e.code==='KeyL'){setLow(!LOW);say('DETAIL '+(LOW?'LOW':'FULL'));}if(e.code==='Minus'){VOL=Math.max(0,+(VOL-.05).toFixed(2));localStorage.hs_vol=VOL;applyVol();say('VOLUME '+Math.round(VOL*100)+'%');}if(e.code==='Equal'){VOL=Math.min(1,+(VOL+.05).toFixed(2));localStorage.hs_vol=VOL;applyVol();say('VOLUME '+Math.round(VOL*100)+'%');}if(e.code==='KeyN')musicToggle();if(e.code==='KeyM')sfxToggle();if(state!=='play'){if(e.code==='ArrowLeft')pickStage(startStage-1);if(e.code==='ArrowRight')pickStage(startStage+1);if(/^Digit[1-8]$/.test(e.code))pickStage(+e.code.slice(5));}
 if(state!=='play'&&(e.code==='Enter'||e.code==='Space')){if(state==='won')continueGame();else if(!armed){arm();}else start();}});
 addEventListener('keyup',e=>keys[e.code]=0);
 let touch=null,target=null,lastMove=0;

@@ -35,11 +35,50 @@ addEventListener('focus',()=>{audioWake();last=performance.now();acc=0;
 let shownOnce=false;
 function nativeReady(){try{const P=window.Capacitor&&window.Capacitor.Plugins;if(P&&P.SplashScreen&&P.SplashScreen.hide)P.SplashScreen.hide();}catch(e){}}
 let acc=0,last=performance.now();const STEP=1000/60;
-function frame(now){acc+=Math.min(100,now-last);last=now;padTick();
- while(acc>=STEP){acc-=STEP;
-  if(resumeCountdown>0){resumeCountdown--;if(resumeCountdown===0)paused=false;t++;}
-  else if(state==='play'&&!paused)update();else t++;}
- musicTick();ambTick();if(state==='play'&&!SPLASHV.paused)SPLASHV.pause();draw();
- if(!shownOnce){shownOnce=true;nativeReady();}
- requestAnimationFrame(frame);}
+// Nobody should have to know what a pixel ratio is. Two seconds of real play and the
+// game picks its own detail level, both directions.
+//   dropping  is judged on the gap between frames: over 21ms average means frames
+//             are being missed, whatever the screen's refresh rate is.
+//   climbing back is judged on WORK done per frame, never on the gap -- a healthy
+//             60Hz phone sits at a 16.7ms gap by definition, so a gap threshold
+//             could never tell 'fast' from 'just vsynced' and would strand a good
+//             phone in LOW forever after one rough patch.
+// Two climbs, then it accepts LOW as the truth about this device and stops trying.
+let _pn=0,_pt=0,_pw=0,_ups=0;
+// One throw inside update() or draw() used to end the game permanently: the rAF was
+// re-armed on the LAST line, so an exception skipped it, the loop never ran again, the
+// last painted frame stayed on screen and the music -- a plain HTMLAudioElement, nothing
+// to do with rAF -- kept playing. That is exactly the iPhone freeze of 2026-08-27: bugs
+// stopped mid-screen, the bee vanished, the background stopped animating, the song went
+// on. Re-arm in a finally so the loop can never be killed, and keep the first error so a
+// phone with no console attached can still say what happened.
+let FRAMEERR=null,_errN=0;
+function frame(now){const dt=now-last,_w0=performance.now();
+ try{
+  acc+=Math.min(100,dt);last=now;padTick();
+  while(acc>=STEP){acc-=STEP;
+   if(resumeCountdown>0){resumeCountdown--;if(resumeCountdown===0)paused=false;t++;}
+   else if(state==='play'&&!paused)update();else t++;}
+  musicTick();ambTick();if(state==='play'&&!SPLASHV.paused)SPLASHV.pause();draw();
+  if(!shownOnce){shownOnce=true;nativeReady();}
+  if(state==='play'&&!paused&&dt>0&&dt<200){_pt+=dt;_pw+=performance.now()-_w0;
+   if(++_pn>=120){const gap=_pt/_pn,work=_pw/_pn;_pn=0;_pt=0;_pw=0;
+    if(!LOW&&gap>21){setLow(true);say('DETAIL LOWERED FOR THIS PHONE');}
+    else if(LOW&&work<4&&gap<17.5&&_ups<2){_ups++;setLow(false);say('FULL DETAIL');}}}
+ }catch(e){
+  _errN++;
+  if(!FRAMEERR){FRAMEERR=((e&&e.message)||String(e))+' | '+((e&&e.stack||'').split('\n')[1]||'').trim();
+   try{console.error('[hive-strike] frame error:',e);}catch(_){}}
+  // the frame that threw left the canvas mid-state; put it back so the next one draws clean
+  try{X.setTransform(DPR,0,0,DPR,0,0);X.globalAlpha=1;X.filter='none';
+      X.globalCompositeOperation='source-over';}catch(_){}
+ }finally{requestAnimationFrame(frame);}
+ // a phone in your hand has no console. Print it small at the bottom so it can be read out.
+ if(FRAMEERR){try{X.save();X.setTransform(DPR,0,0,DPR,0,0);X.globalAlpha=1;
+  X.fillStyle='rgba(0,0,0,.72)';X.fillRect(0,H-30,W,30);X.fillStyle='#ff8a8a';
+  X.font='9px '+FONT;X.textAlign='left';
+  X.fillText(('x'+_errN+' '+FRAMEERR).slice(0,88),5,H-18);
+  X.fillText('screenshot this and send it to Matt',5,H-7);X.restore();}catch(_){}}
+}
 requestAnimationFrame(frame);
+addEventListener('error',e=>{if(!FRAMEERR)FRAMEERR='load: '+(e.message||e.type)+' '+((e.filename||'').split('/').pop()||'')+':'+(e.lineno||0);});

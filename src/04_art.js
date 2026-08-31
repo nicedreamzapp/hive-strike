@@ -27,7 +27,20 @@ const VID={},VIDEL={},VIDWIN=1;
 function vidEl(n){let v=VIDEL[n];if(v)return v;v=document.createElement('video');v.muted=true;v.defaultMuted=true;v.loop=true;v.playsInline=true;v.setAttribute('playsinline','');v.setAttribute('webkit-playsinline','');v.setAttribute('muted','');v.preload='auto';
  const ready=()=>{VID['level'+n]=v;};
  v.addEventListener('loadeddata',ready);v.addEventListener('canplay',ready);
- v.addEventListener('error',()=>{v.bad=true;delete VID['level'+n];});v.src='art/clip/level'+n+'.mp4';VIDEL[n]=v;return v;}
+ // Two encodes ship: levelN.mp4 at 640x960 for phones, levelN.hd.mp4 at 896x1344 for
+ // tablets. fit() rasters the fixed 480x720 field up to the screen's real pixels -- a
+ // 12.9" iPad reaches ~3.8x, where the phone encode arrives upscaled and soft. Ask for
+ // the big one only when the raster scale says it will actually be seen, never in LOW
+ // (cheap-Android) mode. The dev tree has no .hd.mp4, so a miss falls back once instead
+ // of marking the clip dead and dropping the level to its still.
+ // Pick by PHYSICAL screen size, not raster scale. DPR was the wrong test: an iPhone 14
+ // Pro Max rasters the field at 2.69x, so a >=2.2 threshold handed phones the tablet
+ // encode -- three 896x1344 clips live in the sliding window at once and iOS killed the
+ // app on level 1 (2026-08-27). A tablet's short edge is >=700 css px; no phone is.
+ const base='art/clip/level'+n;
+ let hi=Math.min(innerWidth,innerHeight)>=700&&!LOW;
+ v.addEventListener('error',()=>{if(hi){hi=false;v.src=base+'.mp4';return;}v.bad=true;delete VID['level'+n];});
+ v.src=hi?base+'.hd.mp4':base+'.mp4';VIDEL[n]=v;return v;}
 function vidRelease(n){const v=VIDEL[n];if(!v)return;try{v.pause();v.removeAttribute('src');v.load();}catch(e){}delete VIDEL[n];delete VID['level'+n];}
 function vidSync(){artSync();maskSync();bossSprSync();const c=(stage-1)%NL+1,want=new Set();for(let d=0;d<=VIDWIN;d++){want.add((c-1+d)%NL+1);want.add((c-1-d+NL*2)%NL+1);}for(const n of want)vidEl(n);for(const k in VIDEL)if(!want.has(+k))vidRelease(+k);}
 // iOS will not buffer a video until something calls play(), so gating play() on
@@ -61,7 +74,13 @@ function loadSprites(){const names=Object.keys(ET).concat(['centihead1','centise
 // downscale shimmered every frame as the bug moved. halve the source until it is close to the
 // drawn size, cache each step, and the final draw is never worse than a 2x reduction.
 function mip(im,h){const need=h*DPR*1.4;if(!im.height||im.height<need*2)return im;
- if(!im._mips)im._mips=[im];let cur=im._mips[im._mips.length-1];
+ // Four places empty this array rather than deleting it -- rasterReset() when the raster
+ // scale changes, and artRelease/maskSync/bossSprSync when a level slides out of the
+ // window. An emptied array is still truthy, so the old `if(!im._mips)` did not re-seed
+ // it, cur came back undefined, and `cur.height` threw. That killed the frame loop and
+ // froze the game with the music still playing (iPhone, 2026-08-27). Re-seed on EMPTY,
+ // not just on missing.
+ if(!im._mips||!im._mips.length)im._mips=[im];let cur=im._mips[im._mips.length-1];
  while(cur.height>need*2&&cur.height>2){const c=document.createElement('canvas');c.width=Math.max(1,cur.width>>1);c.height=Math.max(1,cur.height>>1);const g=c.getContext('2d');g.imageSmoothingEnabled=true;g.imageSmoothingQuality='high';g.drawImage(cur,0,0,c.width,c.height);im._mips.push(c);cur=c;}
  for(let i=im._mips.length-1;i>=0;i--)if(im._mips[i].height>=need)return im._mips[i];
  return im._mips[0];}

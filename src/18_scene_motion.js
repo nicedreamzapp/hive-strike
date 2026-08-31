@@ -111,19 +111,19 @@ function windLitter(key,n,cols,size,dir){const p=bed(key,n,i=>({x:R(-40,W+40),y:
 function waterShimmer(key,col,alpha,n,y0=.12,y1=1,x0=0,x1=1){const p=bed(key,n,i=>({y:R(H*y0,H*y1),w:R(50,150),x:R(W*x0,W*x1),sp:R(.2,.75)*(i%2?1:-1),ph:R(0,7)}));
  X.globalCompositeOperation='lighter';
  for(const b of p){b.x+=b.sp;if(b.x>W+b.w)b.x=-b.w;if(b.x<-b.w)b.x=W+b.w;const a=(Math.sin(t*.05+b.ph)+1)/2;
-  X.globalAlpha=alpha*(.3+a*.7);X.fillStyle=col;X.filter='blur(3px)';ell(b.x,b.y+Math.sin(t*.03+b.ph)*4,b.w*(.7+a*.3),2.2);X.fill();X.filter='none';}
+  X.globalAlpha=alpha*(.3+a*.7);X.fillStyle=col;if(!LOW)X.filter='blur(3px)';ell(b.x,b.y+Math.sin(t*.03+b.ph)*4,b.w*(.7+a*.3),2.2);X.fill();X.filter='none';}
  X.globalCompositeOperation='source-over';X.globalAlpha=1;}
 function bubbles(key,n,col){const p=bed(key,n,()=>({x:R(0,W),y:R(0,H),vy:R(.3,.9),s:R(1,3),ph:R(0,7)}));
  for(const b of p){b.y-=b.vy;b.x+=Math.sin(t*.04+b.ph)*.4;if(b.y<-6){b.y=H+6;b.x=R(0,W);}X.globalAlpha=.2;X.strokeStyle=col;X.lineWidth=1;ell(b.x,b.y,b.s,b.s);X.stroke();}X.globalAlpha=1;}
 // the tide rolling in and back out
-function waveWash(){X.globalCompositeOperation='lighter';const y=H*(.60+Math.sin(t*.012)*.07);X.globalAlpha=.09+Math.sin(t*.012)*.05;X.fillStyle='#eaffff';X.filter='blur(10px)';ell(W/2,y,W*.72,11);X.fill();X.filter='none';X.globalCompositeOperation='source-over';X.globalAlpha=1;}
+function waveWash(){X.globalCompositeOperation='lighter';const y=H*(.60+Math.sin(t*.012)*.07);X.globalAlpha=.09+Math.sin(t*.012)*.05;X.fillStyle='#eaffff';if(!LOW)X.filter='blur(10px)';ell(W/2,y,W*.72,11);X.fill();X.filter='none';X.globalCompositeOperation='source-over';X.globalAlpha=1;}
 // embers lifting off the crack on the heat
 function emberLift(){const e=bed('ember',14,()=>({x:W*R(.28,.55),y:R(0,H),vy:R(.5,1.4),ph:R(0,7),s:R(.7,1.6)}));
  X.globalCompositeOperation='lighter';
  for(const b of e){b.y-=b.vy;b.x+=Math.sin(t*.03+b.ph)*.6;if(b.y<-10){b.y=H+10;b.x=W*R(.28,.55);}
   const a=Math.max(0,.9-b.y/H);X.globalAlpha=.25+a*.4;X.fillStyle='#ffb040';ell(b.x,b.y,b.s,b.s);X.fill();}
  X.globalCompositeOperation='source-over';X.globalAlpha=1;heatHaze('rgba(255,120,40,.5)',.04);}
-function heatHaze(col,alpha){X.globalCompositeOperation='lighter';X.filter='blur(9px)';for(let i=0;i<4;i++){X.globalAlpha=alpha;X.fillStyle=col;ell(W/2+Math.sin(t*.03+i*2)*40,H*(.55+i*.11)+Math.sin(t*.05+i)*5,W*.55,7);X.fill();}X.filter='none';X.globalCompositeOperation='source-over';X.globalAlpha=1;}
+function heatHaze(col,alpha){X.globalCompositeOperation='lighter';if(!LOW)X.filter='blur(9px)';for(let i=0;i<4;i++){X.globalAlpha=alpha;X.fillStyle=col;ell(W/2+Math.sin(t*.03+i*2)*40,H*(.55+i*.11)+Math.sin(t*.05+i)*5,W*.55,7);X.fill();}X.filter='none';X.globalCompositeOperation='source-over';X.globalAlpha=1;}
 function blowingSnow(key,n,sp){const p=bed(key,n,()=>({x:R(0,W),y:R(0,H),vy:R(.4,1.2),vx:R(.8,2.4),ph:R(0,7),s:R(1,2.8),d:R(0,1)}));
  for(const b of p){b.x+=b.vx*sp;b.y+=b.vy*sp*.5+Math.sin(t*.05+b.ph)*.3;if(b.x>W+10){b.x=-10;b.y=R(0,H);}if(b.y>H+10)b.y=-10;
   // near flakes read bright, far ones read as cold blue-grey so they show up against the ice
@@ -131,7 +131,7 @@ function blowingSnow(key,n,sp){const p=bed(key,n,()=>({x:R(0,W),y:R(0,H),vy:R(.4
   X.globalAlpha=(.35+b.d*.4)*.35;X.strokeStyle='#7f9ec4';X.lineWidth=1;X.beginPath();X.moveTo(b.x,b.y);X.lineTo(b.x-b.vx*4*sp,b.y-b.vy*2*sp);X.stroke();}X.globalAlpha=1;}
 // low ground-drift: sheets of snow sliding across the surface, the thing you actually see on open ice
 function groundDrift(key,n,col){const p=bed(key,n,()=>({x:R(-200,W),y:R(H*.45,H),w:R(90,220),vx:R(1.2,3),a:R(.05,.13)}));
- for(const b of p){b.x+=b.vx;if(b.x-b.w>W){b.x=-b.w;b.y=R(H*.45,H);}X.globalAlpha=b.a;X.fillStyle=col;X.filter='blur(7px)';ell(b.x,b.y+Math.sin(t*.03+b.w)*3,b.w,4);X.fill();X.filter='none';}X.globalAlpha=1;}
+ for(const b of p){b.x+=b.vx;if(b.x-b.w>W){b.x=-b.w;b.y=R(H*.45,H);}X.globalAlpha=b.a;X.fillStyle=col;if(!LOW)X.filter='blur(7px)';ell(b.x,b.y+Math.sin(t*.03+b.w)*3,b.w,4);X.fill();X.filter='none';}X.globalAlpha=1;}
 function blowingSand(){const p=bed('sand',8,()=>({x:R(0,W),y:R(H*.45,H),len:R(18,52),vx:R(1.6,3.4),a:R(.05,.12),w:R(.8,1.5)}));
  for(const b of p){b.x+=b.vx;b.y+=Math.sin(t*.04+b.len)*.25;if(b.x-b.len>W){b.x=-b.len;b.y=R(H*.38,H);}
   X.globalAlpha=b.a;X.strokeStyle='#ffe6b0';X.lineWidth=b.w;X.lineCap='round';X.beginPath();X.moveTo(b.x,b.y);X.lineTo(b.x-b.len,b.y+2);X.stroke();}
@@ -156,7 +156,7 @@ function fireflies(key,n,col){const p=bed(key,n,()=>({x:R(0,W),y:R(0,H),ph:R(0,7
   const a=Math.max(0,Math.sin(t*.05+b.ph));X.globalAlpha=a*.75;X.fillStyle=col;ell(b.x,b.y,b.s,b.s);X.fill();X.globalAlpha=a*.15;ell(b.x,b.y,b.s*6,b.s*6);X.fill();}
  X.globalCompositeOperation='source-over';X.globalAlpha=1;}
 // sun through the trees, swaying the way light does when the branches move
-function sunShafts(col,alpha,sway){X.globalCompositeOperation='lighter';X.globalAlpha=alpha;X.fillStyle=col;X.filter='blur(18px)';
+function sunShafts(col,alpha,sway){X.globalCompositeOperation='lighter';X.globalAlpha=alpha;X.fillStyle=col;if(!LOW)X.filter='blur(18px)';
  for(let i=0;i<3;i++){X.save();X.translate(300+i*90+Math.sin(t*.006+i)*sway,0);X.rotate(.35+Math.sin(t*.004+i)*.03);X.fillRect(-20,-200,40+i*10,H*2);X.restore();}
  X.filter='none';X.globalCompositeOperation='source-over';X.globalAlpha=1;}
 function glowPool(x,y,r,col,a){X.globalCompositeOperation='lighter';X.globalAlpha=a;X.fillStyle=rg(x,y,r,col,col.replace(/[\d.]+\)$/,'0)'));ell(x,y,r,r*1.1);X.fill();X.globalCompositeOperation='source-over';X.globalAlpha=1;}
@@ -165,13 +165,13 @@ function cityNight(){
  // apartment windows waking up and going dark again, only on the buildings down either side
  const wnd=bed('wnd',40,i=>{const left=i%2===0;return{x:left?R(W*.02,W*.33):R(W*.67,W*.98),y:R(H*.10,H*.66),w:R(3,7),h:R(4,10),on:Math.random()<.45,ft:RI(40,420),c:['#ffd27a','#ffe9b0','#cfe4ff'][RI(0,2)]};});
  for(const b of wnd){if(--b.ft<=0){b.on=!b.on;b.ft=RI(110,560);}if(!b.on)continue;
-  X.globalAlpha=.55;X.fillStyle=b.c;X.fillRect(b.x,b.y,b.w,b.h);X.globalAlpha=.12;X.filter='blur(4px)';X.fillRect(b.x-3,b.y-3,b.w+6,b.h+6);X.filter='none';}
+  X.globalAlpha=.55;X.fillStyle=b.c;X.fillRect(b.x,b.y,b.w,b.h);X.globalAlpha=.12;if(!LOW)X.filter='blur(4px)';X.fillRect(b.x-3,b.y-3,b.w+6,b.h+6);X.filter='none';}
  // headlights coming up the street out of the vanishing point, growing as they get close
  const car=bed('car',8,i=>({p:R(0,1),sp:R(.0025,.0065),lane:(i%2?1:-1)*R(.05,.16),c:i%2?'#fff4cc':'#ff8a6a'}));
  X.globalCompositeOperation='lighter';
  for(const b of car){b.p+=b.sp;if(b.p>1)b.p=0;
   const e=b.p*b.p,y=H*.42+H*.52*e,x=W*.5+W*b.lane*e*3.4,sz=1.6+e*7;
-  X.globalAlpha=.20+e*.45;X.fillStyle=b.c;X.filter='blur(2px)';ell(x-sz*.9,y,sz,sz*.5);X.fill();ell(x+sz*.9,y,sz,sz*.5);X.fill();
+  X.globalAlpha=.20+e*.45;X.fillStyle=b.c;if(!LOW)X.filter='blur(2px)';ell(x-sz*.9,y,sz,sz*.5);X.fill();ell(x+sz*.9,y,sz,sz*.5);X.fill();
   X.globalAlpha=(.10+e*.18);ell(x,y+sz,sz*3.4,sz*.9);X.fill();X.filter='none';}
  // a couple of street lamps buzzing on and off down the block
  const lamp=bed('lamp',4,i=>({x:W*(i%2?.22:.78),y:H*(.34+i*.07),ft:RI(60,300),on:true}));
@@ -191,7 +191,7 @@ function fountain(){ // L2: the fountain in the middle of the garden
  X.globalCompositeOperation='lighter';
  for(const b of p){b.y+=b.vy;b.vy+=.05;if(b.y>H*.455){b.y=H*R(.355,.375);b.vy=R(.4,1.2);b.x=W*.5+R(-11,11);}
   X.globalAlpha=.5;X.fillStyle='#eaf6ff';ell(b.x,b.y,b.s*.6,b.s*1.5);X.fill();}
- X.globalAlpha=.10+Math.sin(t*.07)*.04;X.fillStyle='#dff2ff';X.filter='blur(4px)';ell(W*.5,H*.45,26,5);X.fill();X.filter='none';
+ X.globalAlpha=.10+Math.sin(t*.07)*.04;X.fillStyle='#dff2ff';if(!LOW)X.filter='blur(4px)';ell(W*.5,H*.45,26,5);X.fill();X.filter='none';
  X.globalCompositeOperation='source-over';X.globalAlpha=1;}
 function fallingFruit(){ // L4: apples letting go of the orchard trees
  const p=bed('apl',4,i=>({x:i%2?R(W*.06,W*.24):R(W*.76,W*.94),y:R(-H*.4,H*.2),vy:R(1.4,2.6),r:R(2.4,4),done:0}));
