@@ -65,6 +65,8 @@ const barHit=(p,b)=>p.x>=b.x-8&&p.x<=b.x+b.w+8&&p.y>=b.y-9&&p.y<=b.y+b.h+9;
 const barVal=(p,b)=>Math.max(0,Math.min(1,(p.x-b.x)/b.w));
 C.addEventListener('pointermove',e=>{target=ptr(e);lastMove=t;});
 const BTN={music:{x:W/2-46,y:4,w:40,h:22},sfx:{x:W/2+6,y:4,w:40,h:22}};const inBtn=(p,b)=>p.x>=b.x&&p.x<=b.x+b.w&&p.y>=b.y&&p.y<=b.y+b.h;
+// daily hive + queen's contract chips, title screen only
+const CBTN={daily:{x:8,y:30,w:W/2-14,h:30},contract:{x:W/2+6,y:30,w:W/2-14,h:30}};
 C.addEventListener('pointerdown',e=>{const isT=e.pointerType==='touch',p=ptr(e),raw={x:p.x,y:p.y+(isT?TOUCH_LIFT:0)};
  audioWake();
  if(inBtn(raw,BTN.music)){musicToggle();return;}
@@ -79,7 +81,10 @@ C.addEventListener('pointerdown',e=>{const isT=e.pointerType==='touch',p=ptr(e),
   if(barHit(raw,BARS.sfx)){setSfxLv(barVal(raw,BARS.sfx));click(1400,.02);say('EFFECTS '+Math.round(SFXLV*100)+'%');return;}
  }
  target=p;lastMove=t;
- if(state!=='play'){for(let i=0;i<16;i++){if(inBtn(raw,TILE(i))){pickStage(i+1);if(!armed)arm();return;}}if(state==='won')continueGame();else if(!armed)arm();else start();return;}
+ if(state!=='play'){
+  if(inBtn(raw,CBTN.daily)){if(!armed)arm();wantDaily=true;start();return;}
+  if(inBtn(raw,CBTN.contract)){contractIx=(contractIx+1)%CONTRACTS.length;localStorage.hs_contract=contractIx;const c=CONTRACTS[contractIx];say(c.label+'  ·  '+c.terms+(c.mult!==1?'  ·  SCORE x'+c.mult:''));click(1200,.02);return;}
+  for(let i=0;i<16;i++){if(inBtn(raw,TILE(i))){pickStage(i+1);if(!armed)arm();return;}}if(state==='won')continueGame();else if(!armed)arm();else start();return;}
  // a finger landing is how you MOVE on a phone -- only a mouse click means "bomb"
  if(!isT)wantBomb=1;});
 addEventListener('contextmenu',e=>e.preventDefault());

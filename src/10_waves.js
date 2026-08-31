@@ -52,14 +52,14 @@ function wave(){const lv=LV(),pr=stageT/lv.len;
  if(useShooter){const k=sho[RI(0,sho.length-1)];const ak=A(k);if(ak==='cicada')FORMS.screamer(k);else if(ak==='stinkbug')FORMS.stinker(k);else if(ak==='snail')FORMS.crawler(k);else if(ak==='spiderling')FORMS.threads(k);else if(ak==='glowworm'||ak==='dungbeetle')spawn(k,R(60,W-60),-30,{pat:ak==='glowworm'?'creep':'slow'});else FORMS[SHOOTER_FORMS[RI(0,1)]](k);}
  else if(Math.random()<.55){const k=fod[RI(0,fod.length-1)]||'fly';SYMFORMS[RI(0,SYMFORMS.length-1)](k,RI(4,6));}
  else{const k=fod[RI(0,fod.length-1)]||'fly',ak=A(k);let f=FODDER_FORMS[RI(0,FODDER_FORMS.length-1)];if(ak==='gnat')f='swarm';if(ak==='grasshopper')f='hoppers';if(ak==='hornet')f=Math.random()<.6?'chargers':'pincer';if(ak==='spiderling')f='threads';if(ak==='butterfly')f='flutters';if(ak==='earwig')f=Math.random()<.6?'zig':'pincer';if(ak==='katydid')f='hoppers';if(ak==='strider')f='skaters';if(ak==='weevil')f='chargers';if(ak==='termite')f='scurry';if(ak==='horsefly')f='divers';if(ak==='ant')f=Math.random()<.5?'column':'line';if(k==='ant'&&(f==='pincer'||f==='ambush'))f='column';FORMS[f](k);}
- if(Math.random()<.22+((stage-1)%NL)*.052+loop*.1&&enemies.length){const e=enemies[enemies.length-1];if(!e.elite&&!e.tiny){e.elite=1;e.hp*=2.2+((stage-1)%NL)*.06;e.sc*=3;}}
+ if(Math.random()<.22+((stage-1)%NL)*.052+loop*.1&&enemies.length){const e=enemies[enemies.length-1];if(!e.elite&&!e.tiny){e.elite=1;e.hp*=2.2+((stage-1)%NL)*.06;e.maxhp=e.hp;e.sc*=3;}}
 }
 const anyBug=()=>{const r=LV().roster;return r[RI(0,r.length-1)];};
 const PD=1.70; // player damage multiplier — guns felt weak at 1.15
 const EB=.5;const FR0=1.3; // FR = how much longer bugs wait between volleys
-Object.defineProperty(globalThis,'FR',{get(){const lv=(stage-1)%NL;return Math.max(.55,FR0-lv*.055-loop*.1);}});
+Object.defineProperty(globalThis,'FR',{get(){const lv=(stage-1)%NL;return Math.max(.55,FR0-lv*.055-loop*.1)*(MODS.quick?.72:1);}});
 // kinds: dart (default), venom (green drop), seed (spiky seed), dust (moth scale puff), ember (firefly spark), drop (water), gas (stink cloud), wave (cicada sound ring), web (sticks to you and slows you), blade (mantis scythe), acorn (beetle king)
-function eshot(x,y,a,sp,r=4,col='#ff3b3b',kind='dart'){const bf=bossAlive?.85:1;ebullets.push({x,y,vx:Math.cos(a)*sp*EB*bf,vy:Math.sin(a)*sp*EB*bf,r:Math.max(6,r+2),col,t:0,kind});}
+function eshot(x,y,a,sp,r=4,col='#ff3b3b',kind='dart'){const bf=(bossAlive?.85:1)*(MODS.quick?1.12:1);ebullets.push({x,y,vx:Math.cos(a)*sp*EB*bf,vy:Math.sin(a)*sp*EB*bf,r:Math.max(6,r+2),col,t:0,kind});}
 function aim(x,y){return Math.atan2(P.y-y,P.x-x);}
 function separate(){const n=enemies.length;
  // 'fall' is a normal descent pattern during play, so those get separated too.

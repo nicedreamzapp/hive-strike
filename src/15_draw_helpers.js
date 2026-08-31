@@ -318,9 +318,22 @@ function drawBoss(b,portrait){const real=LV().boss,i=BARCH[real];
   for(let k=Math.min(b.seg.length-1,150);k>=6;k-=12){const sg=b.seg[k];ell(sg.x-b.x+7,sg.y-b.y+9,17,9);X.fill();}
   X.filter='none';X.globalAlpha=1;
   if(b.fl>0)X.filter='brightness(2) saturate(.5)';
-  centipedeSprite(b);X.filter='none';X.restore();}
+  centipedeSprite(b);X.filter='none';X.restore();
+  // the split twin: same plates, mirrored trail. shares the mother's health -- one hunger, two mouths
+  if(b.rage&&b.seg2&&b.seg2.length>8){X.save();X.translate(b.x2,b.y2);if(b.fl>0)X.filter='brightness(2) saturate(.5)';centipedeSprite({...b,x:b.x2,y:b.y2,seg:b.seg2});X.filter='none';X.restore();}}
  else if(i===5){if(!b.seg.length)b.seg=Array.from({length:150},(_,k)=>({x:b.x+Math.sin(k*.06)*40,y:b.y+k*.9}));emboss(b.x,b.y,220,()=>{centipedeSprite(b);menace(b,5);},{alt:0});}
- else if(SPR['boss'+real])emboss(b.x,b.y,300,()=>{const sc=(1+(b.rage?Math.sin(b.t*.3)*.03:0))*(1+Math.sin(b.t*.12)*.025);X.scale(sc,sc);X.rotate(Math.sin(b.t*.07)*.04);drawSprite(SPR['boss'+real],BSIZE[real],faceRot('boss'+real));},{filter:b.fl>0?'brightness(2) saturate(.5)':(b.rage?'saturate(1.5) contrast(1.15)':null),alt:portrait?0:1});
- else emboss(b.x,b.y,230,()=>{bossSprite(b,i);menace(b,i);},{filter:b.fl>0?'brightness(2) saturate(.5)':null,alt:portrait?0:1});
- if(portrait)return;X.fillStyle='rgba(0,0,0,.34)';X.fillRect(40,36,W-80,14);const g=X.createLinearGradient(42,0,W-42,0);g.addColorStop(0,'#ff3b3b');g.addColorStop(1,'#ffb13b');X.fillStyle=g;X.fillRect(42,38,(W-84)*Math.max(0,b.hp/b.max),10);X.fillStyle='#fff';X.font='bold 12px '+FONT;X.textAlign='center';X.shadowColor='#000';X.shadowBlur=4;X.fillText('BOSS  ·  '+b.name+(b.rage?'  (ENRAGED)':''),W/2,47);X.shadowBlur=0;}
+ else if(SPR['boss'+real])emboss(b.x,b.y,300,()=>{const sc=(1+(b.rage?Math.sin(b.t*.3)*.03:0))*(1+Math.sin(b.t*.12)*.025);X.scale(sc,sc);X.rotate(Math.sin(b.t*.07)*.04);drawSprite(SPR['boss'+real],BSIZE[real],faceRot('boss'+real));},{filter:b.fl>0?'brightness(2) saturate(.5)':(b.camo?'opacity(0.13) blur(1px)':(b.rage?'saturate(1.5) contrast(1.15)':null)),alt:portrait||b.camo?0:1});
+ else emboss(b.x,b.y,230,()=>{bossSprite(b,i);menace(b,i);},{filter:b.fl>0?'brightness(2) saturate(.5)':(b.camo?'opacity(0.13) blur(1px)':null),alt:portrait?0:1});
+ if(portrait)return;
+ // scorpion's planted tail-turret: rooted where the job change happened, pulsing so you know it is live
+ if(b.turret){const q=b.turret;X.save();X.translate(q.x,q.y);X.fillStyle='rgba(0,0,0,.3)';ell(0,26,20,7);X.fill();
+  X.strokeStyle='#5a3a10';X.lineWidth=9;X.lineCap='round';X.beginPath();X.moveTo(0,26);X.quadraticCurveTo(10,4,0,-14);X.stroke();
+  X.strokeStyle='#c08040';X.lineWidth=5;X.beginPath();X.moveTo(0,24);X.quadraticCurveTo(8,4,0,-12);X.stroke();
+  const pu=.5+Math.sin(b.t*.2)*.5;X.fillStyle=rg(0,-16,10+pu*4,'rgba(255,60,40,.9)','rgba(255,0,0,0)');ell(0,-16,10+pu*4,10+pu*4);X.fill();X.fillStyle='#ff3b3b';ell(0,-16,3.5,5);X.fill();X.restore();}
+ // atlas moth wing-shields: they soak the hits for their side until they break
+ if(b.wings&&b.y>0)for(const s of[-1,1]){const wv=s<0?b.wings.l:b.wings.r;if(wv<=0)continue;const f=wv/b.wings.max;
+  X.save();X.translate(b.x+s*62,b.y);X.rotate(s*.15+Math.sin(b.t*.1)*.06*s);X.globalAlpha=.30+f*.40;
+  X.fillStyle=rg(0,0,70,'#ffd9a0','#c06a20');ell(0,0,32,76);X.fill();X.globalAlpha=1;
+  X.strokeStyle=`rgba(255,220,160,${.45+f*.45})`;X.lineWidth=2;ell(0,0,32,76);X.stroke();X.restore();}
+ X.fillStyle='rgba(0,0,0,.34)';X.fillRect(40,36,W-80,14);const g=X.createLinearGradient(42,0,W-42,0);g.addColorStop(0,'#ff3b3b');g.addColorStop(1,'#ffb13b');X.fillStyle=g;X.fillRect(42,38,(W-84)*Math.max(0,b.hp/b.max),10);X.fillStyle='#fff';X.font='bold 12px '+FONT;X.textAlign='center';X.shadowColor='#000';X.shadowBlur=4;X.fillText('BOSS  ·  '+b.name+(b.rage?'  (ENRAGED)':''),W/2,47);X.shadowBlur=0;}
 

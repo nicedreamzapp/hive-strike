@@ -1,5 +1,5 @@
 // ---------- update ----------
-function update(){t++;if(shake>0)shake--;if(msgT>0)msgT--;bugChorus();chainTick();grazeTick();if(P.lives===0&&!P.dead&&t%64===0)SFX.heartbeat();
+function update(){t++;if(shake>0)shake--;if(msgT>0)msgT--;bugChorus();chainTick();grazeTick();volcanoTick();if(P.lives===0&&!P.dead&&t%64===0)SFX.heartbeat();
  if(P.dead>0){P.dead--;if(P.dead===0){P.x=W/2;P.y=H-100;P.inv=240;}}
  else{const s=(keys.ShiftLeft||keys.ShiftRight||PAD.slow?2.5:4.5)*(P.webbed>0?.35:1);
   if(keys.ArrowLeft||keys.KeyA)P.x-=s;if(keys.ArrowRight||keys.KeyD)P.x+=s;if(keys.ArrowUp||keys.KeyW)P.y-=s;if(keys.ArrowDown||keys.KeyS)P.y+=s;
@@ -13,7 +13,7 @@ function update(){t++;if(shake>0)shake--;if(msgT>0)msgT--;bugChorus();chainTick(
   if(P.fireT>0)P.fireT--;else fire();
   if(keys.KeyX||keys.KeyB||wantBomb){if(!P.bt)bomb();P.bt=1;}else P.bt=0;wantBomb=0;}
  // stage flow: intro -> waves -> WARNING -> boss -> LEVEL CLEAR -> next
- if(levelClear>0){levelClear--;if(levelClear===0){recordBest((stage-1)%NL+1,score);if(stage%NL===0&&loop===0){unlockUpTo(16);state='won';music('title');if(score>hi){hi=score;localStorage.hs_hi=hi;}return;}stage++;stageT=0;unlockUpTo((stage-1)%NL+1);if(stage>STAT.deepest){STAT.deepest=stage;}statSave();if((stage-1)%NL===0){loop++;}levelIntro=200;nextWave=0;rushDone=false;nextCloud=400;buildDecor((stage-1)%NL);SFX.levelStart();}}
+ if(levelClear>0){levelClear--;if(levelClear===0){recordBest((stage-1)%NL+1,score);if(stage%NL===0&&loop===0){unlockUpTo(16);state='won';music('title');endRun();if(score>hi){hi=score;localStorage.hs_hi=hi;}return;}stage++;stageT=0;unlockUpTo((stage-1)%NL+1);if(stage>STAT.deepest){STAT.deepest=stage;}statSave();if((stage-1)%NL===0){loop++;}levelIntro=200;nextWave=0;rushDone=false;nextCloud=400;buildDecor((stage-1)%NL);SFX.levelStart();}}
  else if(!bossAlive){
   if(levelIntro>0){levelIntro--;if(levelIntro===0)music('main');}
   else if(bossWarn>0){bossWarn--;if(bossWarn%45===0){swell(70,.5,'sine',.07,.08);rumble(.5,.04);}if(bossWarn===0)spawnBoss();}
@@ -33,9 +33,19 @@ function update(){t++;if(shake>0)shake--;if(msgT>0)msgT--;bugChorus();chainTick(
   else if(b.k==='grenade'){b.vy+=b.ay;b.x+=b.vx;b.y+=b.vy;if(b.vy>0||enemies.some(e=>!e.dead&&(e.x-b.x)**2+(e.y-b.y)**2<(e.r+b.r+6)**2)){b.dead=1;boom(b.x,b.y,'#ffa54d',16,5);for(let k=0;k<8;k++){const a=k*Math.PI/4+R(-.2,.2);bullets.push({x:b.x,y:b.y,vx:Math.cos(a)*7,vy:Math.sin(a)*7,d:b.d*.45,r:4,k:'shard',life:26});}IMPACT.grenade();}}
   else if(b.k==='wall'){b.x+=(P.x-b.x)*.2;b.y=P.y-70;if(P.wpn!=='wall'||P.dead)b.dead=1;}
   else if(b.k==='saw'){b.vy+=.42;b.ang+=.5;if(b.vy>0){b.vx+=(P.x-b.x)*.004;}b.x+=b.vx;b.y+=b.vy;if(b.vy>0&&b.y>P.y+10)b.dead=1;}
-  else if(b.orbit){b.a+=.09;b.x=P.x+Math.cos(b.a)*44;b.y=P.y+Math.sin(b.a)*44;if(P.wpn!=='petal'||P.dead)b.dead=1;}else if(b.k!=='lure'&&b.k!=='grenade'&&b.k!=='wall'){b.x+=b.vx;b.y+=b.vy;if((b.y<-20&&!b.down)||b.y<-90||b.x<-20||b.x>W+20||b.y>H+20)b.dead=1;}if(b.life!=null&&--b.life<=0)b.dead=1;if(!b.orbit&&!b.drone&&b.k!=='stinger'&&b.k!=='static'&&t%3===0)parts.push({x:b.x+R(-2,2),y:b.y+R(-2,2),vx:R(-.4,.4),vy:R(.3,1),l:R(8,14),c:WEAPONS[b.k]?WEAPONS[b.k].col:'#fff',r:R(1,2.2)});
+  else if(b.orbit){b.a+=.09;b.x=P.x+Math.cos(b.a)*44;b.y=P.y+Math.sin(b.a)*44;if(P.wpn!=='petal'||P.dead)b.dead=1;}else if(b.k!=='lure'&&b.k!=='grenade'&&b.k!=='wall'){b.x+=b.vx;b.y+=b.vy;
+   // THE CRYSTAL: shots ricochet off the cavern walls once. your own volley is the puzzle.
+   if(LV().name==='THE CRYSTAL'&&!b.bounced&&((b.x<8&&b.vx<0)||(b.x>W-8&&b.vx>0))){b.vx=-b.vx;b.bounced=1;b.x=clamp(b.x,8,W-8);sparks(b.x,b.y,'#c8a0ff',3,5);}
+   if((b.y<-20&&!b.down)||b.y<-90||b.x<-20||b.x>W+20||b.y>H+20)b.dead=1;}if(b.life!=null&&--b.life<=0)b.dead=1;if(!b.orbit&&!b.drone&&b.k!=='stinger'&&b.k!=='static'&&t%3===0)parts.push({x:b.x+R(-2,2),y:b.y+R(-2,2),vx:R(-.4,.4),vy:R(.3,1),l:R(8,14),c:WEAPONS[b.k]?WEAPONS[b.k].col:'#fff',r:R(1,2.2)});
   for(const e of enemies){if(b.k==='static'||b.k==='lure'||b.k==='grenade')break;if((b.k==='lance'||b.k==='saw'||b.drone||b.k==='wall')&&b.cd>0)break;const hitW=b.k==='wall'?(Math.abs(e.x-b.x)<b.half+e.r&&Math.abs(e.y-b.y)<12+e.r):(e.x-b.x)**2+(e.y-b.y)**2<(e.r*1.3+b.r)**2;if(!e.dead&&!b.dead&&hitW){if(b.k==='lance'||b.k==='saw')b.cd=6;if(b.drone)b.cd=14;if(b.k==='wall')b.cd=8;e.hp-=b.d*PD;e.fl=4;if(!b.pierce)b.dead=1;if(b.k==='water'){for(const o of enemies){if(o!==e&&!o.dead&&(o.x-b.x)**2+(o.y-b.y)**2<48*48){o.hp-=b.d*.5;o.fl=3;}}for(let q=0;q<5;q++)parts.push({x:b.x,y:b.y,vx:R(-3,3),vy:R(-3,1),l:14,c:'#ffd070',r:2});}if(b.k==='wax'){e.slow=140;}if(b.orbit&&t%6!==0)continue;sfxHit(e);sfxImpact();sparks(b.x,b.y,WEAPONS[b.k]?WEAPONS[b.k].col:'#fff',4,6);if(e.hp<=0){e.dead=1;killScore(e);boom(e.x,e.y,e.col,14);sparks(e.x,e.y,'#fff',8);if(e.elite)drop(e.x,e.y,Math.random()<.5?randWeapon():['nectar','nectar','bomb'][RI(0,2)]);else if(!e.tiny)drop(e.x,e.y);if(!e.tiny)gibs(e);if(!e.tiny||t%4===0)sfxKill(e);}}}
-  if(boss&&!b.dead&&b.k!=='static'&&b.k!=='lure'&&b.k!=='grenade'&&b.k!=='wall'&&!((b.k==='lance'||b.k==='saw'||b.drone)&&b.cd>0)&&boss.y>0&&(boss.x-b.x)**2+(boss.y-b.y)**2<(boss.r+b.r)**2){if(b.k==='lance'||b.k==='saw')b.cd=6;if(b.drone)b.cd=14;boss.hp-=b.d*PD;boss.fl=3;if(!b.pierce)b.dead=1;sfxBossHit();parts.push({x:b.x,y:b.y,vx:R(-2,2),vy:R(-2,2),l:10,c:'#fff',r:2});}
+  if(boss&&!b.dead&&b.k!=='static'&&b.k!=='lure'&&b.k!=='grenade'&&b.k!=='wall'&&!((b.k==='lance'||b.k==='saw'||b.drone)&&b.cd>0)&&boss.y>0&&(boss.x-b.x)**2+(boss.y-b.y)**2<(boss.r+b.r+(boss.wings&&(boss.wings.l>0||boss.wings.r>0)?44:0))**2){if(b.k==='lance'||b.k==='saw')b.cd=6;if(b.drone)b.cd=14;
+   // atlas moth: while a wing lives it soaks the hit for its side. break one and that half
+   // of the screen fills with scales you can graze -- the shield becomes the feast.
+   if(boss.wings&&(boss.wings.l>0||boss.wings.r>0)){const side=(b.x<boss.x&&boss.wings.l>0)||boss.wings.r<=0?'l':'r';boss.wings[side]-=b.d*PD;boss.fl=3;
+    if(boss.wings[side]<=0){boss.wings[side]=0;const sx=side==='l'?boss.x-90:boss.x+90;boom(sx,boss.y,'#e0a060',40,7);flash=.3;shake=14;say('A WING BREAKS!');rumble(.8,.06);
+     for(let k=0;k<16;k++)ebullets.push({x:side==='l'?R(10,W/2-20):R(W/2+20,W-10),y:R(-50,90),vx:R(-.2,.2),vy:R(.7,1.3),r:6,col:'#ffdd88',t:0,kind:'dust'});drop(sx,boss.y+40,'bomb');}}
+   else{boss.hp-=b.d*PD;boss.fl=3;}
+   if(!b.pierce)b.dead=1;sfxBossHit();parts.push({x:b.x,y:b.y,vx:R(-2,2),vy:R(-2,2),l:10,c:'#fff',r:2});}
  }
  bullets=bullets.filter(b=>!b.dead);
  for(const e of enemies){updEnemy(e);if(!P.dead&&(e.x-P.x)**2+(e.y-P.y)**2<(e.r+P.r-(e.tiny?0:8))**2){if(e.tiny){e.dead=1;P.webbed=Math.max(P.webbed,104);if(t-gnatT>20){gnatT=t;say((BUGINFO[e.type]?BUGINFO[e.type].name:'GNATS')+' IN YOUR EYES!');}buzz(J(2200),.08,'sine',.012,200,40,5000);}else hitPlayer();}}

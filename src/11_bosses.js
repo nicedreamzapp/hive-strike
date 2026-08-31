@@ -21,4 +21,6 @@ const faceRot=k=>0;  // every sprite PNG is stored head-down now, so nothing is 
 const BSIZE=[250,250,250,250,196,250,250,225,250,250,250,225,250,250,250,235]; // per-boss draw height: the stag beetle's antlers and the crab's claws ran off the sides
 const BROT=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]; // art is rendered head-down now, so no sprite is flipped
 const BARCH=[0,1,2,3,4,5,6,7,4,2,0,4,1,1,0,3]; // which of the eight hand-built fight patterns each boss uses
-function spawnBoss(){const b=BOSSES[LV().boss];boss={...b,hp:b.hp*.95*(1+loop*.7),max:b.hp*.95*(1+loop*.7),x:W/2,y:-80,t:0,ph:0,rage:0,seg:[]};bossAlive=true;enemies=[];bossIntro=110;shake=30;say(b.name+'  —  FIGHT!');rumble(1.6,.07);swell(55,1.6,'triangle',.06,.5);}
+function spawnBoss(){const b=BOSSES[LV().boss];boss={...b,hp:b.hp*.95*(1+loop*.7),max:b.hp*.95*(1+loop*.7),x:W/2,y:-80,t:0,ph:0,rage:0,seg:[]};bossAlive=true;enemies=[];bossIntro=110;shake=30;say(b.name+'  —  FIGHT!');rumble(1.6,.07);swell(55,1.6,'triangle',.06,.5);
+ if(MODS.angry)rageBoss(boss); // ANGRY HIVES: the job change starts at the door
+}

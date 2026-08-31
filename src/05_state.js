@@ -43,8 +43,34 @@ const WEAPONS={honey:{name:'HONEY SPRAY',tag:'WIDE SPREAD',col:'#ffb300'},stinge
 const WKEYS=Object.keys(WEAPONS);const randWeapon=()=>{const o=WKEYS.filter(k=>k!==P.wpn);return o[RI(0,o.length-1)];};
 const P={x:W/2,y:H-100,px:W/2,py:H-100,r:12,lives:5,wpn:'honey',lvl:1,bombs:3,inv:0,fireT:0,dead:0,shots:0};
 let bullets=[],ebullets=[],enemies=[],pickups=[],parts=[],boss=null,lashT=null;
+// ---- queen's contract: pick your terms before the run, the payout scales with the greed ----
+const CONTRACTS=[
+ {id:'none', label:'NO CONTRACT',      terms:'the hive as it is',            mult:1,  mods:{}},
+ {id:'feast',label:'ROYAL FEAST',      terms:'nectar drops doubled',         mult:.7, mods:{feast:1}},
+ {id:'guard',label:'GUARDED',          terms:'start with 5 swarm calls',     mult:.8, mods:{guard:1}},
+ {id:'angry',label:'ANGRY HIVES',      terms:'every boss wakes enraged',     mult:1.5,mods:{angry:1}},
+ {id:'quick',label:'QUICK HIVES',      terms:'bugs shoot faster',            mult:1.5,mods:{quick:1}},
+ {id:'nobomb',label:'NO SWARM CALLS',  terms:'no bombs · every hit costs',   mult:2,  mods:{nobomb:1}},
+ {id:'royal',label:'ROYAL DECREE',     terms:'enraged bosses + fast bugs',   mult:2.2,mods:{angry:1,quick:1}},
+ {id:'dwish',label:'DEATH WISH',       terms:'no bombs + fast bugs',         mult:3,  mods:{nobomb:1,quick:1}},
+];
+let contractIx=Math.min(CONTRACTS.length-1,+localStorage.hs_contract||0);
+let MODS={},cmult=1;         // the live run's terms
+// ---- daily hive: the date is the seed. same contract for every phone, no network ----
+let dailyRun=null,wantDaily=false;
+const dayKey=()=>{const d=new Date();return d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate();};
+function seededPick(seed,n){let a=seed|0;a=Math.imul(a^a>>>15,1|a);a^=a+Math.imul(a^a>>>7,61|a);return ((a^(a>>>14))>>>0)%n;}
+const dailyContract=()=>CONTRACTS[1+seededPick(dayKey(),CONTRACTS.length-1)];
+const dailyBest=()=>+localStorage['hs_daily'+dayKey()]||0;
+function endRun(){if(dailyRun&&score>dailyBest())localStorage['hs_daily'+dayKey()]=score;}
 
-function start(){STAT.runs++;statSave();learned.clear();factT=0;chain=0;chainT=0;chainBest=0;grazed=0;nextExt=0;state='play';score=0;stage=startStage;stageT=0;loop=0;bossAlive=false;boss=null;bullets=[];ebullets=[];enemies=[];pickups=[];parts=[];Object.assign(P,{x:W/2,y:H-100,lives:5,wpn:'honey',lvl:1,bombs:3,inv:120,fireT:0,dead:0,webbed:0});bossWarn=0;levelClear=0;levelIntro=200;nextWave=0;rushDone=false;nextCloud=500;buildDecor((stage-1)%NL);palA=palB=(stage-1)%NL;palMix=1;SFX.levelStart();music('main');}
+function start(){STAT.runs++;statSave();learned.clear();factT=0;chain=0;chainT=0;chainBest=0;grazed=0;nextExt=0;state='play';score=0;stage=startStage;stageT=0;loop=0;bossAlive=false;boss=null;bullets=[];ebullets=[];enemies=[];pickups=[];parts=[];Object.assign(P,{x:W/2,y:H-100,lives:5,wpn:'honey',lvl:1,bombs:3,inv:120,fireT:0,dead:0,webbed:0});
+ dailyRun=wantDaily?dayKey():null;wantDaily=false;
+ const c=dailyRun?dailyContract():CONTRACTS[contractIx];MODS=c.mods;cmult=c.mult;
+ if(dailyRun)stage=1;                                  // a daily score means nothing unless everyone starts at the door
+ if(MODS.guard)P.bombs=5;if(MODS.nobomb)P.bombs=0;
+ bossWarn=0;levelClear=0;levelIntro=200;nextWave=0;rushDone=false;nextCloud=500;buildDecor((stage-1)%NL);palA=palB=(stage-1)%NL;palMix=1;SFX.levelStart();music('main');
+ if(dailyRun)say('DAILY HIVE  ·  '+c.label+'  ·  x'+c.mult);else if(c.mult!==1)say(c.label+'  ·  SCORE x'+c.mult);}
 function say(s){msg=s;msgT=150;}
 function sparks(x,y,c,n=8,sp=9){for(let i=0;i<n;i++){const a=R(0,Math.PI*2),s=R(sp*.5,sp);parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,l:R(8,18),c,r:R(1,2),spark:1});}}
 let muzzle=[];function flashMuzzle(x,y,c){muzzle.push({x,y,c,l:4});}

@@ -309,7 +309,9 @@ function drawPickup(p){emboss(p.x,p.y,70,()=>{const pulse=1.35+Math.sin(p.t*.15)
 function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shake)*.4);
  drawWorld();
  for(const p of pickups)drawPickup(p);
- for(const e of enemies)drawEnemy(e);
+ for(const e of enemies){drawEnemy(e);
+  // an elite wears a tiny health bar: it is a named target, not just a tougher sprite
+  if(e.elite&&e.maxhp&&!e.dead&&e.y>0){const f=Math.max(0,e.hp/e.maxhp);X.fillStyle='rgba(0,0,0,.5)';X.fillRect(e.x-16,e.y-e.r-14,32,4);X.fillStyle=f>.4?'#ffd23f':'#ff5a5a';X.fillRect(e.x-15,e.y-e.r-13,30*f,2);}}
  if(boss)drawBoss(boss);
  X.globalCompositeOperation='lighter';
  for(const b of bullets){const bd=.62+.55*clamp(b.y/H,0,1);   // your shots shrink as they fly away from you
@@ -370,7 +372,7 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
  worldOverlay();drawOverlays();
  // HUD
  const hg=X.createLinearGradient(0,H-44,0,H);hg.addColorStop(0,'rgba(0,0,0,0)');hg.addColorStop(1,'rgba(0,0,0,.42)');X.fillStyle=hg;X.fillRect(0,H-44,W,44);
- X.font='bold 13px '+FONT;X.textAlign='left';X.fillStyle='rgba(255,255,255,.92)';X.shadowColor='#000';X.shadowBlur=5;X.fillText('SCORE '+score,8,H-12);
+ X.font='bold 13px '+FONT;X.textAlign='left';X.fillStyle='rgba(255,255,255,.92)';X.shadowColor='#000';X.shadowBlur=5;X.fillText('SCORE '+score+(dailyRun?'  ·  DAILY':'')+(cmult!==1?'  ·  x'+cmult:''),8,H-12);
  X.textAlign='right';X.fillStyle='rgba(221,221,221,.9)';X.fillText('HI '+hi,W-8,H-12);
  if(chain>1){const m=chainMult(),a=Math.min(1,chainT/40);
   X.textAlign='left';X.globalAlpha=a;
@@ -432,6 +434,17 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
   X.fillStyle='#fff';X.font='14px '+FONT;
   X.shadowColor='#000';X.shadowBlur=6;if(state==='won'){X.font='bold 30px '+FONT;X.fillStyle='#8dff9a';X.fillText('THE HIVE IS SAFE!',W/2,sp?306:320);X.font='14px '+FONT;X.fillStyle='#fff';X.fillText('all sixteen worlds cleared   ·   SCORE '+score+'   HI '+hi,W/2,sp?332:348);X.font='12px '+FONT;X.fillStyle='#cfe8ff';X.fillText('best chain x'+Math.min(8,1+Math.floor(chainBest/6))+'  ('+chainBest+' kills)   ·   '+grazed+' grazes',W/2,sp?352:368);}else if(state==='over'){X.font='bold 26px '+FONT;X.fillStyle='#ff4d6d';X.fillText('THE HIVE HAS FALLEN',W/2,sp?306:320);X.font='14px '+FONT;X.fillStyle='#fff';X.fillText('SCORE '+score+'   HI '+hi+'   LEVEL '+stage,W/2,sp?332:348);X.font='12px '+FONT;X.fillStyle='#cfe8ff';X.fillText('best chain x'+Math.min(8,1+Math.floor(chainBest/6))+'  ('+chainBest+' kills)   ·   '+grazed+' grazes',W/2,sp?352:368);}
   else{X.font='bold 16px '+FONT;X.fillText('sixteen worlds. sixteen bosses. forty-eight bugs. one bee.',W/2,sp?122:335);}
+  // daily hive + queen's contract chips: DAILY runs today's seeded contract from level 1
+  // for a comparable score; CONTRACT cycles the terms for a normal run. tap to use.
+  {const dc=dailyContract(),cc=CONTRACTS[contractIx],db=dailyBest();
+   const chip=(b,hot)=>{X.save();X.fillStyle=hot?'rgba(20,50,24,.78)':'rgba(6,14,28,.78)';X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,8);X.fill();X.strokeStyle=hot?'rgba(141,255,154,.55)':'rgba(255,210,63,.45)';X.lineWidth=1;X.stroke();X.restore();};
+   chip(CBTN.daily,true);chip(CBTN.contract,false);
+   X.textAlign='center';X.shadowColor='#000';X.shadowBlur=3;
+   X.fillStyle='#8dff9a';X.font='bold 11px '+FONT;X.fillText('DAILY HIVE  ·  '+dc.label+'  x'+dc.mult,CBTN.daily.x+CBTN.daily.w/2,CBTN.daily.y+13);
+   X.fillStyle='#cfe8ff';X.font='9px '+FONT;X.fillText(db?'best today  '+db:'not flown today  ·  tap to fly',CBTN.daily.x+CBTN.daily.w/2,CBTN.daily.y+24);
+   X.fillStyle='#ffd23f';X.font='bold 11px '+FONT;X.fillText('CONTRACT · '+cc.label+(cc.mult!==1?'  x'+cc.mult:''),CBTN.contract.x+CBTN.contract.w/2,CBTN.contract.y+13);
+   X.fillStyle='#cfe8ff';X.font='9px '+FONT;X.fillText(cc.terms+'  ·  tap to change',CBTN.contract.x+CBTN.contract.w/2,CBTN.contract.y+24);
+   X.shadowBlur=0;}
   // instructions as a laid-out table instead of six centred lines running together
   {const ty=sp?392:372,colL=W*.06,colR=W*.53,colW=W*.41;
    X.save();X.fillStyle='rgba(6,14,28,.20)';X.beginPath();X.roundRect(colL-10,ty-20,W-2*(colL-10),150,10);X.fill();

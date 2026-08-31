@@ -33,7 +33,7 @@ const FONT='"Avenir Next Condensed","Futura","Arial Narrow","Helvetica Neue",san
 // stamped by tools/assemble.py from the version in package.json and the git commit --
 // never edit by hand. It is how you tell at a glance whether the phone in your hand is
 // running the same build as the one next to it.
-const BUILD='v1.0.0  ·  4116213+  ·  Aug 30';
+const BUILD='v1.0.0  ·  c7b2a3c+  ·  Aug 30';
 // letterbox the play field inside whatever the device actually gives us, safe-area padding
 // already removed by the body. visualViewport is the honest number on iOS.
 function fit(){const cs=getComputedStyle(document.body),
@@ -80,6 +80,8 @@ const barHit=(p,b)=>p.x>=b.x-8&&p.x<=b.x+b.w+8&&p.y>=b.y-9&&p.y<=b.y+b.h+9;
 const barVal=(p,b)=>Math.max(0,Math.min(1,(p.x-b.x)/b.w));
 C.addEventListener('pointermove',e=>{target=ptr(e);lastMove=t;});
 const BTN={music:{x:W/2-46,y:4,w:40,h:22},sfx:{x:W/2+6,y:4,w:40,h:22}};const inBtn=(p,b)=>p.x>=b.x&&p.x<=b.x+b.w&&p.y>=b.y&&p.y<=b.y+b.h;
+// daily hive + queen's contract chips, title screen only
+const CBTN={daily:{x:8,y:30,w:W/2-14,h:30},contract:{x:W/2+6,y:30,w:W/2-14,h:30}};
 C.addEventListener('pointerdown',e=>{const isT=e.pointerType==='touch',p=ptr(e),raw={x:p.x,y:p.y+(isT?TOUCH_LIFT:0)};
  audioWake();
  if(inBtn(raw,BTN.music)){musicToggle();return;}
@@ -94,7 +96,10 @@ C.addEventListener('pointerdown',e=>{const isT=e.pointerType==='touch',p=ptr(e),
   if(barHit(raw,BARS.sfx)){setSfxLv(barVal(raw,BARS.sfx));click(1400,.02);say('EFFECTS '+Math.round(SFXLV*100)+'%');return;}
  }
  target=p;lastMove=t;
- if(state!=='play'){for(let i=0;i<16;i++){if(inBtn(raw,TILE(i))){pickStage(i+1);if(!armed)arm();return;}}if(state==='won')continueGame();else if(!armed)arm();else start();return;}
+ if(state!=='play'){
+  if(inBtn(raw,CBTN.daily)){if(!armed)arm();wantDaily=true;start();return;}
+  if(inBtn(raw,CBTN.contract)){contractIx=(contractIx+1)%CONTRACTS.length;localStorage.hs_contract=contractIx;const c=CONTRACTS[contractIx];say(c.label+'  ·  '+c.terms+(c.mult!==1?'  ·  SCORE x'+c.mult:''));click(1200,.02);return;}
+  for(let i=0;i<16;i++){if(inBtn(raw,TILE(i))){pickStage(i+1);if(!armed)arm();return;}}if(state==='won')continueGame();else if(!armed)arm();else start();return;}
  // a finger landing is how you MOVE on a phone -- only a mouse click means "bomb"
  if(!isT)wantBomb=1;});
 addEventListener('contextmenu',e=>e.preventDefault());
@@ -546,8 +551,34 @@ const WEAPONS={honey:{name:'HONEY SPRAY',tag:'WIDE SPREAD',col:'#ffb300'},stinge
 const WKEYS=Object.keys(WEAPONS);const randWeapon=()=>{const o=WKEYS.filter(k=>k!==P.wpn);return o[RI(0,o.length-1)];};
 const P={x:W/2,y:H-100,px:W/2,py:H-100,r:12,lives:5,wpn:'honey',lvl:1,bombs:3,inv:0,fireT:0,dead:0,shots:0};
 let bullets=[],ebullets=[],enemies=[],pickups=[],parts=[],boss=null,lashT=null;
+// ---- queen's contract: pick your terms before the run, the payout scales with the greed ----
+const CONTRACTS=[
+ {id:'none', label:'NO CONTRACT',      terms:'the hive as it is',            mult:1,  mods:{}},
+ {id:'feast',label:'ROYAL FEAST',      terms:'nectar drops doubled',         mult:.7, mods:{feast:1}},
+ {id:'guard',label:'GUARDED',          terms:'start with 5 swarm calls',     mult:.8, mods:{guard:1}},
+ {id:'angry',label:'ANGRY HIVES',      terms:'every boss wakes enraged',     mult:1.5,mods:{angry:1}},
+ {id:'quick',label:'QUICK HIVES',      terms:'bugs shoot faster',            mult:1.5,mods:{quick:1}},
+ {id:'nobomb',label:'NO SWARM CALLS',  terms:'no bombs · every hit costs',   mult:2,  mods:{nobomb:1}},
+ {id:'royal',label:'ROYAL DECREE',     terms:'enraged bosses + fast bugs',   mult:2.2,mods:{angry:1,quick:1}},
+ {id:'dwish',label:'DEATH WISH',       terms:'no bombs + fast bugs',         mult:3,  mods:{nobomb:1,quick:1}},
+];
+let contractIx=Math.min(CONTRACTS.length-1,+localStorage.hs_contract||0);
+let MODS={},cmult=1;         // the live run's terms
+// ---- daily hive: the date is the seed. same contract for every phone, no network ----
+let dailyRun=null,wantDaily=false;
+const dayKey=()=>{const d=new Date();return d.getFullYear()*10000+(d.getMonth()+1)*100+d.getDate();};
+function seededPick(seed,n){let a=seed|0;a=Math.imul(a^a>>>15,1|a);a^=a+Math.imul(a^a>>>7,61|a);return ((a^(a>>>14))>>>0)%n;}
+const dailyContract=()=>CONTRACTS[1+seededPick(dayKey(),CONTRACTS.length-1)];
+const dailyBest=()=>+localStorage['hs_daily'+dayKey()]||0;
+function endRun(){if(dailyRun&&score>dailyBest())localStorage['hs_daily'+dayKey()]=score;}
 
-function start(){STAT.runs++;statSave();learned.clear();factT=0;chain=0;chainT=0;chainBest=0;grazed=0;nextExt=0;state='play';score=0;stage=startStage;stageT=0;loop=0;bossAlive=false;boss=null;bullets=[];ebullets=[];enemies=[];pickups=[];parts=[];Object.assign(P,{x:W/2,y:H-100,lives:5,wpn:'honey',lvl:1,bombs:3,inv:120,fireT:0,dead:0,webbed:0});bossWarn=0;levelClear=0;levelIntro=200;nextWave=0;rushDone=false;nextCloud=500;buildDecor((stage-1)%NL);palA=palB=(stage-1)%NL;palMix=1;SFX.levelStart();music('main');}
+function start(){STAT.runs++;statSave();learned.clear();factT=0;chain=0;chainT=0;chainBest=0;grazed=0;nextExt=0;state='play';score=0;stage=startStage;stageT=0;loop=0;bossAlive=false;boss=null;bullets=[];ebullets=[];enemies=[];pickups=[];parts=[];Object.assign(P,{x:W/2,y:H-100,lives:5,wpn:'honey',lvl:1,bombs:3,inv:120,fireT:0,dead:0,webbed:0});
+ dailyRun=wantDaily?dayKey():null;wantDaily=false;
+ const c=dailyRun?dailyContract():CONTRACTS[contractIx];MODS=c.mods;cmult=c.mult;
+ if(dailyRun)stage=1;                                  // a daily score means nothing unless everyone starts at the door
+ if(MODS.guard)P.bombs=5;if(MODS.nobomb)P.bombs=0;
+ bossWarn=0;levelClear=0;levelIntro=200;nextWave=0;rushDone=false;nextCloud=500;buildDecor((stage-1)%NL);palA=palB=(stage-1)%NL;palMix=1;SFX.levelStart();music('main');
+ if(dailyRun)say('DAILY HIVE  ·  '+c.label+'  ·  x'+c.mult);else if(c.mult!==1)say(c.label+'  ·  SCORE x'+c.mult);}
 function say(s){msg=s;msgT=150;}
 function sparks(x,y,c,n=8,sp=9){for(let i=0;i<n;i++){const a=R(0,Math.PI*2),s=R(sp*.5,sp);parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,l:R(8,18),c,r:R(1,2),spark:1});}}
 let muzzle=[];function flashMuzzle(x,y,c){muzzle.push({x,y,c,l:4});}
@@ -723,9 +754,30 @@ function worldForce(){
  }
  P.px=P.x;P.py=P.y;
 }
+// THE VOLCANO: ember columns erupt from the floor. a column is cover -- it burns enemy
+// shots out of the air and cooks any bug standing in it -- but it cooks you just the same.
+// 90 frames of shimmer telegraph where it will rise, then ~4 seconds of fire.
+let volc=null,volcNext=700;
+function volcanoTick(){
+ if(state!=='play'||LV().name!=='THE VOLCANO'){volc=null;return;}
+ if(!volc){if(--volcNext<=0){volc={x:R(70,W-70),w:66,t:0};volcNext=RI(650,1000);}return;}
+ volc.t++;const inBand=(x)=>Math.abs(x-volc.x)<volc.w/2;
+ if(volc.t<90){if(volc.t%5===0)parts.push({x:volc.x+R(-volc.w/2,volc.w/2),y:H-R(10,40),vx:0,vy:-R(.5,1.2),l:20,c:'#ff9030',r:R(1,2)});return;}
+ if(volc.t>330){volc=null;return;}
+ if(volc.t%2===0)parts.push({x:volc.x+R(-volc.w/2,volc.w/2),y:H,vx:R(-.3,.3),vy:-R(6,10),l:R(20,40),c:['#ffd166','#ff9030','#ff5a10'][RI(0,2)],r:R(1.5,3),spark:1});
+ for(const b of ebullets)if(!b.dead&&inBand(b.x)&&b.y>40){b.dead=1;sparks(b.x,b.y,'#ff9030',3,5);}
+ if(!P.dead&&P.inv===0&&inBand(P.x)&&volc.t%20===0)hitPlayer();
+ if(volc.t%12===0)for(const e of enemies){if(!e.dead&&inBand(e.x)&&e.y>0){e.hp-=1.2;e.fl=3;if(e.hp<=0){e.dead=1;killScore(e);boom(e.x,e.y,'#ff9030',14);if(!e.tiny)gibs(e);sfxKill(e);}}}
+}
 // the cave goes dark: you only see a pool of light around the bee
 function worldOverlay(){
  const name=LV().name;
+ if(name==='THE VOLCANO'&&volc){const a=volc.t<90?.10+(volc.t/90)*.12:.32,x0=volc.x-volc.w/2;
+  X.save();const g=X.createLinearGradient(0,H,0,volc.t<90?H-120:0);
+  g.addColorStop(0,`rgba(255,120,20,${a})`);g.addColorStop(.6,`rgba(255,60,10,${a*.6})`);g.addColorStop(1,'rgba(255,40,0,0)');
+  X.fillStyle=g;X.fillRect(x0,0,volc.w,H);
+  if(volc.t>=90){X.globalCompositeOperation='lighter';X.fillStyle=`rgba(255,200,80,${.10+Math.sin(volc.t*.4)*.05})`;X.fillRect(x0+volc.w*.3,0,volc.w*.4,H);}
+  X.restore();return;}
  if(name!=='THE CAVE')return;
  const r=150+Math.sin(t*.03)*10;
  X.save();X.globalCompositeOperation='source-over';
@@ -787,14 +839,14 @@ function wave(){const lv=LV(),pr=stageT/lv.len;
  if(useShooter){const k=sho[RI(0,sho.length-1)];const ak=A(k);if(ak==='cicada')FORMS.screamer(k);else if(ak==='stinkbug')FORMS.stinker(k);else if(ak==='snail')FORMS.crawler(k);else if(ak==='spiderling')FORMS.threads(k);else if(ak==='glowworm'||ak==='dungbeetle')spawn(k,R(60,W-60),-30,{pat:ak==='glowworm'?'creep':'slow'});else FORMS[SHOOTER_FORMS[RI(0,1)]](k);}
  else if(Math.random()<.55){const k=fod[RI(0,fod.length-1)]||'fly';SYMFORMS[RI(0,SYMFORMS.length-1)](k,RI(4,6));}
  else{const k=fod[RI(0,fod.length-1)]||'fly',ak=A(k);let f=FODDER_FORMS[RI(0,FODDER_FORMS.length-1)];if(ak==='gnat')f='swarm';if(ak==='grasshopper')f='hoppers';if(ak==='hornet')f=Math.random()<.6?'chargers':'pincer';if(ak==='spiderling')f='threads';if(ak==='butterfly')f='flutters';if(ak==='earwig')f=Math.random()<.6?'zig':'pincer';if(ak==='katydid')f='hoppers';if(ak==='strider')f='skaters';if(ak==='weevil')f='chargers';if(ak==='termite')f='scurry';if(ak==='horsefly')f='divers';if(ak==='ant')f=Math.random()<.5?'column':'line';if(k==='ant'&&(f==='pincer'||f==='ambush'))f='column';FORMS[f](k);}
- if(Math.random()<.22+((stage-1)%NL)*.052+loop*.1&&enemies.length){const e=enemies[enemies.length-1];if(!e.elite&&!e.tiny){e.elite=1;e.hp*=2.2+((stage-1)%NL)*.06;e.sc*=3;}}
+ if(Math.random()<.22+((stage-1)%NL)*.052+loop*.1&&enemies.length){const e=enemies[enemies.length-1];if(!e.elite&&!e.tiny){e.elite=1;e.hp*=2.2+((stage-1)%NL)*.06;e.maxhp=e.hp;e.sc*=3;}}
 }
 const anyBug=()=>{const r=LV().roster;return r[RI(0,r.length-1)];};
 const PD=1.70; // player damage multiplier — guns felt weak at 1.15
 const EB=.5;const FR0=1.3; // FR = how much longer bugs wait between volleys
-Object.defineProperty(globalThis,'FR',{get(){const lv=(stage-1)%NL;return Math.max(.55,FR0-lv*.055-loop*.1);}});
+Object.defineProperty(globalThis,'FR',{get(){const lv=(stage-1)%NL;return Math.max(.55,FR0-lv*.055-loop*.1)*(MODS.quick?.72:1);}});
 // kinds: dart (default), venom (green drop), seed (spiky seed), dust (moth scale puff), ember (firefly spark), drop (water), gas (stink cloud), wave (cicada sound ring), web (sticks to you and slows you), blade (mantis scythe), acorn (beetle king)
-function eshot(x,y,a,sp,r=4,col='#ff3b3b',kind='dart'){const bf=bossAlive?.85:1;ebullets.push({x,y,vx:Math.cos(a)*sp*EB*bf,vy:Math.sin(a)*sp*EB*bf,r:Math.max(6,r+2),col,t:0,kind});}
+function eshot(x,y,a,sp,r=4,col='#ff3b3b',kind='dart'){const bf=(bossAlive?.85:1)*(MODS.quick?1.12:1);ebullets.push({x,y,vx:Math.cos(a)*sp*EB*bf,vy:Math.sin(a)*sp*EB*bf,r:Math.max(6,r+2),col,t:0,kind});}
 function aim(x,y){return Math.atan2(P.y-y,P.x-x);}
 function separate(){const n=enemies.length;
  // 'fall' is a normal descent pattern during play, so those get separated too.
@@ -891,15 +943,17 @@ const faceRot=k=>0;  // every sprite PNG is stored head-down now, so nothing is 
 const BSIZE=[250,250,250,250,196,250,250,225,250,250,250,225,250,250,250,235]; // per-boss draw height: the stag beetle's antlers and the crab's claws ran off the sides
 const BROT=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]; // art is rendered head-down now, so no sprite is flipped
 const BARCH=[0,1,2,3,4,5,6,7,4,2,0,4,1,1,0,3]; // which of the eight hand-built fight patterns each boss uses
-function spawnBoss(){const b=BOSSES[LV().boss];boss={...b,hp:b.hp*.95*(1+loop*.7),max:b.hp*.95*(1+loop*.7),x:W/2,y:-80,t:0,ph:0,rage:0,seg:[]};bossAlive=true;enemies=[];bossIntro=110;shake=30;say(b.name+'  —  FIGHT!');rumble(1.6,.07);swell(55,1.6,'triangle',.06,.5);}
+function spawnBoss(){const b=BOSSES[LV().boss];boss={...b,hp:b.hp*.95*(1+loop*.7),max:b.hp*.95*(1+loop*.7),x:W/2,y:-80,t:0,ph:0,rage:0,seg:[]};bossAlive=true;enemies=[];bossIntro=110;shake=30;say(b.name+'  —  FIGHT!');rumble(1.6,.07);swell(55,1.6,'triangle',.06,.5);
+ if(MODS.angry)rageBoss(boss); // ANGRY HIVES: the job change starts at the door
+}
 // ---------- boss second phases ----------
 // sixteen bosses shared eight attack patterns and one identical enrage, so the fights blurred
 // together. below half health each boss now opens its OWN attack on top of its pattern.
 const PHASE2=[
  {cry:'THE QUEEN CALLS THE SWARM!', k:'fan'},      {cry:'THE SCYTHES COME DOWN!',   k:'cross'},
  {cry:'EVERY THREAD PULLS!',        k:'web'},      {cry:'TOO SLOW!',                k:'strafe'},
- {cry:'THE CROWN LOWERS!',          k:'charge'},   {cry:'A HUNDRED LEGS!',          k:'rain'},
- {cry:'HOLD STILL!',                k:'needle'},   {cry:'THE SAND REMEMBERS!',      k:'spiral'},
+ {cry:'THE CROWN LOWERS!',          k:'charge'},   {cry:'TWO HUNGERS NOW!',         k:'split'},
+ {cry:'HOLD STILL!',                k:'needle'},   {cry:'THE TAIL TAKES ROOT!',     k:'pincer'},
  {cry:'YOU LOOKED RIGHT AT ME!',    k:'ambush'},   {cry:'FOLLOW THE LIGHTS!',       k:'lantern'},
  {cry:'THE COLD BITES!',            k:'burst'},    {cry:'OLDER THAN YOU!',          k:'wall'},
  {cry:'EVERY EMBER IS MINE!',       k:'rain'},     {cry:'THE COLD PINCHES!',        k:'cross'},
@@ -923,9 +977,21 @@ function phase2(b){
   case 'lantern': for(let i=0;i<7;i++)shot(i/7*6.283,1.9+d*.7,8,'#7fe8ff','drop');break;
   case 'burst':   for(let i=0;i<9;i++)shot(i/9*6.283+b.t*.02,2.1+d,7,'#bfe8ff','dart');break;
   case 'wall':    for(let i=0;i<8;i++)ebullets.push({x:20+i*((W-40)/7),y:-12,vx:0,vy:2.0+d,r:8,col:'#8aa08a',t:0,kind:'dart'});break;
+  case 'split':   if(b.x2!=null){const a2=Math.atan2(P.y-b.y2,P.x-b.x2);shot(aim0+.12,2.2+d,6,'#8fdc3a','venom');ebullets.push({x:b.x2,y:b.y2,vx:Math.cos(a2-.12)*(2.2+d),vy:Math.sin(a2-.12)*(2.2+d),r:8,col:'#8fdc3a',t:0,kind:'venom'});}break;
+  case 'pincer':  for(const s of[-1,1])ebullets.push({x:s<0?10:W-10,y:clamp(P.y+R(-60,20),80,H-60),vx:(s<0?1:-1)*(2.2+d),vy:R(-.3,.3),r:7,col:'#e8c070',t:0,kind:'blade'});break;
  }
 }
-function updBoss(b){b.t++;if(b.fl>0)b.fl--;if(b.y>0)sfxBossIdle(b);let sp=.55+D()*.5;if(!b.rage&&b.hp<b.max*.5){b.rage=1;say(PHASE2[LV().boss].cry);shake=20;rumble(1,.06);hiss(.9,.05,6000,1500);chitter(14,1400,.035,20);}if(b.rage)sp*=1.15;if(b.rage)phase2(b);const rf=b.rage?.8:1;
+// half health is a JOB CHANGE, not a speed bump. rageBoss flips the switch and builds
+// whatever new body the second half of the fight needs; phase2() plays the new attack.
+function rageBoss(b){if(b.rage)return;b.rage=1;const real=LV().boss;say(PHASE2[real].cry);shake=20;rumble(1,.06);hiss(.9,.05,6000,1500);chitter(14,1400,.035,20);
+ if(real===5){b.seg.length=Math.min(b.seg.length,90);b.seg2=b.seg.map(s=>({x:W-s.x,y:s.y}));}   // the mother splits: two shorter snakes that pinch
+ if(real===7){b.turret={x:clamp(b.x,70,W-70),y:Math.max(90,b.y-10),t:0};}                        // the tail plants as a turret while the body flanks
+ if(real===8)b.camoT=0;                                                                          // fades into the canopy; only the twig-sway tells
+ if(real===15){const w=b.max*.16;b.wings={l:w,r:w,max:w};say('THE WINGS BECOME SHIELDS!');}      // break a wing, feast on the scales
+}
+function updBoss(b){b.t++;if(b.fl>0)b.fl--;if(b.y>0)sfxBossIdle(b);let sp=.55+D()*.5;if(!b.rage&&b.hp<b.max*.5)rageBoss(b);if(b.rage)sp*=1.15;if(b.rage)phase2(b);const rf=b.rage?.8:1;
+ if(LV().boss===8&&b.rage){b.camoT=(b.camoT||0)+1;const ph=b.camoT%300;b.camo=ph>=150;if(ph===150&&!b.saidCamo){b.saidCamo=1;say('ONLY THE TWIG-SWAY TELLS');}
+  if(b.camo&&b.t%26===0)parts.push({x:b.x+R(-30,30),y:b.y+R(-20,40),vx:R(-.3,.3),vy:R(.2,.8),l:22,c:'#7a8a4a',r:2});}
  const rest=BARCH[LV().boss]===5?60:BSIZE[LV().boss]*.5+14;if(b.y<rest){b.y+=1.2;return;}   // centipede drives its own Y; everyone else stops low enough that the whole sprite is on screen
  // and keep the whole sprite inside the sides too -- the stag beetle's antlers were running off the left
  {const sp=SPR['boss'+LV().boss];if(sp){const hw=BSIZE[LV().boss]*(sp.width/sp.height)*.5+6;if(hw<W*.5)b.x=clamp(b.x,hw,W-hw);}}
@@ -933,9 +999,12 @@ function updBoss(b){b.t++;if(b.fl>0)b.fl--;if(b.y>0)sfxBossIdle(b);let sp=.55+D(
  if(i===5){ // centipede: head snakes across, body trails
   // a longer, smoother serpentine so the body never folds back over its own head
   b.x=W/2+Math.cos(b.t*.0165)*(W/2-56);b.y=150+Math.sin(b.t*.0165)*74;
-  b.seg.unshift({x:b.x,y:b.y});if(b.seg.length>200)b.seg.pop();
-  if(b.t%(220*rf|0)===0){const a=aim(b.x,b.y);for(let k=-1;k<=1;k+=2)eshot(b.x,b.y+10,a+k*.16,3.4*sp,5,'#8fdc3a','venom');snd(200,.1);}
-  if(b.t%(190*rf|0)===0){const s=b.seg[Math.min(b.seg.length-1,RI(40,140))];if(s)eshot(s.x,s.y,Math.PI/2+R(-.3,.3),2.4*sp,5,'#8fdc3a','venom');}
+  b.seg.unshift({x:b.x,y:b.y});if(b.seg.length>(b.rage?90:200))b.seg.pop();
+  if(b.rage){ // JOB CHANGE: split into two shorter snakes -- the twin mirrors and the pair pinch
+   b.x2=W-b.x;b.y2=150+Math.sin(b.t*.0165+Math.PI/2)*74;
+   b.seg2=b.seg2||[];b.seg2.unshift({x:b.x2,y:b.y2});if(b.seg2.length>90)b.seg2.pop();}
+  if(b.t%(220*rf|0)===0){const a=aim(b.x,b.y);for(let k=-1;k<=1;k+=2)eshot(b.x,b.y+10,a+k*.16,3.4*sp,5,'#8fdc3a','venom');if(b.rage&&b.x2!=null)eshot(b.x2,b.y2+10,aim(b.x2,b.y2),3.4*sp,5,'#8fdc3a','venom');snd(200,.1);}
+  if(b.t%(190*rf|0)===0){const s=b.seg[Math.min(b.seg.length-1,RI(40,Math.min(140,b.seg.length-1)))];if(s)eshot(s.x,s.y,Math.PI/2+R(-.3,.3),2.4*sp,5,'#8fdc3a','venom');}
   if(b.t%520===0)for(let k=0;k<2;k++)spawn(anyBug(),R(40,W-40),-20,{pat:'march'});
   return;}
  b.x=W/2+Math.sin(b.t*.012)*(W/2-70);
@@ -960,8 +1029,10 @@ function updBoss(b){b.t++;if(b.fl>0)b.fl--;if(b.y>0)sfxBossIdle(b);let sp=.55+D(
   if(b.t%(360*rf|0)===0){const a=aim(b.x,b.y);for(let k=-1;k<=1;k++)eshot(b.x,b.y,a+k*.14,4.5*sp,4,'#a0f0ff','drop');snd(400,.1,'sine',.03,900);}
   if(b.t%520===0)spawn(anyBug(),Math.random()<.5?-20:W+20,R(150,220),{pat:'dash'});
  }else if(i===4){ // stag beetle: heavy slow shots, dropping acorns, ants
-  if(b.t%(170*rf|0)===0){const a=aim(b.x,b.y);for(let k=-1;k<=1;k+=2)eshot(b.x,b.y+30,a+k*.26,2.6*sp,8,'#8a4a10','acorn');snd(120,.15,'triangle',.05,60);}
-  if(b.t%(200*rf|0)===0)eshot(R(30,W-30),-10,Math.PI/2,2.2*sp,7,'#c07030','acorn');
+  // b.camo is only ever set on the walking stick: hidden in the canopy it holds its fire,
+  // because a shot from empty air would give the trick away (and feel cheap)
+  if(!b.camo&&b.t%(170*rf|0)===0){const a=aim(b.x,b.y);for(let k=-1;k<=1;k+=2)eshot(b.x,b.y+30,a+k*.26,2.6*sp,8,'#8a4a10','acorn');snd(120,.15,'triangle',.05,60);}
+  if(!b.camo&&b.t%(200*rf|0)===0)eshot(R(30,W-30),-10,Math.PI/2,2.2*sp,7,'#c07030','acorn');
   if(b.t%560===0)for(let k=0;k<2;k++)spawn(anyBug(),b.x+R(-50,50),b.y+20,{pat:'march'});
  }else if(i===6){ // mosquito matriarch: hovers, then lunges down at you and pulls back up; spits venom; calls gnats
   if(b.lunge>0){b.lunge--;if(b.lunge>25){b.x+=Math.cos(b.la)*5*sp;b.y+=Math.sin(b.la)*5*sp;}else{b.y+=(110-b.y)*.08;}}
@@ -969,15 +1040,22 @@ function updBoss(b){b.t++;if(b.fl>0)b.fl--;if(b.y>0)sfxBossIdle(b);let sp=.55+D(
   if(b.t%(230*rf|0)===0){const a=aim(b.x,b.y);eshot(b.x,b.y+20,a,3.2*sp,4,'#8fdc3a','venom');}
   if(b.t%900===0)FORMS.cloud();
  }else if(i===7){ // scorpion king: scuttles side to side, tail stabs (fast darts), pincer sweeps (blades), ants
-  b.x=W/2+Math.sin(b.t*.02)*(W/2-80);b.y=110+Math.abs(Math.sin(b.t*.01))*30;
-  if(b.t%(190*rf|0)===0){const a=aim(b.x,b.y);for(let k=-1;k<=1;k+=2)eshot(b.x,b.y-30,a+k*.1,5*sp,4,'#ff3b3b','dart');click(600,.04);}
+  // JOB CHANGE at half health: the tail plants in the sand as a turret (drawn where it rooted)
+  // and keeps firing aimed darts from there while the body flanks faster with pincers only.
+  b.x=W/2+Math.sin(b.t*(b.rage?.032:.02))*(W/2-80);b.y=110+Math.abs(Math.sin(b.t*.01))*30;
+  if(b.rage&&b.turret){b.turret.t++;if(b.turret.t%(120*rf|0)===0){const a=Math.atan2(P.y-b.turret.y,P.x-b.turret.x);eshot(b.turret.x,b.turret.y,a,4.2*sp,4,'#ff3b3b','dart');click(700,.04);}}
+  if(!b.rage&&b.t%(190*rf|0)===0){const a=aim(b.x,b.y);for(let k=-1;k<=1;k+=2)eshot(b.x,b.y-30,a+k*.1,5*sp,4,'#ff3b3b','dart');click(600,.04);}
   if(b.t%(280*rf|0)===0){for(const sg of[-1,1])eshot(b.x+sg*40,b.y+10,Math.PI/2+sg*.35,2.8*sp,6,'#e8c070','blade');}
   if(b.t%440===0)for(let k=0;k<2;k++)spawn(anyBug(),b.x+R(-60,60),b.y+30,{pat:'march'});
  }
 }
 // ---------- pickups ----------
 function drop(x,y,force){const r=Math.random();let k=null;
- if(force)k=force;else if(r<.11)k='nectar';else if(r<.17)k=randWeapon();else if(r<.14)k='bomb';else if(r<.143)k='life';
+ // the old chain tested r<.14 and r<.143 AFTER r<.17, so bombs and lives never dropped
+ // by chance -- only when forced. now they exist. ROYAL FEAST doubles the nectar band.
+ const nb=MODS.feast?.22:.11;
+ if(force)k=force;else if(r<nb)k='nectar';else if(r<nb+.06)k=randWeapon();else if(r<nb+.09)k='bomb';else if(r<nb+.093)k='life';
+ if(k==='bomb'&&MODS.nobomb)k='nectar';   // NO SWARM CALLS means none, not "found one anyway"
  if(k)pickups.push({x,y,k,vy:1.1,t:0});}
 function take(p){
  if(p.k==='nectar'){SFX.nectar();if(P.lvl<5){P.lvl++;say('POWER UP  Lv'+P.lvl);}else{addScore(1000);say('MAX POWER +1000');}}
@@ -987,7 +1065,7 @@ function take(p){
 let chain=0,chainT=0,chainBest=0,grazed=0,nextExt=0;
 const EXTENDS=[100000,250000,500000,900000];
 const chainMult=()=>Math.min(8,1+Math.floor(chain/6));
-function addScore(n){score+=Math.round(n*chainMult());
+function addScore(n){score+=Math.round(n*chainMult()*cmult);
  while(nextExt<EXTENDS.length&&score>=EXTENDS[nextExt]){nextExt++;P.lives++;say('EXTRA LIFE!');
   jingle([880,1174,1568,2093],'sine',.03,.07);}}
 function onKill(){chain++;chainT=190;if(chain>chainBest)chainBest=chain;
@@ -1021,10 +1099,10 @@ function grazeTick(){if(P.dead||P.inv>0)return;
    if(grazed%6<pays)snd(2200,.03,'sine',.012,3000);}}}
 function hitPlayer(){if(P.inv>0||P.dead)return;if(P.bombs>0){bomb();P.inv=90;say('AUTO SWARM CALL!');return;}breakChain();P.lives--;P.dead=90;shake=20;boom(P.x,P.y,'#ffd166',40,7);noise(.7,.05,1400,.6,200,'lowpass');swell(90,.9,'sine',.08,.05,40);
  P.lvl=Math.max(1,P.lvl-1);ebullets=[];
- if(P.lives<0){state='over';music('title');if(score>hi){hi=score;localStorage.hs_hi=hi;}}}
+ if(P.lives<0){state='over';music('title');endRun();if(score>hi){hi=score;localStorage.hs_hi=hi;}}}
 
 // ---------- update ----------
-function update(){t++;if(shake>0)shake--;if(msgT>0)msgT--;bugChorus();chainTick();grazeTick();if(P.lives===0&&!P.dead&&t%64===0)SFX.heartbeat();
+function update(){t++;if(shake>0)shake--;if(msgT>0)msgT--;bugChorus();chainTick();grazeTick();volcanoTick();if(P.lives===0&&!P.dead&&t%64===0)SFX.heartbeat();
  if(P.dead>0){P.dead--;if(P.dead===0){P.x=W/2;P.y=H-100;P.inv=240;}}
  else{const s=(keys.ShiftLeft||keys.ShiftRight||PAD.slow?2.5:4.5)*(P.webbed>0?.35:1);
   if(keys.ArrowLeft||keys.KeyA)P.x-=s;if(keys.ArrowRight||keys.KeyD)P.x+=s;if(keys.ArrowUp||keys.KeyW)P.y-=s;if(keys.ArrowDown||keys.KeyS)P.y+=s;
@@ -1038,7 +1116,7 @@ function update(){t++;if(shake>0)shake--;if(msgT>0)msgT--;bugChorus();chainTick(
   if(P.fireT>0)P.fireT--;else fire();
   if(keys.KeyX||keys.KeyB||wantBomb){if(!P.bt)bomb();P.bt=1;}else P.bt=0;wantBomb=0;}
  // stage flow: intro -> waves -> WARNING -> boss -> LEVEL CLEAR -> next
- if(levelClear>0){levelClear--;if(levelClear===0){recordBest((stage-1)%NL+1,score);if(stage%NL===0&&loop===0){unlockUpTo(16);state='won';music('title');if(score>hi){hi=score;localStorage.hs_hi=hi;}return;}stage++;stageT=0;unlockUpTo((stage-1)%NL+1);if(stage>STAT.deepest){STAT.deepest=stage;}statSave();if((stage-1)%NL===0){loop++;}levelIntro=200;nextWave=0;rushDone=false;nextCloud=400;buildDecor((stage-1)%NL);SFX.levelStart();}}
+ if(levelClear>0){levelClear--;if(levelClear===0){recordBest((stage-1)%NL+1,score);if(stage%NL===0&&loop===0){unlockUpTo(16);state='won';music('title');endRun();if(score>hi){hi=score;localStorage.hs_hi=hi;}return;}stage++;stageT=0;unlockUpTo((stage-1)%NL+1);if(stage>STAT.deepest){STAT.deepest=stage;}statSave();if((stage-1)%NL===0){loop++;}levelIntro=200;nextWave=0;rushDone=false;nextCloud=400;buildDecor((stage-1)%NL);SFX.levelStart();}}
  else if(!bossAlive){
   if(levelIntro>0){levelIntro--;if(levelIntro===0)music('main');}
   else if(bossWarn>0){bossWarn--;if(bossWarn%45===0){swell(70,.5,'sine',.07,.08);rumble(.5,.04);}if(bossWarn===0)spawnBoss();}
@@ -1058,9 +1136,19 @@ function update(){t++;if(shake>0)shake--;if(msgT>0)msgT--;bugChorus();chainTick(
   else if(b.k==='grenade'){b.vy+=b.ay;b.x+=b.vx;b.y+=b.vy;if(b.vy>0||enemies.some(e=>!e.dead&&(e.x-b.x)**2+(e.y-b.y)**2<(e.r+b.r+6)**2)){b.dead=1;boom(b.x,b.y,'#ffa54d',16,5);for(let k=0;k<8;k++){const a=k*Math.PI/4+R(-.2,.2);bullets.push({x:b.x,y:b.y,vx:Math.cos(a)*7,vy:Math.sin(a)*7,d:b.d*.45,r:4,k:'shard',life:26});}IMPACT.grenade();}}
   else if(b.k==='wall'){b.x+=(P.x-b.x)*.2;b.y=P.y-70;if(P.wpn!=='wall'||P.dead)b.dead=1;}
   else if(b.k==='saw'){b.vy+=.42;b.ang+=.5;if(b.vy>0){b.vx+=(P.x-b.x)*.004;}b.x+=b.vx;b.y+=b.vy;if(b.vy>0&&b.y>P.y+10)b.dead=1;}
-  else if(b.orbit){b.a+=.09;b.x=P.x+Math.cos(b.a)*44;b.y=P.y+Math.sin(b.a)*44;if(P.wpn!=='petal'||P.dead)b.dead=1;}else if(b.k!=='lure'&&b.k!=='grenade'&&b.k!=='wall'){b.x+=b.vx;b.y+=b.vy;if((b.y<-20&&!b.down)||b.y<-90||b.x<-20||b.x>W+20||b.y>H+20)b.dead=1;}if(b.life!=null&&--b.life<=0)b.dead=1;if(!b.orbit&&!b.drone&&b.k!=='stinger'&&b.k!=='static'&&t%3===0)parts.push({x:b.x+R(-2,2),y:b.y+R(-2,2),vx:R(-.4,.4),vy:R(.3,1),l:R(8,14),c:WEAPONS[b.k]?WEAPONS[b.k].col:'#fff',r:R(1,2.2)});
+  else if(b.orbit){b.a+=.09;b.x=P.x+Math.cos(b.a)*44;b.y=P.y+Math.sin(b.a)*44;if(P.wpn!=='petal'||P.dead)b.dead=1;}else if(b.k!=='lure'&&b.k!=='grenade'&&b.k!=='wall'){b.x+=b.vx;b.y+=b.vy;
+   // THE CRYSTAL: shots ricochet off the cavern walls once. your own volley is the puzzle.
+   if(LV().name==='THE CRYSTAL'&&!b.bounced&&((b.x<8&&b.vx<0)||(b.x>W-8&&b.vx>0))){b.vx=-b.vx;b.bounced=1;b.x=clamp(b.x,8,W-8);sparks(b.x,b.y,'#c8a0ff',3,5);}
+   if((b.y<-20&&!b.down)||b.y<-90||b.x<-20||b.x>W+20||b.y>H+20)b.dead=1;}if(b.life!=null&&--b.life<=0)b.dead=1;if(!b.orbit&&!b.drone&&b.k!=='stinger'&&b.k!=='static'&&t%3===0)parts.push({x:b.x+R(-2,2),y:b.y+R(-2,2),vx:R(-.4,.4),vy:R(.3,1),l:R(8,14),c:WEAPONS[b.k]?WEAPONS[b.k].col:'#fff',r:R(1,2.2)});
   for(const e of enemies){if(b.k==='static'||b.k==='lure'||b.k==='grenade')break;if((b.k==='lance'||b.k==='saw'||b.drone||b.k==='wall')&&b.cd>0)break;const hitW=b.k==='wall'?(Math.abs(e.x-b.x)<b.half+e.r&&Math.abs(e.y-b.y)<12+e.r):(e.x-b.x)**2+(e.y-b.y)**2<(e.r*1.3+b.r)**2;if(!e.dead&&!b.dead&&hitW){if(b.k==='lance'||b.k==='saw')b.cd=6;if(b.drone)b.cd=14;if(b.k==='wall')b.cd=8;e.hp-=b.d*PD;e.fl=4;if(!b.pierce)b.dead=1;if(b.k==='water'){for(const o of enemies){if(o!==e&&!o.dead&&(o.x-b.x)**2+(o.y-b.y)**2<48*48){o.hp-=b.d*.5;o.fl=3;}}for(let q=0;q<5;q++)parts.push({x:b.x,y:b.y,vx:R(-3,3),vy:R(-3,1),l:14,c:'#ffd070',r:2});}if(b.k==='wax'){e.slow=140;}if(b.orbit&&t%6!==0)continue;sfxHit(e);sfxImpact();sparks(b.x,b.y,WEAPONS[b.k]?WEAPONS[b.k].col:'#fff',4,6);if(e.hp<=0){e.dead=1;killScore(e);boom(e.x,e.y,e.col,14);sparks(e.x,e.y,'#fff',8);if(e.elite)drop(e.x,e.y,Math.random()<.5?randWeapon():['nectar','nectar','bomb'][RI(0,2)]);else if(!e.tiny)drop(e.x,e.y);if(!e.tiny)gibs(e);if(!e.tiny||t%4===0)sfxKill(e);}}}
-  if(boss&&!b.dead&&b.k!=='static'&&b.k!=='lure'&&b.k!=='grenade'&&b.k!=='wall'&&!((b.k==='lance'||b.k==='saw'||b.drone)&&b.cd>0)&&boss.y>0&&(boss.x-b.x)**2+(boss.y-b.y)**2<(boss.r+b.r)**2){if(b.k==='lance'||b.k==='saw')b.cd=6;if(b.drone)b.cd=14;boss.hp-=b.d*PD;boss.fl=3;if(!b.pierce)b.dead=1;sfxBossHit();parts.push({x:b.x,y:b.y,vx:R(-2,2),vy:R(-2,2),l:10,c:'#fff',r:2});}
+  if(boss&&!b.dead&&b.k!=='static'&&b.k!=='lure'&&b.k!=='grenade'&&b.k!=='wall'&&!((b.k==='lance'||b.k==='saw'||b.drone)&&b.cd>0)&&boss.y>0&&(boss.x-b.x)**2+(boss.y-b.y)**2<(boss.r+b.r+(boss.wings&&(boss.wings.l>0||boss.wings.r>0)?44:0))**2){if(b.k==='lance'||b.k==='saw')b.cd=6;if(b.drone)b.cd=14;
+   // atlas moth: while a wing lives it soaks the hit for its side. break one and that half
+   // of the screen fills with scales you can graze -- the shield becomes the feast.
+   if(boss.wings&&(boss.wings.l>0||boss.wings.r>0)){const side=(b.x<boss.x&&boss.wings.l>0)||boss.wings.r<=0?'l':'r';boss.wings[side]-=b.d*PD;boss.fl=3;
+    if(boss.wings[side]<=0){boss.wings[side]=0;const sx=side==='l'?boss.x-90:boss.x+90;boom(sx,boss.y,'#e0a060',40,7);flash=.3;shake=14;say('A WING BREAKS!');rumble(.8,.06);
+     for(let k=0;k<16;k++)ebullets.push({x:side==='l'?R(10,W/2-20):R(W/2+20,W-10),y:R(-50,90),vx:R(-.2,.2),vy:R(.7,1.3),r:6,col:'#ffdd88',t:0,kind:'dust'});drop(sx,boss.y+40,'bomb');}}
+   else{boss.hp-=b.d*PD;boss.fl=3;}
+   if(!b.pierce)b.dead=1;sfxBossHit();parts.push({x:b.x,y:b.y,vx:R(-2,2),vy:R(-2,2),l:10,c:'#fff',r:2});}
  }
  bullets=bullets.filter(b=>!b.dead);
  for(const e of enemies){updEnemy(e);if(!P.dead&&(e.x-P.x)**2+(e.y-P.y)**2<(e.r+P.r-(e.tiny?0:8))**2){if(e.tiny){e.dead=1;P.webbed=Math.max(P.webbed,104);if(t-gnatT>20){gnatT=t;say((BUGINFO[e.type]?BUGINFO[e.type].name:'GNATS')+' IN YOUR EYES!');}buzz(J(2200),.08,'sine',.012,200,40,5000);}else hitPlayer();}}
@@ -1400,11 +1488,24 @@ function drawBoss(b,portrait){const real=LV().boss,i=BARCH[real];
   for(let k=Math.min(b.seg.length-1,150);k>=6;k-=12){const sg=b.seg[k];ell(sg.x-b.x+7,sg.y-b.y+9,17,9);X.fill();}
   X.filter='none';X.globalAlpha=1;
   if(b.fl>0)X.filter='brightness(2) saturate(.5)';
-  centipedeSprite(b);X.filter='none';X.restore();}
+  centipedeSprite(b);X.filter='none';X.restore();
+  // the split twin: same plates, mirrored trail. shares the mother's health -- one hunger, two mouths
+  if(b.rage&&b.seg2&&b.seg2.length>8){X.save();X.translate(b.x2,b.y2);if(b.fl>0)X.filter='brightness(2) saturate(.5)';centipedeSprite({...b,x:b.x2,y:b.y2,seg:b.seg2});X.filter='none';X.restore();}}
  else if(i===5){if(!b.seg.length)b.seg=Array.from({length:150},(_,k)=>({x:b.x+Math.sin(k*.06)*40,y:b.y+k*.9}));emboss(b.x,b.y,220,()=>{centipedeSprite(b);menace(b,5);},{alt:0});}
- else if(SPR['boss'+real])emboss(b.x,b.y,300,()=>{const sc=(1+(b.rage?Math.sin(b.t*.3)*.03:0))*(1+Math.sin(b.t*.12)*.025);X.scale(sc,sc);X.rotate(Math.sin(b.t*.07)*.04);drawSprite(SPR['boss'+real],BSIZE[real],faceRot('boss'+real));},{filter:b.fl>0?'brightness(2) saturate(.5)':(b.rage?'saturate(1.5) contrast(1.15)':null),alt:portrait?0:1});
- else emboss(b.x,b.y,230,()=>{bossSprite(b,i);menace(b,i);},{filter:b.fl>0?'brightness(2) saturate(.5)':null,alt:portrait?0:1});
- if(portrait)return;X.fillStyle='rgba(0,0,0,.34)';X.fillRect(40,36,W-80,14);const g=X.createLinearGradient(42,0,W-42,0);g.addColorStop(0,'#ff3b3b');g.addColorStop(1,'#ffb13b');X.fillStyle=g;X.fillRect(42,38,(W-84)*Math.max(0,b.hp/b.max),10);X.fillStyle='#fff';X.font='bold 12px '+FONT;X.textAlign='center';X.shadowColor='#000';X.shadowBlur=4;X.fillText('BOSS  ·  '+b.name+(b.rage?'  (ENRAGED)':''),W/2,47);X.shadowBlur=0;}
+ else if(SPR['boss'+real])emboss(b.x,b.y,300,()=>{const sc=(1+(b.rage?Math.sin(b.t*.3)*.03:0))*(1+Math.sin(b.t*.12)*.025);X.scale(sc,sc);X.rotate(Math.sin(b.t*.07)*.04);drawSprite(SPR['boss'+real],BSIZE[real],faceRot('boss'+real));},{filter:b.fl>0?'brightness(2) saturate(.5)':(b.camo?'opacity(0.13) blur(1px)':(b.rage?'saturate(1.5) contrast(1.15)':null)),alt:portrait||b.camo?0:1});
+ else emboss(b.x,b.y,230,()=>{bossSprite(b,i);menace(b,i);},{filter:b.fl>0?'brightness(2) saturate(.5)':(b.camo?'opacity(0.13) blur(1px)':null),alt:portrait?0:1});
+ if(portrait)return;
+ // scorpion's planted tail-turret: rooted where the job change happened, pulsing so you know it is live
+ if(b.turret){const q=b.turret;X.save();X.translate(q.x,q.y);X.fillStyle='rgba(0,0,0,.3)';ell(0,26,20,7);X.fill();
+  X.strokeStyle='#5a3a10';X.lineWidth=9;X.lineCap='round';X.beginPath();X.moveTo(0,26);X.quadraticCurveTo(10,4,0,-14);X.stroke();
+  X.strokeStyle='#c08040';X.lineWidth=5;X.beginPath();X.moveTo(0,24);X.quadraticCurveTo(8,4,0,-12);X.stroke();
+  const pu=.5+Math.sin(b.t*.2)*.5;X.fillStyle=rg(0,-16,10+pu*4,'rgba(255,60,40,.9)','rgba(255,0,0,0)');ell(0,-16,10+pu*4,10+pu*4);X.fill();X.fillStyle='#ff3b3b';ell(0,-16,3.5,5);X.fill();X.restore();}
+ // atlas moth wing-shields: they soak the hits for their side until they break
+ if(b.wings&&b.y>0)for(const s of[-1,1]){const wv=s<0?b.wings.l:b.wings.r;if(wv<=0)continue;const f=wv/b.wings.max;
+  X.save();X.translate(b.x+s*62,b.y);X.rotate(s*.15+Math.sin(b.t*.1)*.06*s);X.globalAlpha=.30+f*.40;
+  X.fillStyle=rg(0,0,70,'#ffd9a0','#c06a20');ell(0,0,32,76);X.fill();X.globalAlpha=1;
+  X.strokeStyle=`rgba(255,220,160,${.45+f*.45})`;X.lineWidth=2;ell(0,0,32,76);X.stroke();X.restore();}
+ X.fillStyle='rgba(0,0,0,.34)';X.fillRect(40,36,W-80,14);const g=X.createLinearGradient(42,0,W-42,0);g.addColorStop(0,'#ff3b3b');g.addColorStop(1,'#ffb13b');X.fillStyle=g;X.fillRect(42,38,(W-84)*Math.max(0,b.hp/b.max),10);X.fillStyle='#fff';X.font='bold 12px '+FONT;X.textAlign='center';X.shadowColor='#000';X.shadowBlur=4;X.fillText('BOSS  ·  '+b.name+(b.rage?'  (ENRAGED)':''),W/2,47);X.shadowBlur=0;}
 
 // ---------- WORLD: themed parallax ground ----------
 let decor=[],clouds=[],palA=0,palB=0,palMix=1;
@@ -1780,7 +1881,9 @@ function drawPickup(p){emboss(p.x,p.y,70,()=>{const pulse=1.35+Math.sin(p.t*.15)
 function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shake)*.4);
  drawWorld();
  for(const p of pickups)drawPickup(p);
- for(const e of enemies)drawEnemy(e);
+ for(const e of enemies){drawEnemy(e);
+  // an elite wears a tiny health bar: it is a named target, not just a tougher sprite
+  if(e.elite&&e.maxhp&&!e.dead&&e.y>0){const f=Math.max(0,e.hp/e.maxhp);X.fillStyle='rgba(0,0,0,.5)';X.fillRect(e.x-16,e.y-e.r-14,32,4);X.fillStyle=f>.4?'#ffd23f':'#ff5a5a';X.fillRect(e.x-15,e.y-e.r-13,30*f,2);}}
  if(boss)drawBoss(boss);
  X.globalCompositeOperation='lighter';
  for(const b of bullets){const bd=.62+.55*clamp(b.y/H,0,1);   // your shots shrink as they fly away from you
@@ -1841,7 +1944,7 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
  worldOverlay();drawOverlays();
  // HUD
  const hg=X.createLinearGradient(0,H-44,0,H);hg.addColorStop(0,'rgba(0,0,0,0)');hg.addColorStop(1,'rgba(0,0,0,.42)');X.fillStyle=hg;X.fillRect(0,H-44,W,44);
- X.font='bold 13px '+FONT;X.textAlign='left';X.fillStyle='rgba(255,255,255,.92)';X.shadowColor='#000';X.shadowBlur=5;X.fillText('SCORE '+score,8,H-12);
+ X.font='bold 13px '+FONT;X.textAlign='left';X.fillStyle='rgba(255,255,255,.92)';X.shadowColor='#000';X.shadowBlur=5;X.fillText('SCORE '+score+(dailyRun?'  ·  DAILY':'')+(cmult!==1?'  ·  x'+cmult:''),8,H-12);
  X.textAlign='right';X.fillStyle='rgba(221,221,221,.9)';X.fillText('HI '+hi,W-8,H-12);
  if(chain>1){const m=chainMult(),a=Math.min(1,chainT/40);
   X.textAlign='left';X.globalAlpha=a;
@@ -1903,6 +2006,17 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
   X.fillStyle='#fff';X.font='14px '+FONT;
   X.shadowColor='#000';X.shadowBlur=6;if(state==='won'){X.font='bold 30px '+FONT;X.fillStyle='#8dff9a';X.fillText('THE HIVE IS SAFE!',W/2,sp?306:320);X.font='14px '+FONT;X.fillStyle='#fff';X.fillText('all sixteen worlds cleared   ·   SCORE '+score+'   HI '+hi,W/2,sp?332:348);X.font='12px '+FONT;X.fillStyle='#cfe8ff';X.fillText('best chain x'+Math.min(8,1+Math.floor(chainBest/6))+'  ('+chainBest+' kills)   ·   '+grazed+' grazes',W/2,sp?352:368);}else if(state==='over'){X.font='bold 26px '+FONT;X.fillStyle='#ff4d6d';X.fillText('THE HIVE HAS FALLEN',W/2,sp?306:320);X.font='14px '+FONT;X.fillStyle='#fff';X.fillText('SCORE '+score+'   HI '+hi+'   LEVEL '+stage,W/2,sp?332:348);X.font='12px '+FONT;X.fillStyle='#cfe8ff';X.fillText('best chain x'+Math.min(8,1+Math.floor(chainBest/6))+'  ('+chainBest+' kills)   ·   '+grazed+' grazes',W/2,sp?352:368);}
   else{X.font='bold 16px '+FONT;X.fillText('sixteen worlds. sixteen bosses. forty-eight bugs. one bee.',W/2,sp?122:335);}
+  // daily hive + queen's contract chips: DAILY runs today's seeded contract from level 1
+  // for a comparable score; CONTRACT cycles the terms for a normal run. tap to use.
+  {const dc=dailyContract(),cc=CONTRACTS[contractIx],db=dailyBest();
+   const chip=(b,hot)=>{X.save();X.fillStyle=hot?'rgba(20,50,24,.78)':'rgba(6,14,28,.78)';X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,8);X.fill();X.strokeStyle=hot?'rgba(141,255,154,.55)':'rgba(255,210,63,.45)';X.lineWidth=1;X.stroke();X.restore();};
+   chip(CBTN.daily,true);chip(CBTN.contract,false);
+   X.textAlign='center';X.shadowColor='#000';X.shadowBlur=3;
+   X.fillStyle='#8dff9a';X.font='bold 11px '+FONT;X.fillText('DAILY HIVE  ·  '+dc.label+'  x'+dc.mult,CBTN.daily.x+CBTN.daily.w/2,CBTN.daily.y+13);
+   X.fillStyle='#cfe8ff';X.font='9px '+FONT;X.fillText(db?'best today  '+db:'not flown today  ·  tap to fly',CBTN.daily.x+CBTN.daily.w/2,CBTN.daily.y+24);
+   X.fillStyle='#ffd23f';X.font='bold 11px '+FONT;X.fillText('CONTRACT · '+cc.label+(cc.mult!==1?'  x'+cc.mult:''),CBTN.contract.x+CBTN.contract.w/2,CBTN.contract.y+13);
+   X.fillStyle='#cfe8ff';X.font='9px '+FONT;X.fillText(cc.terms+'  ·  tap to change',CBTN.contract.x+CBTN.contract.w/2,CBTN.contract.y+24);
+   X.shadowBlur=0;}
   // instructions as a laid-out table instead of six centred lines running together
   {const ty=sp?392:372,colL=W*.06,colR=W*.53,colW=W*.41;
    X.save();X.fillStyle='rgba(6,14,28,.20)';X.beginPath();X.roundRect(colL-10,ty-20,W-2*(colL-10),150,10);X.fill();

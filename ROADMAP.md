@@ -26,7 +26,7 @@ touches the binary sitting in App Store review.
 - Point-blank kills (bee within 84px) score 2× and feed the chain an extra step.
   First-time teach lines for both, same `learned` pattern as chain/graze.
 
-## 1.1 — the second-run hook (zero level-code touch)
+## 1.1 — the second-run hook (zero level-code touch)  ✅ built 2026-08-30
 
 - **Daily Hive**: roster + 1 modifier seeded from the device date. Pure seeder on top of
   `D()` and the loop variable — no new collision, no new movement, no network.
@@ -38,7 +38,9 @@ touches the binary sitting in App Store review.
 - Maybe: Bug-Dex — encyclopedia card per bug type defeated. `BUGINFO` facts already exist
   in 05_state.js; this is a collection screen over data we already have.
 
-## 1.1/1.2 — bosses change JOB at 50%, not just pattern
+## 1.1/1.2 — bosses change JOB at 50%, not just pattern  ✅ 4 of 4 built 2026-08-30
+(centipede split · scorpion turret · walking-stick camo · atlas wing-shields —
+all verified by tools/test_newsystems.mjs)
 
 PHASE2 today is hp<50% → cry, shake, sp×1.15, one pattern key. That's a difficulty bump,
 not a fight. Same HP budget, different question.
@@ -56,10 +58,10 @@ Then, reusing existing art only:
 ## 1.2 — four stage verbs (dedicated QA milestone: full walkthrough + device pass)
 
 Only rules that change the stage, not the thumb:
-1. **Crystal** — shots ricochet; your own volley is the puzzle.
-2. **Cave** — light radius; fireflies are ammo AND vision, shoot them and go dark.
-3. **Hive** — comb cells, safe hexes vs sticky hexes; boss owns the corridors.
-4. **Volcano** — rising ember columns usable as cover or get cooked.
+1. **Crystal** — shots ricochet; your own volley is the puzzle.  ✅ built 2026-08-30
+2. **Cave** — light radius around the bee.  ✅ already shipped in worldOverlay()
+3. **Hive** — wax drag underfoot.  ✅ already shipped in worldForce() (comb-cell version stays a maybe)
+4. **Volcano** — rising ember columns usable as cover or get cooked.  ✅ built 2026-08-30
 
 Wave grammar (fits any milestone, no new species — roles: fodder, shield, sniper, bomber, farmer):
 - Elite mid-wave bug with a tiny health bar: kill it to skip the wave, farm it for score.

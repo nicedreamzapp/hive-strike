@@ -1,6 +1,10 @@
 // ---------- pickups ----------
 function drop(x,y,force){const r=Math.random();let k=null;
- if(force)k=force;else if(r<.11)k='nectar';else if(r<.17)k=randWeapon();else if(r<.14)k='bomb';else if(r<.143)k='life';
+ // the old chain tested r<.14 and r<.143 AFTER r<.17, so bombs and lives never dropped
+ // by chance -- only when forced. now they exist. ROYAL FEAST doubles the nectar band.
+ const nb=MODS.feast?.22:.11;
+ if(force)k=force;else if(r<nb)k='nectar';else if(r<nb+.06)k=randWeapon();else if(r<nb+.09)k='bomb';else if(r<nb+.093)k='life';
+ if(k==='bomb'&&MODS.nobomb)k='nectar';   // NO SWARM CALLS means none, not "found one anyway"
  if(k)pickups.push({x,y,k,vy:1.1,t:0});}
 function take(p){
  if(p.k==='nectar'){SFX.nectar();if(P.lvl<5){P.lvl++;say('POWER UP  Lv'+P.lvl);}else{addScore(1000);say('MAX POWER +1000');}}
@@ -10,7 +14,7 @@ function take(p){
 let chain=0,chainT=0,chainBest=0,grazed=0,nextExt=0;
 const EXTENDS=[100000,250000,500000,900000];
 const chainMult=()=>Math.min(8,1+Math.floor(chain/6));
-function addScore(n){score+=Math.round(n*chainMult());
+function addScore(n){score+=Math.round(n*chainMult()*cmult);
  while(nextExt<EXTENDS.length&&score>=EXTENDS[nextExt]){nextExt++;P.lives++;say('EXTRA LIFE!');
   jingle([880,1174,1568,2093],'sine',.03,.07);}}
 function onKill(){chain++;chainT=190;if(chain>chainBest)chainBest=chain;
@@ -44,5 +48,5 @@ function grazeTick(){if(P.dead||P.inv>0)return;
    if(grazed%6<pays)snd(2200,.03,'sine',.012,3000);}}}
 function hitPlayer(){if(P.inv>0||P.dead)return;if(P.bombs>0){bomb();P.inv=90;say('AUTO SWARM CALL!');return;}breakChain();P.lives--;P.dead=90;shake=20;boom(P.x,P.y,'#ffd166',40,7);noise(.7,.05,1400,.6,200,'lowpass');swell(90,.9,'sine',.08,.05,40);
  P.lvl=Math.max(1,P.lvl-1);ebullets=[];
- if(P.lives<0){state='over';music('title');if(score>hi){hi=score;localStorage.hs_hi=hi;}}}
+ if(P.lives<0){state='over';music('title');endRun();if(score>hi){hi=score;localStorage.hs_hi=hi;}}}
 
