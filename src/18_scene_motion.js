@@ -354,6 +354,7 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
   X.globalCompositeOperation='source-over';
   X.strokeStyle='rgba(90,0,0,.9)';X.lineWidth=2.4;ell(0,0,r*1.1,r*1.1);X.stroke();
   X.strokeStyle='#ff3030';X.lineWidth=1.6;ell(0,0,r*1.1,r*1.1);X.stroke();}
+  if(b.hot&&!b.grz){const pl=(r+8)*(1+Math.sin(t*.5)*.18);X.strokeStyle='rgba(141,255,154,.9)';X.lineWidth=2;ell(0,0,pl,pl);X.stroke();X.strokeStyle='rgba(255,255,255,.5)';X.lineWidth=1;ell(0,0,pl,pl);X.stroke();}
   X.restore();}
  for(const r of ringsFx){r.r+=(r.max-r.r)*.15;X.globalAlpha=Math.max(0,1-r.r/r.max);X.strokeStyle='#fff';X.lineWidth=3;ell(r.x,r.y,r.r,r.r);X.stroke();X.strokeStyle=r.c;X.lineWidth=1.5;ell(r.x,r.y,r.r*.8,r.r*.8);X.stroke();}X.globalAlpha=1;ringsFx=ringsFx.filter(r=>r.r<r.max-2);
  X.globalCompositeOperation='lighter';X.lineCap='round';for(const p of parts){X.globalAlpha=Math.min(1,p.l/15);if(p.spark){X.strokeStyle=p.c;X.lineWidth=p.r;X.beginPath();X.moveTo(p.x,p.y);X.lineTo(p.x-p.vx*2.5,p.y-p.vy*2.5);X.stroke();}else if(p.gib){X.globalCompositeOperation='source-over';X.fillStyle='rgba(0,0,0,.25)';ell(p.x+3,p.y+5,p.r*p.rx,p.r*.6,p.a);X.fill();X.fillStyle=p.c;ell(p.x,p.y,p.r*p.rx,p.r*.6,p.a);X.fill();X.globalCompositeOperation='lighter';}else{X.fillStyle=p.c;ell(p.x,p.y,p.r,p.r);X.fill();}}X.globalAlpha=1;X.globalCompositeOperation='source-over';
