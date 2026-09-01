@@ -22,15 +22,17 @@ seven minutes cold, seconds warm.
 | | source | dist | why |
 |---|---|---|---|
 | sprites | 45.0 MB PNG | 3.7 MB WebP | they were ~800 px and get drawn at 35-80. Bugs cut to 320 px, bosses to 768 |
-| backgrounds + masks | 28.0 MB PNG | 2.1 MB WebP | same pixels, a format that is not from 1996 |
-| level video | 53.0 MB | 18.7 MB | re-encoded to the 480x720 play field, CRF 30 |
+| backgrounds | 24 MB PNG | 1.9 MB WebP | same pixels, a format that is not from 1996 |
 | music | 59.0 MB MP3 | 36.7 MB AAC | 96 kbps AAC, and the beds play at 4% volume |
-| **total** | **185 MB** | **61.5 MB** | |
+| **total** | **~128 MB** | **~43 MB** | |
+
+Level video is gone as of 2026-09-01: the backgrounds are the paintings drawn as a depth
+parallax (`tools/gen_parallax.py`), which took 19 MB and three video decoders out of the app.
 
 Store payload lands near **69 MB** per platform. Google Play's base module limit is
 200 MB; Apple's over-the-air limits bite well before that. There is room to grow.
 
-Only three file extensions differ between the source tree and `dist/` — `.png` becomes
+Only two file extensions differ between the source tree and `dist/` — `.png` becomes
 `.webp` and `.mp3` becomes `.m4a`. `build_mobile.py` rewrites them and fails loudly if
 `index.html` ever stops matching, so the two cannot drift apart silently.
 

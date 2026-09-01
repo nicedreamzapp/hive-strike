@@ -4,16 +4,11 @@
 // mid-boss already taking hits. handle both.
 let resumeCountdown=0,wasPaused=false;
 function audioWake(){
- if(AC&&AC.state!=='running')AC.resume().catch(()=>{});
- // a real gesture is the one moment iOS will definitely let media start
- try{if(SPLASHV&&SPLASHV.paused&&!SPLASHV.bad)SPLASHV.play().catch(()=>{});
-  const v=VIDEL[(stage-1)%NL+1];if(v&&v.paused&&!v.bad)v.play().catch(()=>{});}catch(e){}}
+ if(AC&&AC.state!=='running')AC.resume().catch(()=>{});}
 for(const ev of ['pointerdown','keydown','touchstart'])addEventListener(ev,audioWake,{passive:true});
 function goDark(){
  wasPaused=paused&&!pausedByBlur;pausedByBlur=false;paused=true;resumeCountdown=0;
  for(const k in MUSIC.tracks){const a=MUSIC.tracks[k];if(!a.paused){a.pause();a.volume=0;}}
- for(const j in VID){const v=VID[j];if(v&&!v.paused)v.pause();}
- if(SPLASHV&&!SPLASHV.paused)SPLASHV.pause();
  if(AC&&AC.state==='running')AC.suspend().catch(()=>{});
 }
 function comeBack(){
@@ -59,7 +54,7 @@ function frame(now){const dt=now-last,_w0=performance.now();
   while(acc>=STEP){acc-=STEP;
    if(resumeCountdown>0){resumeCountdown--;if(resumeCountdown===0)paused=false;t++;}
    else if(state==='play'&&!paused)update();else t++;}
-  musicTick();ambTick();if(state==='play'&&!SPLASHV.paused)SPLASHV.pause();draw();
+  musicTick();ambTick();draw();
   if(!shownOnce){shownOnce=true;nativeReady();}
   if(state==='play'&&!paused&&dt>0&&dt<200){_pt+=dt;_pw+=performance.now()-_w0;
    if(++_pn>=120){const gap=_pt/_pn,work=_pw/_pn;_pn=0;_pt=0;_pw=0;

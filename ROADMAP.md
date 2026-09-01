@@ -16,6 +16,15 @@ touches the binary sitting in App Store review.
   If a stage rule would need App Store notes starting "controls may feel…", it does not ship.
   Verbs change the STAGE, never the input.
 
+## 1.0.2 — painted parallax replaces video  ✅ built 2026-09-01
+
+Matt's call: the LTX loops were pretty but shimmered in place, cost 19 MB and three
+decoders, and were the only thing that ever crashed the app on a phone. Now each still is
+measured for depth once (Depth-Anything, `tools/gen_parallax.py`) and drawn as 32 strips
+that slide with the bee -- near strips further than the horizon. The world answers the
+player and nothing in it moves on its own, which is the background rule anyway.
+`art/clip`, `art/clip-hd`, the masks and every video code path are deleted.
+
 ## 1.0.1 — day-one patch  ✅ built 2026-08-30
 
 - `grazeTick()`/`chainTick()` were defined but never called — the whole graze economy and

@@ -35,7 +35,7 @@ under a memory broker that made the models take turns instead of fighting over R
 |---|---|---|
 | Bug + boss sprites | **FLUX.1-dev** (fp8, ComfyUI) | 48 insects and 16 bosses, each rendered as a photoreal top-down macro shot on pure white, then keyed to an alpha PNG |
 | Level backgrounds | **FLUX.1-dev** | 16 painted bird's-eye scenes, one per world, in one consistent style |
-| Animated backgrounds | **LTX-2** (distilled) and LTX i2v, by Lightricks | The stills became real video. 16 looping scenes, tail crossfaded into head so the loop never pops |
+| Depth parallax | **Depth-Anything-V2-Small** | Each painting is measured for depth once, then drawn in 32 strips that slide with the bee: the flowers at your feet move further than the hills. No video, no extra assets, ~2 KB of numbers |
 | Music | **ACE-Step 1.5**, driven by my own Song Forge | 16 level beds and 16 boss themes, a different genre per world, so no two levels sound alike |
 | Sprite QC | **Qwen3-VL-32B-Instruct** (4-bit MLX) | Every sprite has to be stored head-down. Pixel heuristics scored 50%, so I asked a model that can actually see the insect |
 | Sound effects | none — hand-written Web Audio | 49 individual bug voices, every one synthesized live from oscillators and filtered noise. No sample files at all |
@@ -43,7 +43,7 @@ under a memory broker that made the models take turns instead of fighting over R
 The generators are all in [`tools/`](tools/) if you want to see how any of it was done.
 They are ordinary Python scripts, not a framework.
 
-Credit where it is due: Black Forest Labs for FLUX, Lightricks for LTX-2, the ACE-Step
+Credit where it is due: Black Forest Labs for FLUX, the Depth Anything team, the ACE-Step
 team, and the Qwen team. ComfyUI does the heavy lifting for the image side. I just
 pointed them at bugs.
 
@@ -76,9 +76,9 @@ byte-identical to what the pieces came from — the splitter refused to write un
 had proved that, and `assemble.py` prints the before/after hash every time it runs.
 
 The loop is a fixed 60 Hz accumulator with a spiral-of-death clamp, so the game runs at
-the same speed on a 60 Hz laptop and a 120 Hz display. Background video is loaded in a
+the same speed on a 60 Hz laptop and a 120 Hz display. Backgrounds are loaded in a
 sliding window around the live level rather than all at once. When the tab or the phone
-goes to sleep, the game, the music, the video and the audio context all suspend together,
+goes to sleep, the game, the music and the audio context all suspend together,
 and you come back to a 3-2-1 countdown instead of dropping into a boss fight already
 taking hits.
 
@@ -96,7 +96,7 @@ run: 16/16 levels to the win screen, 0 errors, 0.36 ms/frame.
 
 `ios/` and `android/` are Capacitor shells around the same `dist/` build. See
 [docs/SHIPPING.md](docs/SHIPPING.md) for the build loop, what the compression does
-(185 MB of source assets become a 61.5 MB bundle, ~69 MB installed), and what is
+(source assets become a ~43 MB bundle), and what is
 still needed before either store will accept it.
 
 The iOS app builds and runs today. Android is scaffolded and portrait-locked but

@@ -21,7 +21,7 @@ function rasterReset(){
  try{_MB=null;}catch(e){}
  try{for(const k in _GM)delete _GM[k];}catch(e){}
  const drop=o=>{try{for(const k in o){const im=o[k];if(im){if(im._mips)im._mips.length=0;im.dof=null;}}}catch(e){}};
- try{drop(SPR);}catch(e){} try{drop(ART);}catch(e){} try{drop(MASKS);}catch(e){}
+ try{drop(SPR);}catch(e){} try{drop(ART);}catch(e){}
 }
 function oc(k,s){
  let c=OC[k];

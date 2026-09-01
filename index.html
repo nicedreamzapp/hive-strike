@@ -33,7 +33,7 @@ const FONT='"Avenir Next Condensed","Futura","Arial Narrow","Helvetica Neue",san
 // stamped by tools/assemble.py from the version in package.json and the git commit --
 // never edit by hand. It is how you tell at a glance whether the phone in your hand is
 // running the same build as the one next to it.
-const BUILD='v1.0.0  ·  c7b2a3c+  ·  Aug 30';
+const BUILD='v1.0.0  ·  5f1d467+  ·  Sep 1';
 // letterbox the play field inside whatever the device actually gives us, safe-area padding
 // already removed by the body. visualViewport is the honest number on iOS.
 function fit(){const cs=getComputedStyle(document.body),
@@ -418,66 +418,34 @@ function musicTick(){
   msetvol(k,a,v);
   if(v<.004&&target===0&&!a.paused){a.pause();msetvol(k,a,0);}}}
 musicLoad();
-// ---------- painted art: art/level1..6.png (one per world) + art/splash.png. STATIC — the background never moves.
-// A decoded 832x1248 background is 4.2 MB of RGBA however small the file is, and all
-// seventeen were resident: 67 MB to hold sixteen pictures nobody was looking at, since the
-// video replaces them anyway. Same sliding window as the clips. releaseArt also drops the
-// mip pyramid and the blurred depth-of-field copy hung off each image -- neither was ever freed.
+// ---------- painted art: art/level1..16.png (one per world) + art/splash.png ----------
+// The background is a painting, drawn every frame as PX_STRIPS horizontal strips. Each
+// strip carries the depth the picture has at that height (PXD, measured once by
+// tools/gen_parallax.py with Depth-Anything), so when the bee crosses the screen the
+// flowers at the bottom slide further than the hills at the horizon. The world answers
+// the player; nothing in it moves on its own. Ship-wise this replaced the LTX video loops
+// on 2026-09-01: 19 MB of clips, three decoders resident, and a stack of iOS play()
+// workarounds, for a picture that shimmered in place and never moved with you.
+// A decoded 896x1344 background is 4.8 MB of RGBA however small the file is, so only the
+// live world and its neighbours stay resident (sliding window).
 const ART={},ARTWIN=1;
 function artLoad(k){if(ART[k]!==undefined)return;ART[k]=null;const im=new Image();
  im.onload=()=>{ART[k]=im;};im.onerror=()=>{if(!im._freed){ART[k]=null;missing('art/'+k+'.png');}};im.src='art/'+k+'.png';}
-function artRelease(k){const im=ART[k];if(im){im._freed=1;im.src='';if(im._mips)im._mips.length=0;im.dof=null;}delete ART[k];}
+function artRelease(k){const im=ART[k];if(im){im._freed=1;im.src='';if(im._mips)im._mips.length=0;}delete ART[k];}
 function artSync(){const c=(stage-1)%NL+1,want=new Set(['splash']);
  for(let d=0;d<=ARTWIN;d++){want.add('level'+((c-1+d)%NL+1));want.add('level'+((c-1-d+NL*2)%NL+1));}
  for(const k of want)artLoad(k);
- for(const k in ART)if(!want.has(k))artRelease(k);}
+ for(const k in ART)if(!want.has(k))artRelease(k);
+ bossSprSync();}
 artLoad('splash');
-// rendered level loops: when art/clip/levelN.mp4 exists it replaces the still, and the scene animates
-// for real instead of being faked with canvas warps. only the level being played is decoding.
-const MASKNUMS=[2,3,6,7,10,12,13,14,15,16],MASKS={};
-function maskLoad(n){if(MASKNUMS.indexOf(n)<0||MASKS[n]!==undefined)return;MASKS[n]=null;
- const im=new Image();im.onload=()=>{MASKS[n]=im;};im.onerror=()=>{if(!im._freed){MASKS[n]=null;missing('art/mask'+n+'.png');}};im.src='art/mask'+n+'.png';}
-function maskSync(){const c=(stage-1)%NL+1,want=new Set();
- for(let d=0;d<=ARTWIN;d++){want.add((c-1+d)%NL+1);want.add((c-1-d+NL*2)%NL+1);}
- for(const n of want)maskLoad(n);
- for(const k in MASKS){const n=+k;if(!want.has(n)){const im=MASKS[n];if(im){im._freed=1;im.src='';if(im._mips)im._mips.length=0;}delete MASKS[n];}}}
-// backgrounds are ~3MB of h264 each. buffering all 16 at boot cost 53MB of decode memory and a
-// slow first frame for 15 clips nobody was watching. keep a sliding window around the live level.
-const VID={},VIDEL={},VIDWIN=1;
-function vidEl(n){let v=VIDEL[n];if(v)return v;v=document.createElement('video');v.muted=true;v.defaultMuted=true;v.loop=true;v.playsInline=true;v.setAttribute('playsinline','');v.setAttribute('webkit-playsinline','');v.setAttribute('muted','');v.preload='auto';
- const ready=()=>{VID['level'+n]=v;};
- v.addEventListener('loadeddata',ready);v.addEventListener('canplay',ready);
- // Two encodes ship: levelN.mp4 at 640x960 for phones, levelN.hd.mp4 at 896x1344 for
- // tablets. fit() rasters the fixed 480x720 field up to the screen's real pixels -- a
- // 12.9" iPad reaches ~3.8x, where the phone encode arrives upscaled and soft. Ask for
- // the big one only when the raster scale says it will actually be seen, never in LOW
- // (cheap-Android) mode. The dev tree has no .hd.mp4, so a miss falls back once instead
- // of marking the clip dead and dropping the level to its still.
- // Pick by PHYSICAL screen size, not raster scale. DPR was the wrong test: an iPhone 14
- // Pro Max rasters the field at 2.69x, so a >=2.2 threshold handed phones the tablet
- // encode -- three 896x1344 clips live in the sliding window at once and iOS killed the
- // app on level 1 (2026-08-27). A tablet's short edge is >=700 css px; no phone is.
- const base='art/clip/level'+n;
- let hi=Math.min(innerWidth,innerHeight)>=700&&!LOW;
- v.addEventListener('error',()=>{if(hi){hi=false;v.src=base+'.mp4';return;}v.bad=true;delete VID['level'+n];});
- v.src=hi?base+'.hd.mp4':base+'.mp4';VIDEL[n]=v;return v;}
-function vidRelease(n){const v=VIDEL[n];if(!v)return;try{v.pause();v.removeAttribute('src');v.load();}catch(e){}delete VIDEL[n];delete VID['level'+n];}
-function vidSync(){artSync();maskSync();bossSprSync();const c=(stage-1)%NL+1,want=new Set();for(let d=0;d<=VIDWIN;d++){want.add((c-1+d)%NL+1);want.add((c-1-d+NL*2)%NL+1);}for(const n of want)vidEl(n);for(const k in VIDEL)if(!want.has(+k))vidRelease(+k);}
-// iOS will not buffer a video until something calls play(), so gating play() on
-// canplay -- which only fires once buffered -- deadlocked: the clip never loaded,
-// VID stayed empty, and every level fell back to its still. Drive VIDEL instead:
-// ask the live clip to play unconditionally and promote it the moment it has data.
-function vidTick(){vidSync();const cur=(stage-1)%NL+1;
- for(const j in VIDEL){const n=+j,v=VIDEL[n],key='level'+n;
-  if(n===cur){
-   if(v.readyState>=2&&!VID[key])VID[key]=v;
-   if(v.paused&&!v.bad&&!document.hidden&&!paused)v.play().catch(()=>{});
-  } else if(!v.paused)v.pause();}}
-const SPLASHV=document.createElement('video');SPLASHV.muted=true;SPLASHV.defaultMuted=true;SPLASHV.loop=true;SPLASHV.playsInline=true;SPLASHV.setAttribute('playsinline','');SPLASHV.setAttribute('webkit-playsinline','');SPLASHV.setAttribute('muted','');SPLASHV.preload='auto';SPLASHV.ok=false;SPLASHV.addEventListener('loadeddata',()=>{SPLASHV.ok=true;});SPLASHV.addEventListener('canplay',()=>{SPLASHV.ok=true;});SPLASHV.addEventListener('error',()=>{SPLASHV.bad=true;SPLASHV.ok=false;});SPLASHV.src='art/clip/splash.mp4';
-function splashFrame(){
- if(!SPLASHV.bad&&SPLASHV.paused&&!document.hidden)SPLASHV.play().catch(()=>{});   // same deadlock as the levels
- if(SPLASHV.readyState>=2)return SPLASHV;
- return ART.splash;}
+// PXD-BEGIN (generated by tools/gen_parallax.py -- do not edit by hand)
+const PXD={1:[0,0.01,0.02,0.04,0.07,0.09,0.13,0.16,0.19,0.21,0.23,0.25,0.26,0.28,0.3,0.33,0.38,0.44,0.48,0.51,0.52,0.53,0.55,0.59,0.62,0.66,0.69,0.75,0.81,0.89,0.96,1],2:[0,0,0,0.01,0.01,0.02,0.04,0.07,0.12,0.17,0.23,0.29,0.35,0.4,0.43,0.46,0.49,0.53,0.58,0.62,0.64,0.65,0.66,0.67,0.7,0.74,0.78,0.83,0.88,0.92,0.97,1],3:[0,0,0.01,0.01,0.01,0.02,0.02,0.03,0.04,0.06,0.07,0.09,0.11,0.13,0.16,0.19,0.23,0.27,0.31,0.36,0.41,0.47,0.52,0.56,0.61,0.66,0.72,0.79,0.86,0.92,0.97,1],4:[0.4,0.45,0.47,0.46,0.45,0.47,0.47,0.49,0.52,0.59,0.65,0.67,0.63,0.52,0.35,0.17,0.04,0,0.03,0.08,0.13,0.19,0.26,0.36,0.46,0.56,0.64,0.71,0.78,0.86,0.94,1],5:[0,0.02,0.05,0.08,0.08,0.07,0.07,0.08,0.09,0.07,0.05,0.02,0.01,0.02,0.04,0.08,0.13,0.18,0.23,0.27,0.31,0.35,0.4,0.45,0.51,0.58,0.65,0.72,0.79,0.87,0.94,1],6:[1,0.97,0.93,0.88,0.82,0.76,0.7,0.62,0.54,0.46,0.39,0.31,0.22,0.14,0.07,0.03,0,0,0,0.02,0.04,0.07,0.11,0.17,0.23,0.27,0.3,0.31,0.31,0.29,0.27,0.25],7:[0,0,0.01,0.02,0.05,0.09,0.14,0.17,0.19,0.21,0.24,0.27,0.3,0.33,0.36,0.38,0.41,0.45,0.48,0.52,0.54,0.58,0.61,0.64,0.68,0.73,0.77,0.82,0.87,0.91,0.96,1],8:[0,0.01,0.03,0.07,0.12,0.17,0.21,0.26,0.3,0.33,0.36,0.39,0.42,0.44,0.46,0.49,0.51,0.54,0.57,0.6,0.63,0.66,0.69,0.72,0.75,0.78,0.81,0.85,0.89,0.93,0.97,1],9:[0.81,0.95,1,0.98,0.86,0.77,0.72,0.71,0.72,0.7,0.65,0.64,0.66,0.73,0.76,0.73,0.62,0.47,0.29,0.18,0.2,0.32,0.4,0.35,0.19,0.05,0,0.02,0.07,0.1,0.12,0.13],10:[0.94,0.89,0.81,0.73,0.64,0.53,0.41,0.29,0.2,0.15,0.14,0.13,0.12,0.11,0.11,0.1,0.08,0.06,0.03,0.01,0,0.02,0.06,0.12,0.19,0.27,0.38,0.49,0.62,0.76,0.9,1],11:[0,0,0.01,0.01,0.02,0.03,0.04,0.05,0.06,0.08,0.1,0.12,0.13,0.15,0.17,0.21,0.26,0.31,0.37,0.44,0.52,0.57,0.61,0.65,0.72,0.83,0.95,1,0.99,0.93,0.88,0.84],12:[0,0,0.01,0.02,0.03,0.05,0.07,0.09,0.1,0.11,0.13,0.16,0.19,0.23,0.28,0.32,0.36,0.4,0.44,0.47,0.52,0.56,0.61,0.65,0.7,0.74,0.78,0.82,0.86,0.91,0.96,1],13:[0,0,0,0.01,0.03,0.06,0.09,0.12,0.16,0.2,0.24,0.28,0.32,0.36,0.39,0.43,0.46,0.49,0.53,0.57,0.61,0.65,0.68,0.72,0.76,0.79,0.83,0.86,0.9,0.93,0.97,1],14:[0,0,0.02,0.04,0.08,0.12,0.15,0.19,0.22,0.26,0.29,0.32,0.35,0.38,0.41,0.45,0.49,0.54,0.58,0.62,0.65,0.67,0.69,0.71,0.75,0.8,0.84,0.88,0.91,0.94,0.98,1],15:[0,0.06,0.15,0.23,0.29,0.31,0.31,0.31,0.3,0.3,0.31,0.32,0.35,0.41,0.48,0.55,0.61,0.66,0.69,0.71,0.73,0.75,0.78,0.8,0.83,0.85,0.88,0.9,0.92,0.95,0.98,1],16:[0.3,0.35,0.36,0.36,0.33,0.29,0.26,0.22,0.19,0.17,0.15,0.13,0.11,0.09,0.07,0.05,0.04,0.02,0.01,0,0.01,0.06,0.14,0.26,0.38,0.49,0.59,0.69,0.77,0.86,0.94,1],splash:[0,0.01,0.03,0.04,0.05,0.06,0.06,0.05,0.03,0.01,0.06,0.21,0.47,0.74,0.93,1,0.97,0.88,0.78,0.7,0.63,0.55,0.45,0.33,0.23,0.18,0.17,0.2,0.25,0.33,0.39,0.44]};
+// PXD-END
+// PX_X: how far the nearest strip slides when the bee is at the screen edge (css px).
+// PX_Y: the slow breathing of the nearest strip, ±px over ~25 s -- the picture's pulse,
+// far below anything that could read as something to dodge. LOW mode draws the plain still.
+const PX_STRIPS=32,PX_X=22,PX_Y=6;
+function splashFrame(){return ART.splash;}
 const SPR={},MISSING=[];
 // A 768px boss sprite is 2.4 MB decoded. All sixteen were resident for the one actually
 // fighting you. Keep the current world's boss and its neighbours; drop the rest.
@@ -495,7 +463,7 @@ function loadSprites(){const names=Object.keys(ET).concat(['centihead1','centise
 // drawn size, cache each step, and the final draw is never worse than a 2x reduction.
 function mip(im,h){const need=h*DPR*1.4;if(!im.height||im.height<need*2)return im;
  // Four places empty this array rather than deleting it -- rasterReset() when the raster
- // scale changes, and artRelease/maskSync/bossSprSync when a level slides out of the
+ // scale changes, and artRelease/bossSprSync when a level slides out of the
  // window. An emptied array is still truthy, so the old `if(!im._mips)` did not re-seed
  // it, cur came back undefined, and `cur.height` threw. That killed the frame loop and
  // froze the game with the music still playing (iPhone, 2026-08-27). Re-seed on EMPTY,
@@ -505,7 +473,16 @@ function mip(im,h){const need=h*DPR*1.4;if(!im.height||im.height<need*2)return i
  for(let i=im._mips.length-1;i>=0;i--)if(im._mips[i].height>=need)return im._mips[i];
  return im._mips[0];}
 function drawSprite(im,h,rot=0){const m=mip(im,h),sc=h/m.height,w=m.width*sc;X.save();X.rotate(rot);X.drawImage(m,-w/2,-h/2,w,h);X.restore();}
-function drawArt(im,alpha=1,soft=false){const iw=im.videoWidth||im.width,ih=im.videoHeight||im.height,sc=Math.max(W/iw,H/ih),w=iw*sc,h=ih*sc;let src=im,sx=(W-w)/2,sy=(H-h)/2,sw=w,sh=h;if(soft&&!im.videoWidth){const bz=1+.014*(.5+.5*Math.sin(t*.006));if(!im.dof){const c=document.createElement('canvas');c.width=W*DPR;c.height=H*DPR;const g=c.getContext('2d');g.setTransform(DPR,0,0,DPR,0,0);g.filter='blur(1.6px) saturate(.92)';g.drawImage(im,sx,sy,w,h);im.dof=c;}src=im.dof;sx=-(W*bz-W)/2;sy=-(H*bz-H)/2;sw=W*bz;sh=H*bz;}X.globalAlpha=alpha;X.drawImage(src,sx,sy,sw,sh);X.globalAlpha=1;}
+function drawArt(im,alpha=1,px=null){const iw=im.width,ih=im.height;if(!iw||!ih)return;
+ const over=px&&!LOW?1+2*PX_X/W:1,sc=Math.max(W/iw,H/ih)*over,w=iw*sc,h=ih*sc,x0=(W-w)/2,y0=(H-h)/2;
+ X.globalAlpha=alpha;
+ if(!px||LOW){X.drawImage(im,x0,y0,w,h);X.globalAlpha=1;return;}
+ // sideways from the bee in play (title screens get a slow drift), plus the breathing
+ const dx=state==='play'?-(P.x-W/2)/(W/2)*PX_X:Math.sin(t*.004)*PX_X*.5,dy=Math.sin(t*.0042)*PX_Y;
+ const n=px.length,sh=ih/n,ov=4;   // source rows per strip; overscan so no seam ever opens
+ for(let i=0;i<n;i++){const d=px[i],a=Math.max(0,i*sh-ov),b=Math.min(ih,(i+1)*sh+ov);
+  X.drawImage(im,0,a,iw,b-a,x0+dx*d,y0+a*sc+dy*d,w,(b-a)*sc);}
+ X.globalAlpha=1;}
 // ---------- state ----------
 const R=(a,b)=>a+Math.random()*(b-a),RI=(a,b)=>Math.floor(R(a,b+1)),clamp=(v,a,b)=>v<a?a:v>b?b:v;
 let flash=0,bossIntro=0,bossWarn=0,levelIntro=0,levelClear=0,armed=false,startStage=+localStorage.hs_start||1;
@@ -1191,7 +1168,7 @@ function rasterReset(){
  try{_MB=null;}catch(e){}
  try{for(const k in _GM)delete _GM[k];}catch(e){}
  const drop=o=>{try{for(const k in o){const im=o[k];if(im){if(im._mips)im._mips.length=0;im.dof=null;}}}catch(e){}};
- try{drop(SPR);}catch(e){} try{drop(ART);}catch(e){} try{drop(MASKS);}catch(e){}
+ try{drop(SPR);}catch(e){} try{drop(ART);}catch(e){}
 }
 function oc(k,s){
  let c=OC[k];
@@ -1550,9 +1527,8 @@ function drawDecorItem(d,th){const s=d.s;X.save();X.translate(d.x,d.y);
   case 'dust':X.fillStyle='rgba(255,240,160,.7)';ell(0,0,1.6*s,1.6*s);X.fill();break;
  }X.restore();}
 function drawWorld(){const th=LV(),want=(stage-1)%NL;if(want!==palB){palA=palB;palB=want;palMix=0;}if(palMix<1)palMix=Math.min(1,palMix+.02);
- vidTick();const artB=VID['level'+(palB+1)]||ART['level'+(palB+1)],artA=VID['level'+(palA+1)]||ART['level'+(palA+1)];const live=!!VID['level'+(palB+1)];
- if(artB){if(artA&&palMix<1)drawArt(artA,1,true);drawArt(artB,artA?palMix:1,true);
-  if(!live)ambient(th.decor,th.name);   // a rendered loop already carries its own motion
+ artSync();const artB=ART['level'+(palB+1)],artA=ART['level'+(palA+1)];
+ if(artB){if(artA&&palMix<1)drawArt(artA,1,PXD[palA+1]);drawArt(artB,artA?palMix:1,PXD[palB+1]);
   // calm the picture a little so bugs, shots and treats stay the loudest thing on screen
   X.fillStyle='rgba(0,0,0,.14)';X.fillRect(0,0,W,H);return;}
  const scroll=state==='play'&&!paused?1:.4;
@@ -2000,7 +1976,7 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
   X.save();X.beginPath();X.roundRect(14,68,W-28,70,9);X.clip();X.translate(60,103);X.scale(.42,.42);X.translate(-60,-103);drawBoss({...bd,x:60,y:103,t:t,fl:0,hp:1,max:1,rage:0,seg:[]},true);X.restore();
   X.textAlign='left';X.shadowColor='#000';X.shadowBlur=6;X.fillStyle=pulse>.5?'#fff':'#ffb0b0';X.font='bold 20px '+FONT;X.fillText('WARNING',118,92);X.fillStyle='#ffd23f';X.font='bold 17px '+FONT;X.fillText(bd.name,118,113);X.fillStyle='#ffd0d0';X.font='italic 11px '+FONT;X.fillText(bd.taunt,118,130);X.shadowBlur=0;X.restore();}
  if(state==='play'&&levelClear>0){X.textAlign='center';X.shadowColor='#000';X.shadowBlur=10;X.fillStyle='#fff';X.font='bold 46px '+FONT;X.fillText('LEVEL '+stage+' CLEAR!',W/2,H/2-40);X.font='bold 18px '+FONT;X.fillStyle='#ffd23f';X.fillText(BOSSES[LV().boss].name+' DEFEATED   +'+(5000*(stage+loop)),W/2,H/2);X.font='14px '+FONT;X.fillStyle='#c8ffd4';X.fillText('grab the goodies!',W/2,H/2+28);X.shadowBlur=0;}
- if(state!=='play'){const sp=splashFrame();if(sp){drawArt(sp);X.save();cloudShadows(.2);X.globalCompositeOperation='lighter';X.globalAlpha=.10+(.5+Math.sin(t*.02)*.5)*.08;X.fillStyle=rg(W/2,H*.3,240,'rgba(255,220,140,.9)','rgba(255,220,140,0)');ell(W/2,H*.3,240,240);X.fill();X.restore();const g=X.createLinearGradient(0,H*.5,0,H);g.addColorStop(0,'rgba(0,10,25,0)');g.addColorStop(.35,'rgba(0,10,25,.42)');g.addColorStop(1,'rgba(0,10,25,.58)');X.fillStyle=g;X.fillRect(0,0,W,H);X.fillStyle='rgba(0,10,25,.16)';X.fillRect(0,0,W,150);}else{X.fillStyle='rgba(0,20,40,.45)';X.fillRect(0,0,W,H);}
+ if(state!=='play'){const sp=splashFrame();if(sp){drawArt(sp,1,PXD.splash);X.save();cloudShadows(.2);X.globalCompositeOperation='lighter';X.globalAlpha=.10+(.5+Math.sin(t*.02)*.5)*.08;X.fillStyle=rg(W/2,H*.3,240,'rgba(255,220,140,.9)','rgba(255,220,140,0)');ell(W/2,H*.3,240,240);X.fill();X.restore();const g=X.createLinearGradient(0,H*.5,0,H);g.addColorStop(0,'rgba(0,10,25,0)');g.addColorStop(.35,'rgba(0,10,25,.42)');g.addColorStop(1,'rgba(0,10,25,.58)');X.fillStyle=g;X.fillRect(0,0,W,H);X.fillStyle='rgba(0,10,25,.16)';X.fillRect(0,0,W,150);}else{X.fillStyle='rgba(0,20,40,.45)';X.fillRect(0,0,W,H);}
   X.textAlign='center';X.shadowColor='#000';X.shadowBlur=14;X.fillStyle='#ffd23f';X.font='bold 64px '+FONT;X.fillText('HIVE STRIKE',W/2,sp?92:200);X.shadowBlur=0;
   if(!sp)emboss(W/2,265,150,()=>bee(0,0,26,'#ffd23f','#1a1a1a','#fff'),{alt:0});
   X.fillStyle='#fff';X.font='14px '+FONT;
@@ -2102,16 +2078,11 @@ function padTick(){
 // mid-boss already taking hits. handle both.
 let resumeCountdown=0,wasPaused=false;
 function audioWake(){
- if(AC&&AC.state!=='running')AC.resume().catch(()=>{});
- // a real gesture is the one moment iOS will definitely let media start
- try{if(SPLASHV&&SPLASHV.paused&&!SPLASHV.bad)SPLASHV.play().catch(()=>{});
-  const v=VIDEL[(stage-1)%NL+1];if(v&&v.paused&&!v.bad)v.play().catch(()=>{});}catch(e){}}
+ if(AC&&AC.state!=='running')AC.resume().catch(()=>{});}
 for(const ev of ['pointerdown','keydown','touchstart'])addEventListener(ev,audioWake,{passive:true});
 function goDark(){
  wasPaused=paused&&!pausedByBlur;pausedByBlur=false;paused=true;resumeCountdown=0;
  for(const k in MUSIC.tracks){const a=MUSIC.tracks[k];if(!a.paused){a.pause();a.volume=0;}}
- for(const j in VID){const v=VID[j];if(v&&!v.paused)v.pause();}
- if(SPLASHV&&!SPLASHV.paused)SPLASHV.pause();
  if(AC&&AC.state==='running')AC.suspend().catch(()=>{});
 }
 function comeBack(){
@@ -2157,7 +2128,7 @@ function frame(now){const dt=now-last,_w0=performance.now();
   while(acc>=STEP){acc-=STEP;
    if(resumeCountdown>0){resumeCountdown--;if(resumeCountdown===0)paused=false;t++;}
    else if(state==='play'&&!paused)update();else t++;}
-  musicTick();ambTick();if(state==='play'&&!SPLASHV.paused)SPLASHV.pause();draw();
+  musicTick();ambTick();draw();
   if(!shownOnce){shownOnce=true;nativeReady();}
   if(state==='play'&&!paused&&dt>0&&dt<200){_pt+=dt;_pw+=performance.now()-_w0;
    if(++_pn>=120){const gap=_pt/_pn,work=_pw/_pn;_pn=0;_pt=0;_pw=0;

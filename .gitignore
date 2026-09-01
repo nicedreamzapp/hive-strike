@@ -19,3 +19,5 @@ android/build/
 android/app/build/
 android/local.properties
 *.xcuserdatad
+
+art/px_debug/

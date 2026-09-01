@@ -41,9 +41,8 @@ function drawDecorItem(d,th){const s=d.s;X.save();X.translate(d.x,d.y);
   case 'dust':X.fillStyle='rgba(255,240,160,.7)';ell(0,0,1.6*s,1.6*s);X.fill();break;
  }X.restore();}
 function drawWorld(){const th=LV(),want=(stage-1)%NL;if(want!==palB){palA=palB;palB=want;palMix=0;}if(palMix<1)palMix=Math.min(1,palMix+.02);
- vidTick();const artB=VID['level'+(palB+1)]||ART['level'+(palB+1)],artA=VID['level'+(palA+1)]||ART['level'+(palA+1)];const live=!!VID['level'+(palB+1)];
- if(artB){if(artA&&palMix<1)drawArt(artA,1,true);drawArt(artB,artA?palMix:1,true);
-  if(!live)ambient(th.decor,th.name);   // a rendered loop already carries its own motion
+ artSync();const artB=ART['level'+(palB+1)],artA=ART['level'+(palA+1)];
+ if(artB){if(artA&&palMix<1)drawArt(artA,1,PXD[palA+1]);drawArt(artB,artA?palMix:1,PXD[palB+1]);
   // calm the picture a little so bugs, shots and treats stay the loudest thing on screen
   X.fillStyle='rgba(0,0,0,.14)';X.fillRect(0,0,W,H);return;}
  const scroll=state==='play'&&!paused?1:.4;
