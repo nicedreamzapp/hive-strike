@@ -35,7 +35,7 @@ function phase2(b){
 }
 // half health is a JOB CHANGE, not a speed bump. rageBoss flips the switch and builds
 // whatever new body the second half of the fight needs; phase2() plays the new attack.
-function rageBoss(b){if(b.rage)return;b.rage=1;const real=LV().boss;say(PHASE2[real].cry);shake=20;rumble(1,.06);hiss(.9,.05,6000,1500);chitter(14,1400,.035,20);
+function rageBoss(b){if(b.rage)return;b.rage=1;const real=LV().boss;say(PHASE2[real].cry);shake=20;stop(5);buzz('warn');rumble(1,.06);hiss(.9,.05,6000,1500);chitter(14,1400,.035,20);
  if(real===5){b.seg.length=Math.min(b.seg.length,90);b.seg2=b.seg.map(s=>({x:W-s.x,y:s.y}));}   // the mother splits: two shorter snakes that pinch
  if(real===7){b.turret={x:clamp(b.x,70,W-70),y:Math.max(90,b.y-10),t:0};}                        // the tail plants as a turret while the body flanks
  if(real===8)b.camoT=0;                                                                          // fades into the canopy; only the twig-sway tells

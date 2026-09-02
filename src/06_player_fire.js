@@ -24,7 +24,7 @@ function fireInner(L,x,y){
   P.fireT=16;}
  else if(P.wpn==='petal'){const want=2+Math.floor(L/2),have=bullets.filter(b=>b.orbit).length;if(have<want){for(let i=have;i<want;i++)bullets.push({x:P.x,y:P.y,vx:0,vy:0,d:.14+L*.03,r:7,k:'petal',orbit:1,pierce:1,a:i/want*Math.PI*2});FIRE.petal();}const n=L>=4?2:1;for(let i=0;i<n;i++)bullets.push({x:x+(i-(n-1)/2)*12,y,vx:0,vy:-11,d:.85+L*.18,r:5,k:'petal',a:-Math.PI/2});P.fireT=14;FIRE.petalDart();}
 }
-function bomb(){if(P.bombs<=0||P.dead)return;P.bombs--;shake=25;flash=1;rumble(1,.08);swell(140,1,'sawtooth',.05,.15);noise(.5,.05,600,.7,120,'lowpass');say('SWARM CALL!');
+function bomb(){if(P.bombs<=0||P.dead)return;P.bombs--;shake=25;flash=1;stop(4);buzz('heavy');rumble(1,.08);swell(140,1,'sawtooth',.05,.15);noise(.5,.05,600,.7,120,'lowpass');say('SWARM CALL!');
  ebullets=[];for(const e of enemies){e.hp-=40;boom(e.x,e.y,'#ffd166',6);}if(boss){boss.hp-=60;}
  for(let i=0;i<60;i++)parts.push({x:R(0,W),y:R(0,H),vx:R(-3,3),vy:R(-6,-1),l:R(30,70),c:'#ffd166',r:R(2,5),bee:1});}
 

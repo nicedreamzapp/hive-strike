@@ -33,7 +33,7 @@ const FONT='"Avenir Next Condensed","Futura","Arial Narrow","Helvetica Neue",san
 // stamped by tools/assemble.py from the version in package.json and the git commit --
 // never edit by hand. It is how you tell at a glance whether the phone in your hand is
 // running the same build as the one next to it.
-const BUILD='v1.0.0  ·  5f1d467+  ·  Sep 1';
+const BUILD='v1.0.0  ·  b3533f6+  ·  Sep 1';
 // letterbox the play field inside whatever the device actually gives us, safe-area padding
 // already removed by the body. visualViewport is the honest number on iOS.
 function fit(){const cs=getComputedStyle(document.body),
@@ -549,7 +549,7 @@ const dailyContract=()=>CONTRACTS[1+seededPick(dayKey(),CONTRACTS.length-1)];
 const dailyBest=()=>+localStorage['hs_daily'+dayKey()]||0;
 function endRun(){if(dailyRun&&score>dailyBest())localStorage['hs_daily'+dayKey()]=score;}
 
-function start(){STAT.runs++;statSave();learned.clear();factT=0;chain=0;chainT=0;chainBest=0;grazed=0;nextExt=0;state='play';score=0;stage=startStage;stageT=0;loop=0;bossAlive=false;boss=null;bullets=[];ebullets=[];enemies=[];pickups=[];parts=[];Object.assign(P,{x:W/2,y:H-100,lives:5,wpn:'honey',lvl:1,bombs:3,inv:120,fireT:0,dead:0,webbed:0});
+function start(){STAT.runs++;statSave();learned.clear();POPS.length=0;ann=null;hitstop=0;factT=0;chain=0;chainT=0;chainBest=0;grazed=0;nextExt=0;state='play';score=0;stage=startStage;stageT=0;loop=0;bossAlive=false;boss=null;bullets=[];ebullets=[];enemies=[];pickups=[];parts=[];Object.assign(P,{x:W/2,y:H-100,lives:5,wpn:'honey',lvl:1,bombs:3,inv:120,fireT:0,dead:0,webbed:0});
  dailyRun=wantDaily?dayKey():null;wantDaily=false;
  const c=dailyRun?dailyContract():CONTRACTS[contractIx];MODS=c.mods;cmult=c.mult;
  if(dailyRun)stage=1;                                  // a daily score means nothing unless everyone starts at the door
@@ -588,7 +588,7 @@ function fireInner(L,x,y){
   P.fireT=16;}
  else if(P.wpn==='petal'){const want=2+Math.floor(L/2),have=bullets.filter(b=>b.orbit).length;if(have<want){for(let i=have;i<want;i++)bullets.push({x:P.x,y:P.y,vx:0,vy:0,d:.14+L*.03,r:7,k:'petal',orbit:1,pierce:1,a:i/want*Math.PI*2});FIRE.petal();}const n=L>=4?2:1;for(let i=0;i<n;i++)bullets.push({x:x+(i-(n-1)/2)*12,y,vx:0,vy:-11,d:.85+L*.18,r:5,k:'petal',a:-Math.PI/2});P.fireT=14;FIRE.petalDart();}
 }
-function bomb(){if(P.bombs<=0||P.dead)return;P.bombs--;shake=25;flash=1;rumble(1,.08);swell(140,1,'sawtooth',.05,.15);noise(.5,.05,600,.7,120,'lowpass');say('SWARM CALL!');
+function bomb(){if(P.bombs<=0||P.dead)return;P.bombs--;shake=25;flash=1;stop(4);buzz('heavy');rumble(1,.08);swell(140,1,'sawtooth',.05,.15);noise(.5,.05,600,.7,120,'lowpass');say('SWARM CALL!');
  ebullets=[];for(const e of enemies){e.hp-=40;boom(e.x,e.y,'#ffd166',6);}if(boss){boss.hp-=60;}
  for(let i=0;i<60;i++)parts.push({x:R(0,W),y:R(0,H),vx:R(-3,3),vy:R(-6,-1),l:R(30,70),c:'#ffd166',r:R(2,5),bee:1});}
 
@@ -960,7 +960,7 @@ function phase2(b){
 }
 // half health is a JOB CHANGE, not a speed bump. rageBoss flips the switch and builds
 // whatever new body the second half of the fight needs; phase2() plays the new attack.
-function rageBoss(b){if(b.rage)return;b.rage=1;const real=LV().boss;say(PHASE2[real].cry);shake=20;rumble(1,.06);hiss(.9,.05,6000,1500);chitter(14,1400,.035,20);
+function rageBoss(b){if(b.rage)return;b.rage=1;const real=LV().boss;say(PHASE2[real].cry);shake=20;stop(5);buzz('warn');rumble(1,.06);hiss(.9,.05,6000,1500);chitter(14,1400,.035,20);
  if(real===5){b.seg.length=Math.min(b.seg.length,90);b.seg2=b.seg.map(s=>({x:W-s.x,y:s.y}));}   // the mother splits: two shorter snakes that pinch
  if(real===7){b.turret={x:clamp(b.x,70,W-70),y:Math.max(90,b.y-10),t:0};}                        // the tail plants as a turret while the body flanks
  if(real===8)b.camoT=0;                                                                          // fades into the canopy; only the twig-sway tells
@@ -1034,31 +1034,33 @@ function drop(x,y,force){const r=Math.random();let k=null;
  if(force)k=force;else if(r<nb)k='nectar';else if(r<nb+.06)k=randWeapon();else if(r<nb+.09)k='bomb';else if(r<nb+.093)k='life';
  if(k==='bomb'&&MODS.nobomb)k='nectar';   // NO SWARM CALLS means none, not "found one anyway"
  if(k)pickups.push({x,y,k,vy:1.1,t:0});}
-function take(p){
- if(p.k==='nectar'){SFX.nectar();if(P.lvl<5){P.lvl++;say('POWER UP  Lv'+P.lvl);}else{addScore(1000);say('MAX POWER +1000');}}
- else if(p.k==='bomb'){SFX.bomb();P.bombs=Math.min(5,P.bombs+1);say('SWARM CALL +1');}
- else if(p.k==='life'){SFX.life();P.lives++;say('EXTRA LIFE!');}
+function take(p){buzz('light');
+ if(p.k==='nectar'){SFX.nectar();if(P.lvl<5){P.lvl++;say('POWER UP  Lv'+P.lvl);pop(p.x,p.y,'POWER Lv'+P.lvl,'#ffd23f',13);}else{addScore(1000);say('MAX POWER +1000');pop(p.x,p.y,'+1000','#ffd23f',13);}}
+ else if(p.k==='bomb'){SFX.bomb();P.bombs=Math.min(5,P.bombs+1);say('SWARM CALL +1');pop(p.x,p.y,'+1 BOMB','#8dff9a',13);}
+ else if(p.k==='life'){SFX.life();P.lives++;say('EXTRA LIFE!');pop(p.x,p.y,'1 UP','#8dff9a',15);buzz('success');}
  else{SFX.weapon(p.k);if(P.wpn!==p.k){bullets=bullets.filter(b=>!b.orbit&&!b.drone&&b.k!=='wall'&&b.k!=='lure');lashT=null;}if(P.wpn===p.k){P.lvl=Math.min(5,P.lvl+1);say(WEAPONS[p.k].name+'  Lv'+P.lvl);}else{P.wpn=p.k;P.lvl=Math.max(1,P.lvl-1);say(WEAPONS[p.k].name+'  —  '+WEAPONS[p.k].tag);}}}
 let chain=0,chainT=0,chainBest=0,grazed=0,nextExt=0;
 const EXTENDS=[100000,250000,500000,900000];
 const chainMult=()=>Math.min(8,1+Math.floor(chain/6));
-function addScore(n){score+=Math.round(n*chainMult()*cmult);
- while(nextExt<EXTENDS.length&&score>=EXTENDS[nextExt]){nextExt++;P.lives++;say('EXTRA LIFE!');
-  jingle([880,1174,1568,2093],'sine',.03,.07);}}
+function addScore(n){const got=Math.round(n*chainMult()*cmult);score+=got;
+ while(nextExt<EXTENDS.length&&score>=EXTENDS[nextExt]){nextExt++;P.lives++;say('EXTRA LIFE!');announce('EXTRA LIFE!','#8dff9a');buzz('success');
+  jingle([880,1174,1568,2093],'sine',.03,.07);}return got;}
 function onKill(){chain++;chainT=190;if(chain>chainBest)chainBest=chain;
  if(chain%6===0){
   // Matt built this and still had to ask what x8 was. Name it once, the first time it
   // pays, then go back to the short form so it stops being noise.
-  say(learned.has('chain')?'CHAIN x'+chainMult():'CHAIN x2  \u00b7  EVERY POINT DOUBLED');
-  learned.add('chain');
+  if(learned.has('chain'))announce('CHAIN x'+chainMult());else say('CHAIN x2  \u00b7  EVERY POINT DOUBLED');
+  learned.add('chain');buzz('medium');
   snd(700+chainMult()*90,.06,'sine',.03,1400);}}
 function breakChain(){if(chain>2)say('CHAIN LOST');chain=0;chainT=0;}
 function chainTick(){if(chainT>0&&--chainT===0)chain=0;}
 // close kills pay double and feed the chain an extra step -- parking on a bug's face is
 // a choice, so it pays like one. 84px is "in their face" without kissing hitboxes.
 function killScore(e){const near=!P.dead&&(e.x-P.x)**2+(e.y-P.y)**2<84*84;
- addScore(e.sc*(near?2:1));onKill();
- if(near){chain++;if(chain>chainBest)chainBest=chain;chainT=230;sparks(e.x,e.y,'#8dff9a',5,7);
+ const got=addScore(e.sc*(near?2:1));onKill();
+ if(!e.tiny){pop(e.x,e.y,'+'+got,near?'#8dff9a':e.elite?'#ffd23f':'#fff',near||e.elite?15:11);ring(e.x,e.y,near?'#8dff9a':'#ffd166');}
+ if(e.elite)stop(3);
+ if(near){stop(2);buzz('light');chain++;if(chain>chainBest)chainBest=chain;chainT=230;sparks(e.x,e.y,'#8dff9a',5,7);
   if(!learned.has('pb')){say('POINT BLANK x2  \u00b7  CLOSE KILLS PAY DOUBLE');learned.add('pb');}}}
 // grazing: sliding close past a shot without being hit pays, and tops up your bombs.
 // a shot whose path clips the bee inside 16 frames is HOT (green ring): grazing that
@@ -1069,17 +1071,40 @@ function grazeTick(){if(P.dead||P.inv>0)return;
   else{const rx=b.x-P.x,ry=b.y-P.y,sp2=b.vx*b.vx+b.vy*b.vy||1e-6,tc=clamp(-(rx*b.vx+ry*b.vy)/sp2,0,16),cx=rx+b.vx*tc,cy=ry+b.vy*tc;b.hot=cx*cx+cy*cy<(b.r+9)**2?1:0;}
   if(b.grz)continue;
   const dx=P.x-b.x,dy=P.y-b.y,d=Math.hypot(dx,dy),near=P.r+b.r+3,far=P.r+b.r+22;
-  if(d>near&&d<far){const pays=b.hot?2:1;b.grz=1;addScore(60*pays);
+  if(d>near&&d<far){const pays=b.hot?2:1;b.grz=1;const got=addScore(60*pays);if(b.hot)pop(b.x,b.y,'+'+got,'#8dff9a',10);
    sparks(b.x+(dx?dx/d*6:0),b.y+(dy?dy/d*6:0),b.hot?'#8dff9a':'#ffe680',2,4);
    for(let g=pays;g--;){grazed++;
     if(grazed%22===0&&P.bombs<5){P.bombs++;say(learned.has('graze')?'BOMB FROM GRAZING':'FREE BOMB  \u00b7  FOR SLIPPING PAST SHOTS');learned.add('graze');}}
    if(grazed%6<pays)snd(2200,.03,'sine',.012,3000);}}}
-function hitPlayer(){if(P.inv>0||P.dead)return;if(P.bombs>0){bomb();P.inv=90;say('AUTO SWARM CALL!');return;}breakChain();P.lives--;P.dead=90;shake=20;boom(P.x,P.y,'#ffd166',40,7);noise(.7,.05,1400,.6,200,'lowpass');swell(90,.9,'sine',.08,.05,40);
+function hitPlayer(){if(P.inv>0||P.dead)return;if(P.bombs>0){bomb();P.inv=90;say('AUTO SWARM CALL!');return;}breakChain();P.lives--;P.dead=90;shake=20;stop(10);buzz('heavy');boom(P.x,P.y,'#ffd166',40,7);noise(.7,.05,1400,.6,200,'lowpass');swell(90,.9,'sine',.08,.05,40);
  P.lvl=Math.max(1,P.lvl-1);ebullets=[];
  if(P.lives<0){state='over';music('title');endRun();if(score>hi){hi=score;localStorage.hs_hi=hi;}}}
 
+
+// ---------- juice: the game showing you what just happened ----------
+// hitstop freezes the whole sim for a few frames on the big beats (the frame loop skips
+// update while it counts down); pops are the numbers that fly off a kill; rings mark the
+// spot; the announcer is the chain step, punched in big and gone fast. All of it draws
+// above the world and under the HUD, and none of it is something to dodge.
+let hitstop=0,ann=null;const POPS=[];
+function stop(n){hitstop=Math.max(hitstop,n);}
+function pop(x,y,s,col='#fff',size=12){if(POPS.length>28)POPS.shift();POPS.push({x,y:y-6,s,col,size,t:0,vy:-1.1});}
+function ring(x,y,col){if(POPS.length>28)POPS.shift();POPS.push({x,y,ring:1,col,t:0});}
+function announce(s,col='#ffd23f'){ann={s,col,t:0};}
+function juiceTick(){for(let i=POPS.length;i--;){const p=POPS[i];p.t++;if(p.ring){if(p.t>14)POPS.splice(i,1);}else{p.y+=p.vy;p.vy*=.94;if(p.t>44)POPS.splice(i,1);}}if(ann&&++ann.t>60)ann=null;}
+function drawJuice(){if(!POPS.length&&!ann)return;X.save();
+ for(const p of POPS){if(p.ring){const f=p.t/14;X.strokeStyle=p.col;X.globalAlpha=(1-f)*.8;X.lineWidth=3-2*f;X.beginPath();X.arc(p.x,p.y,6+f*30,0,7);X.stroke();continue;}
+  const k=Math.min(1,p.t/6),sc=1.6-.6*k,a=p.t>30?1-(p.t-30)/14:1;X.save();X.translate(p.x,p.y);X.scale(sc,sc);X.globalAlpha=a;X.font='bold '+p.size+'px '+FONT;X.textAlign='center';X.lineWidth=3;X.strokeStyle='rgba(0,0,0,.7)';X.strokeText(p.s,0,0);X.fillStyle=p.col;X.fillText(p.s,0,0);X.restore();}
+ if(ann){const k=Math.min(1,ann.t/8),e=1-(1-k)*(1-k),sc=2.4-1.4*e,a=ann.t>40?1-(ann.t-40)/20:1;X.translate(W/2,H*.36);X.scale(sc,sc);X.globalAlpha=a;X.font='bold 30px '+FONT;X.textAlign='center';X.shadowColor='#000';X.shadowBlur=12;X.lineWidth=4;X.strokeStyle='rgba(0,0,0,.75)';X.strokeText(ann.s,0,0);X.fillStyle=ann.col;X.fillText(ann.s,0,0);}
+ X.restore();}
+// haptics: the phone answers the beats the thumb caused. Capacitor's Haptics plugin on
+// iOS/Android, navigator.vibrate on the web where it exists, nothing when effects are muted.
+let buzzT=0;
+function buzz(k){if(!SFX_ON||t-buzzT<4)return;buzzT=t;try{const Hp=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.Haptics;
+ if(Hp){if(k==='success')Hp.notification({type:'SUCCESS'});else if(k==='warn')Hp.notification({type:'WARNING'});else Hp.impact({style:k==='heavy'?'HEAVY':k==='medium'?'MEDIUM':'LIGHT'});}
+ else if(navigator.vibrate)navigator.vibrate(k==='heavy'?45:k==='medium'?22:k==='light'?10:[20,30,20]);}catch(e){}}
 // ---------- update ----------
-function update(){t++;if(shake>0)shake--;if(msgT>0)msgT--;bugChorus();chainTick();grazeTick();volcanoTick();if(P.lives===0&&!P.dead&&t%64===0)SFX.heartbeat();
+function update(){t++;juiceTick();if(shake>0)shake--;if(msgT>0)msgT--;bugChorus();chainTick();grazeTick();volcanoTick();if(P.lives===0&&!P.dead&&t%64===0)SFX.heartbeat();
  if(P.dead>0){P.dead--;if(P.dead===0){P.x=W/2;P.y=H-100;P.inv=240;}}
  else{const s=(keys.ShiftLeft||keys.ShiftRight||PAD.slow?2.5:4.5)*(P.webbed>0?.35:1);
   if(keys.ArrowLeft||keys.KeyA)P.x-=s;if(keys.ArrowRight||keys.KeyD)P.x+=s;if(keys.ArrowUp||keys.KeyW)P.y-=s;if(keys.ArrowDown||keys.KeyS)P.y+=s;
@@ -1099,7 +1124,7 @@ function update(){t++;if(shake>0)shake--;if(msgT>0)msgT--;bugChorus();chainTick(
   else if(bossWarn>0){bossWarn--;if(bossWarn%45===0){swell(70,.5,'sine',.07,.08);rumble(.5,.04);}if(bossWarn===0)spawnBoss();}
   else{stageT++;wave();if(stageT>LV().len){for(const e of enemies){if(e.pat!=='fall'){e.pat='fall';e.vy=6;}}bossWarn=210;ebullets=[];shake=10;music('boss');drop(clamp(P.x-50,40,W-40),P.y-260,randWeapon());drop(clamp(P.x+50,40,W-40),P.y-280,'nectar');if(P.bombs<2)drop(P.x,P.y-300,'bomb');}}}
  else if(boss&&boss.dying>0){boss.dying--;boss.fl=2;boss.x+=R(-3,3);if(boss.dying%7===0){boom(boss.x+R(-40,40),boss.y+R(-40,40),['#fff','#ffd166',boss.col][RI(0,2)],18,6);shake=8;rumble(.35,.06);noise(.12,.03,900,.7,250,'lowpass');click(R(1500,3000),.02);}if(boss.dying%20===0)hiss(.3,.03,R(2000,5000),800);if(boss.dying===0){boss.hp=0;}}
- else if(boss){updBoss(boss);if(boss.hp<=0&&boss.dying==null){boss.dying=90;ebullets=[];say(boss.name+' IS GOING DOWN!');rumble(1.5,.07);swell(80,1.4,'triangle',.05,.3,30);return;}if(boss.hp<=0){addScore(5000*(stage+loop));boom(boss.x,boss.y,boss.col,80,9);boom(boss.x,boss.y,'#fff',40,5);sparks(boss.x,boss.y,'#fff',40,12);flash=.6;shake=22;rumble(1.8,.1);swell(60,1.8,'sine',.07,.2,30);noise(.6,.05,700,.6,120,'lowpass');jingle([660,880,1108,1318,1760],'sine',.03,.09);
+ else if(boss){updBoss(boss);if(boss.hp<=0&&boss.dying==null){boss.dying=90;ebullets=[];say(boss.name+' IS GOING DOWN!');announce('BOSS DOWN!');stop(8);buzz('heavy');rumble(1.5,.07);swell(80,1.4,'triangle',.05,.3,30);return;}if(boss.hp<=0){addScore(5000*(stage+loop));boom(boss.x,boss.y,boss.col,80,9);boom(boss.x,boss.y,'#fff',40,5);sparks(boss.x,boss.y,'#fff',40,12);flash=.6;shake=22;rumble(1.8,.1);swell(60,1.8,'sine',.07,.2,30);noise(.6,.05,700,.6,120,'lowpass');jingle([660,880,1108,1318,1760],'sine',.03,.09);
   for(let i=0;i<3;i++)drop(clamp(boss.x-80+i*80,50,W-50),boss.y+i*10,i===0?'nectar':i===1?randWeapon():['nectar','bomb','bomb',(stage%2===0?'life':'bomb')][RI(0,3)]);
   boss=null;bossAlive=false;ebullets=[];enemies=[];levelClear=220;msgT=0;STAT.bosses++;statSave();SFX.levelClear();const w=MUSIC.tracks.win;if(w&&!w.bad){w.currentTime=0;music('win');}else music(null);}}
  // bullets
@@ -1122,7 +1147,7 @@ function update(){t++;if(shake>0)shake--;if(msgT>0)msgT--;bugChorus();chainTick(
    // atlas moth: while a wing lives it soaks the hit for its side. break one and that half
    // of the screen fills with scales you can graze -- the shield becomes the feast.
    if(boss.wings&&(boss.wings.l>0||boss.wings.r>0)){const side=(b.x<boss.x&&boss.wings.l>0)||boss.wings.r<=0?'l':'r';boss.wings[side]-=b.d*PD;boss.fl=3;
-    if(boss.wings[side]<=0){boss.wings[side]=0;const sx=side==='l'?boss.x-90:boss.x+90;boom(sx,boss.y,'#e0a060',40,7);flash=.3;shake=14;say('A WING BREAKS!');rumble(.8,.06);
+    if(boss.wings[side]<=0){boss.wings[side]=0;const sx=side==='l'?boss.x-90:boss.x+90;boom(sx,boss.y,'#e0a060',40,7);flash=.3;shake=14;stop(4);say('A WING BREAKS!');rumble(.8,.06);
      for(let k=0;k<16;k++)ebullets.push({x:side==='l'?R(10,W/2-20):R(W/2+20,W-10),y:R(-50,90),vx:R(-.2,.2),vy:R(.7,1.3),r:6,col:'#ffdd88',t:0,kind:'dust'});drop(sx,boss.y+40,'bomb');}}
    else{boss.hp-=b.d*PD;boss.fl=3;}
    if(!b.pierce)b.dead=1;sfxBossHit();parts.push({x:b.x,y:b.y,vx:R(-2,2),vy:R(-2,2),l:10,c:'#fff',r:2});}
@@ -1946,6 +1971,7 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
   X.globalAlpha=1;X.fillStyle=ok?'#ffd23f':'rgba(255,255,255,.3)';X.font='bold 11px '+FONT;X.textAlign='center';
   X.fillText('BOMB',b.x+b.w/2,b.y+b.h/2-1);X.font='bold 13px '+FONT;X.fillText(String(P.bombs),b.x+b.w/2,b.y+b.h/2+14);X.restore();
   const q=TBTN.pause;panel(q.x,q.y,q.w,q.h,6);X.fillStyle='rgba(255,255,255,.75)';X.font='bold 11px '+FONT;X.textAlign='center';X.fillText(paused?'▶':'II',q.x+q.w/2,q.y+15);}
+ if(state==='play')drawJuice();
  if(msgT>0){const card=levelClear>0||levelIntro>0||bossWarn>0;
   // In-play callouts used to hit full opacity at 24px in the middle of the play field,
   // sitting right on top of the bugs you are trying to read. They are notifications, not
@@ -2126,6 +2152,7 @@ function frame(now){const dt=now-last,_w0=performance.now();
  try{
   acc+=Math.min(100,dt);last=now;padTick();
   while(acc>=STEP){acc-=STEP;
+   if(hitstop>0&&state==='play'&&!paused){hitstop--;continue;}   // the world holds its breath
    if(resumeCountdown>0){resumeCountdown--;if(resumeCountdown===0)paused=false;t++;}
    else if(state==='play'&&!paused)update();else t++;}
   musicTick();ambTick();draw();

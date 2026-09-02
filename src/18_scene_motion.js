@@ -398,6 +398,7 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
   X.globalAlpha=1;X.fillStyle=ok?'#ffd23f':'rgba(255,255,255,.3)';X.font='bold 11px '+FONT;X.textAlign='center';
   X.fillText('BOMB',b.x+b.w/2,b.y+b.h/2-1);X.font='bold 13px '+FONT;X.fillText(String(P.bombs),b.x+b.w/2,b.y+b.h/2+14);X.restore();
   const q=TBTN.pause;panel(q.x,q.y,q.w,q.h,6);X.fillStyle='rgba(255,255,255,.75)';X.font='bold 11px '+FONT;X.textAlign='center';X.fillText(paused?'▶':'II',q.x+q.w/2,q.y+15);}
+ if(state==='play')drawJuice();
  if(msgT>0){const card=levelClear>0||levelIntro>0||bossWarn>0;
   // In-play callouts used to hit full opacity at 24px in the middle of the play field,
   // sitting right on top of the bugs you are trying to read. They are notifications, not
