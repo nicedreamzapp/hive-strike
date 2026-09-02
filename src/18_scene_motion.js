@@ -492,7 +492,10 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
    X.fillStyle=lock?'rgba(255,255,255,.35)':sel?'#ffd23f':'#cfe8ff';X.font='bold 14px '+FONT;X.fillText(lock?'\uD83D\uDD12':String(i+1),tl.x+tl.w/2,tl.y+17);
    X.font='7px '+FONT;X.fillStyle=lock?'rgba(255,255,255,.3)':sel?'#fff':'rgba(255,255,255,.7)';X.fillText(th.name.replace('THE ',''),tl.x+tl.w/2,tl.y+30);
    if(!lock&&bs>0){X.font='6px '+FONT;X.fillStyle='rgba(255,210,63,.85)';X.fillText(bs>=1000?(bs/1000).toFixed(bs>=10000?0:1)+'k':String(bs),tl.x+tl.w/2,tl.y+37);}}
+  // Bug-Dex chip
+  {const n=dexSeen();X.save();X.fillStyle='rgba(6,14,28,.78)';X.beginPath();X.roundRect(DBTN.x,DBTN.y,DBTN.w,DBTN.h,8);X.fill();X.strokeStyle='rgba(127,212,255,.5)';X.lineWidth=1;X.stroke();X.textAlign='center';X.shadowColor='#000';X.shadowBlur=3;X.fillStyle='#7fd4ff';X.font='bold 11px '+FONT;X.fillText('BUG-DEX  '+n+' / '+DEX.length+'   \u00b7   '+(touchMode?'tap to open':'D to open'),W/2,DBTN.y+16);X.restore();}
   X.shadowBlur=0;}
+ if(dexOpen&&state!=='play')drawDex();
  if(resumeCountdown>0){X.fillStyle='#0008';X.fillRect(0,0,W,H);X.textAlign='center';X.fillStyle='#fff';X.font='bold 22px '+FONT;X.fillText('GET READY',W/2,H/2-40);X.fillStyle='#ffd23f';X.font='bold 64px '+FONT;X.fillText(String(Math.ceil(resumeCountdown/60)),W/2,H/2+30);}
  else if(paused){X.fillStyle='#0008';X.fillRect(0,0,W,H);X.fillStyle='#fff';X.font='bold 30px '+FONT;X.textAlign='center';X.fillText('PAUSED',W/2,H/2);X.font='11px '+FONT;X.fillStyle='rgba(255,255,255,.75)';X.fillText('P or START to resume',W/2,H/2+26);}
 }

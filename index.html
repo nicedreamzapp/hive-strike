@@ -33,7 +33,7 @@ const FONT='"Avenir Next Condensed","Futura","Arial Narrow","Helvetica Neue",san
 // stamped by tools/assemble.py from the version in package.json and the git commit --
 // never edit by hand. It is how you tell at a glance whether the phone in your hand is
 // running the same build as the one next to it.
-const BUILD='v1.0.0  ·  b3533f6+  ·  Sep 1';
+const BUILD='v1.0.0  ·  04ea510+  ·  Sep 1';
 // letterbox the play field inside whatever the device actually gives us, safe-area padding
 // already removed by the body. visualViewport is the honest number on iOS.
 function fit(){const cs=getComputedStyle(document.body),
@@ -54,7 +54,9 @@ function fit(){const cs=getComputedStyle(document.body),
 addEventListener('resize',fit);addEventListener('orientationchange',()=>setTimeout(fit,120));
 if(window.visualViewport)visualViewport.addEventListener('resize',fit);
 fit();
-const keys={};addEventListener('keydown',e=>{keys[e.code]=1;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.code==='KeyP')paused=!paused;if(e.code==='KeyL'){setLow(!LOW);say('DETAIL '+(LOW?'LOW':'FULL'));}if(e.code==='Minus'){VOL=Math.max(0,+(VOL-.05).toFixed(2));localStorage.hs_vol=VOL;applyVol();say('VOLUME '+Math.round(VOL*100)+'%');}if(e.code==='Equal'){VOL=Math.min(1,+(VOL+.05).toFixed(2));localStorage.hs_vol=VOL;applyVol();say('VOLUME '+Math.round(VOL*100)+'%');}if(e.code==='KeyN')musicToggle();if(e.code==='KeyM')sfxToggle();if(state!=='play'){if(e.code==='ArrowLeft')pickStage(startStage-1);if(e.code==='ArrowRight')pickStage(startStage+1);if(/^Digit[1-8]$/.test(e.code))pickStage(+e.code.slice(5));}
+const keys={};addEventListener('keydown',e=>{keys[e.code]=1;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.code==='KeyP')paused=!paused;if(e.code==='KeyL'){setLow(!LOW);say('DETAIL '+(LOW?'LOW':'FULL'));}if(e.code==='Minus'){VOL=Math.max(0,+(VOL-.05).toFixed(2));localStorage.hs_vol=VOL;applyVol();say('VOLUME '+Math.round(VOL*100)+'%');}if(e.code==='Equal'){VOL=Math.min(1,+(VOL+.05).toFixed(2));localStorage.hs_vol=VOL;applyVol();say('VOLUME '+Math.round(VOL*100)+'%');}if(e.code==='KeyN')musicToggle();if(e.code==='KeyM')sfxToggle();if(dexOpen){if(e.code==='Escape'||e.code==='KeyD')dexOpen=false;else if(e.code==='ArrowLeft')dexPage(-1);else if(e.code==='ArrowRight')dexPage(1);else if(e.code==='Enter'||e.code==='Space')dexPick=null;return;}
+ if(state!=='play'&&e.code==='KeyD'){dexOpen=true;return;}
+ if(state!=='play'){if(e.code==='ArrowLeft')pickStage(startStage-1);if(e.code==='ArrowRight')pickStage(startStage+1);if(/^Digit[1-8]$/.test(e.code))pickStage(+e.code.slice(5));}
 if(state!=='play'&&(e.code==='Enter'||e.code==='Space')){if(state==='won')continueGame();else if(!armed){arm();}else start();}});
 addEventListener('keyup',e=>keys[e.code]=0);
 let touch=null,target=null,lastMove=0;
@@ -82,6 +84,8 @@ C.addEventListener('pointermove',e=>{target=ptr(e);lastMove=t;});
 const BTN={music:{x:W/2-46,y:4,w:40,h:22},sfx:{x:W/2+6,y:4,w:40,h:22}};const inBtn=(p,b)=>p.x>=b.x&&p.x<=b.x+b.w&&p.y>=b.y&&p.y<=b.y+b.h;
 // daily hive + queen's contract chips, title screen only
 const CBTN={daily:{x:8,y:30,w:W/2-14,h:30},contract:{x:W/2+6,y:30,w:W/2-14,h:30}};
+// the Bug-Dex chip sits between the world tiles and the score line
+const DBTN={x:W/2-104,y:H-58,w:208,h:24};
 C.addEventListener('pointerdown',e=>{const isT=e.pointerType==='touch',p=ptr(e),raw={x:p.x,y:p.y+(isT?TOUCH_LIFT:0)};
  audioWake();
  if(inBtn(raw,BTN.music)){musicToggle();return;}
@@ -96,7 +100,9 @@ C.addEventListener('pointerdown',e=>{const isT=e.pointerType==='touch',p=ptr(e),
   if(barHit(raw,BARS.sfx)){setSfxLv(barVal(raw,BARS.sfx));click(1400,.02);say('EFFECTS '+Math.round(SFXLV*100)+'%');return;}
  }
  target=p;lastMove=t;
+ if(dexOpen){dexTap(raw);return;}
  if(state!=='play'){
+  if(inBtn(raw,DBTN)){dexOpen=true;click(1200,.02);return;}
   if(inBtn(raw,CBTN.daily)){if(!armed)arm();wantDaily=true;start();return;}
   if(inBtn(raw,CBTN.contract)){contractIx=(contractIx+1)%CONTRACTS.length;localStorage.hs_contract=contractIx;const c=CONTRACTS[contractIx];say(c.label+'  ·  '+c.terms+(c.mult!==1?'  ·  SCORE x'+c.mult:''));click(1200,.02);return;}
   for(let i=0;i<16;i++){if(inBtn(raw,TILE(i))){pickStage(i+1);if(!armed)arm();return;}}if(state==='won')continueGame();else if(!armed)arm();else start();return;}
@@ -491,8 +497,9 @@ let unlocked=Math.max(1,Math.min(16,+localStorage.hs_unlocked||1));
 function unlockUpTo(n){const u=n>16?16:Math.max(1,Math.min(16,n));if(u>unlocked){unlocked=u;localStorage.hs_unlocked=u;}}
 const bestFor=n=>+localStorage['hs_best'+n]||0;
 function recordBest(n,sc){if(n>=1&&n<=16&&sc>bestFor(n))localStorage['hs_best'+n]=sc;}
-const STAT={runs:+localStorage.hs_runs||0,bosses:+localStorage.hs_bosses||0,deepest:+localStorage.hs_deepest||1};
-function statSave(){localStorage.hs_runs=STAT.runs;localStorage.hs_bosses=STAT.bosses;localStorage.hs_deepest=STAT.deepest;}
+const STAT={runs:+localStorage.hs_runs||0,bosses:+localStorage.hs_bosses||0,deepest:+localStorage.hs_deepest||1,dex:{},bdex:{}};
+try{STAT.dex=JSON.parse(localStorage.hs_dex||'{}')||{};STAT.bdex=JSON.parse(localStorage.hs_bdex||'{}')||{};}catch(e){}
+function statSave(){localStorage.hs_runs=STAT.runs;localStorage.hs_bosses=STAT.bosses;localStorage.hs_deepest=STAT.deepest;try{localStorage.hs_dex=JSON.stringify(STAT.dex);localStorage.hs_bdex=JSON.stringify(STAT.bdex);}catch(e){}}
 function pickStage(n){n=clamp(n,1,16);if(n>unlocked){say('LEVEL '+n+' LOCKED  \u2014  REACH IT TO PLAY IT');noise(.12,.025,300,1.2,140,'lowpass');return;}startStage=n;localStorage.hs_start=startStage;click(1200,.02);}
 const TILE=(i)=>({x:26+(i%8)*54,y:H-150+Math.floor(i/8)*44,w:48,h:38});
 function arm(){armed=true;ctx();music('title');}
@@ -514,9 +521,9 @@ const BUGINFO={
  stinkbug:{name:'STINK BUG',fact:'When scared, a stink bug sprays a stinky liquid so predators leave it alone.'},
  hornet:{name:'HORNET',fact:'A hornet is just a big wasp. It hunts other insects to feed its young.'},
  cicada:{name:'CICADA',fact:'Cicadas are the loudest insects; some live underground for 17 years before coming out.'},
- butterfly:{name:'BUTTERFLY',fact:'Butterflies taste with their feet.'},spiderling:{name:'SPIDERLING',fact:'Baby spiders ride the wind on silk threads.'},snail:{name:'SNAIL',fact:'A snail can sleep for months.'},earwig:{name:'EARWIG',fact:''},katydid:{name:'KATYDID',fact:''},strider:{name:'WATER STRIDER',fact:''},weevil:{name:'WEEVIL',fact:''},glowworm:{name:'GLOWWORM',fact:''},termite:{name:'TERMITE',fact:''},horsefly:{name:'HORSEFLY',fact:''},dungbeetle:{name:'DUNG BEETLE',fact:''},midge:{name:'MIDGES'},aphid:{name:'APHIDS'},thrips:{name:'THRIPS'},fruitfly:{name:'FRUIT FLIES'},sandfly:{name:'SAND FLIES'},blackfly:{name:'BLACK FLIES'},whitefly:{name:'WHITEFLIES'},springtail:{name:'SPRINGTAILS'},leafhopper:{name:'LEAFHOPPERS'},fungusgnat:{name:'FUNGUS GNATS'},mayfly:{name:'MAYFLIES'},noseeum:{name:'NO-SEE-UMS'},psyllid:{name:'PSYLLIDS'},lacebug:{name:'LACE BUGS'},planthopper:{name:'PLANTHOPPERS'},crystalmite:{name:'CRYSTAL MITES'},leafcutter:{name:'LEAFCUTTER ANT'},morpho:{name:'BLUE MORPHO'},harlequin:{name:'HARLEQUIN BEETLE'},cavecricket:{name:'CAVE CRICKET'},millipede:{name:'MILLIPEDE'},whipscorpion:{name:'WHIP SCORPION'},stonefly:{name:'STONEFLY'},apollo:{name:'APOLLO BUTTERFLY'},snowflea:{name:'SNOW FLEA'},sandhopper:{name:'SAND HOPPER'},isopod:{name:'SEA SLATER'},shorefly:{name:'SHORE FLY'},lavacricket:{name:'LAVA CRICKET'},ashmoth:{name:'ASH MOTH'},blisterbeetle:{name:'BLISTER BEETLE'},scorpionfly:{name:'SCORPIONFLY'},iceworm:{name:'ICE WORM'},woollybear:{name:'WOOLLY BEAR'},cockroach:{name:'COCKROACH'},silverfish:{name:'SILVERFISH'},bedbug:{name:'BED BUG'},glasswing:{name:'GLASSWING'},jewelwasp:{name:'JEWEL WASP'},lanternbug:{name:'LANTERN BUG'},
+ butterfly:{name:'BUTTERFLY',fact:'Butterflies taste with their feet.'},spiderling:{name:'SPIDERLING',fact:'Baby spiders ride the wind on silk threads.'},snail:{name:'SNAIL',fact:'A snail can sleep for months.'},earwig:{name:'EARWIG',fact:'Earwigs are good mothers. She guards her eggs and cleans them until they hatch. The pincers are mostly for show.'},katydid:{name:'KATYDID',fact:'A katydid\'s ears are on its front legs, and it sings by rubbing its wings together.'},strider:{name:'WATER STRIDER',fact:'Water striders walk on water. Tiny hairs on their legs trap air so they never break the surface.'},weevil:{name:'WEEVIL',fact:'Weevils are beetles with a long snout. There are more than 60,000 kinds, more than any other animal family.'},glowworm:{name:'GLOWWORM',fact:'A glowworm is not a worm at all. It is a beetle larva, or a wingless female beetle, that makes its own light.'},termite:{name:'TERMITE',fact:'Termites are cousins of cockroaches. A queen can live for decades and lay thousands of eggs a day.'},horsefly:{name:'HORSEFLY',fact:'Only female horseflies bite. Their eyes have rainbow stripes and they are among the fastest flying insects.'},dungbeetle:{name:'DUNG BEETLE',fact:'A dung beetle can roll a ball 50 times its own weight, and at night it steers by the Milky Way.'},midge:{name:'MIDGES',fact:'Midges swarm in clouds at dusk. One kind is the only insect that lives in Antarctica.'},aphid:{name:'APHIDS',fact:'Aphids are born pregnant. A mother can carry babies that already have babies growing inside them.'},thrips:{name:'THRIPS',fact:'Thrips are so tiny they ride the breeze, and their wings are fringed with hairs like tiny feathers.'},fruitfly:{name:'FRUIT FLIES',fact:'Fruit flies have helped scientists win six Nobel Prizes. Their genes work a lot like ours.'},sandfly:{name:'SAND FLIES',fact:'Sand flies are so small they slip through window screens. They only come out at dusk and at night.'},blackfly:{name:'BLACK FLIES',fact:'Black flies hatch in fast, clean streams. Finding them means the water is healthy.'},whitefly:{name:'WHITEFLIES',fact:'Whiteflies are not flies. They are tiny cousins of aphids, dusted with white wax.'},springtail:{name:'SPRINGTAILS',fact:'A springtail has a spring folded under its belly. Let go, and the bug pops into the air many times its own length.'},leafhopper:{name:'LEAFHOPPERS',fact:'Leafhoppers talk by shaking the plant they stand on. The buzz travels down the stem like a phone line.'},fungusgnat:{name:'FUNGUS GNATS',fact:'Fungus gnat babies eat mushrooms and roots. Some kinds march together in a long line like a tiny snake.'},mayfly:{name:'MAYFLIES',fact:'A mayfly spends years underwater as a baby, then lives about a day as an adult. It cannot even eat.'},noseeum:{name:'NO-SEE-UMS',fact:'No-see-ums are so small they fit through a window screen, which is how they got their name.'},psyllid:{name:'PSYLLIDS',fact:'Psyllids look like tiny cicadas and jump like fleas. Most kinds eat only one type of plant.'},lacebug:{name:'LACE BUGS',fact:'A lace bug\'s wings look like lace. Each one is a tiny stained-glass window.'},planthopper:{name:'PLANTHOPPERS',fact:'Baby planthoppers have real gears in their legs, the only gears ever found on a living animal.'},crystalmite:{name:'CRYSTAL MITES',fact:'A mite so small you would need a hand lens to see it. In the Crystal world they are said to glitter like dust.'},leafcutter:{name:'LEAFCUTTER ANT',fact:'Leafcutter ants do not eat leaves. They chew them into mulch to grow a fungus garden underground.'},morpho:{name:'BLUE MORPHO',fact:'A blue morpho\'s wings are not blue at all. Tiny ridges bend the light, the way a soap bubble does.'},harlequin:{name:'HARLEQUIN BEETLE',fact:'The harlequin beetle\'s front legs can be longer than its whole body. Tiny false scorpions hitch rides under its wings.'},cavecricket:{name:'CAVE CRICKET',fact:'Cave crickets live in the dark, so many are pale and their long feelers do the seeing.'},millipede:{name:'MILLIPEDE',fact:'Millipede means a thousand feet, but most have a few hundred. One kind in Australia really has over 1,300.'},whipscorpion:{name:'WHIP SCORPION',fact:'A whip scorpion has no sting. When bothered it sprays vinegar, which is why it is also called a vinegaroon.'},stonefly:{name:'STONEFLY',fact:'Stoneflies need cold, clean water. Their babies breathe with gills and do push-ups when the water gets low.'},apollo:{name:'APOLLO BUTTERFLY',fact:'The Apollo butterfly lives high in the mountains. Its white wings with red spots are thin enough to see through.'},snowflea:{name:'SNOW FLEA',fact:'Snow fleas are springtails that hop about on top of the snow in winter, thanks to a natural antifreeze inside them.'},sandhopper:{name:'SAND HOPPER',fact:'Sand hoppers dig into the beach by day and jump about at night. They use the moon to find their way home.'},isopod:{name:'SEA SLATER',fact:'A sea slater is a cousin of the pill bug that lives at the shore. It breathes with gills, so it stays near the water.'},shorefly:{name:'SHORE FLY',fact:'Some shore flies live in hot springs and salty lakes where almost nothing else can survive.'},lavacricket:{name:'LAVA CRICKET',fact:'A real cricket from Hawaii. It moves onto fresh lava within weeks of it cooling, before any plant has grown.'},ashmoth:{name:'ASH MOTH',fact:'A legend of the Volcano world: a grey moth that rests on warm cinders and only flies when the ground shakes.'},blisterbeetle:{name:'BLISTER BEETLE',fact:'Blister beetles carry a chemical in their blood that blisters skin. Birds and frogs learn to leave them alone.'},scorpionfly:{name:'SCORPIONFLY',fact:'A scorpionfly cannot sting. The curled tail on the male only looks like one, and he uses it to hold on.'},iceworm:{name:'ICE WORM',fact:'Ice worms live inside glaciers and die if they get warmer than a few degrees above freezing.'},woollybear:{name:'WOOLLY BEAR',fact:'The woolly bear caterpillar freezes solid in winter, thaws out in spring, and turns into a tiger moth.'},cockroach:{name:'COCKROACH',fact:'A cockroach can live for a week without its head. It breathes through holes in its sides.'},silverfish:{name:'SILVERFISH',fact:'Silverfish are older than the dinosaurs and have no wings. They eat paper, glue, and even book bindings.'},bedbug:{name:'BED BUG',fact:'Bed bugs can wait a whole year without a meal, hiding in cracks until someone comes to bed.'},glasswing:{name:'GLASSWING',fact:'The glasswing butterfly has see-through wings. Tiny bumps on them stop light from bouncing off, so there is no glare.'},jewelwasp:{name:'JEWEL WASP',fact:'The jewel wasp is shiny emerald green. It stings a cockroach in just the right spot, then leads it home like a dog on a leash.'},lanternbug:{name:'LANTERN BUG',fact:'The lantern bug wears a long false head that looks like a peanut. People once thought it glowed. It does not.'},
 };
-const BOSSFACT=['A hornet queen starts a brand-new nest all by herself every spring.','A praying mantis can turn its head almost all the way around to look behind it.','An orb weaver spider eats its web every night and spins a fresh one.','A dragonfly eye has up to 30,000 tiny lenses.','Male stag beetles wrestle each other with jaws shaped like antlers.','Centipedes have one pair of legs per body segment, and never exactly 100.'];
+const BOSSFACT=['A real hornet queen starts a nest alone each spring and raises the first workers herself.','A mantis can turn its head to look over its shoulder. No other insect can do that.','An orb weaver eats its old web every night and spins a brand-new one, silk and all recycled.','Dragonflies have been around for 300 million years. Some ancient ones had wings as wide as a hawk\'s.','A stag beetle\'s giant jaws are for wrestling other males. They are so big it can barely bite with them.','A centipede mother curls around her eggs for weeks and licks them to keep mold away.','A mosquito beats its wings 600 times a second. That whine is the wings, not a voice.','Scorpions glow blue-green under ultraviolet light. Nobody is completely sure why.','Some walking sticks are longer than your forearm, the longest insects in the world.','Cave glowworms hang sticky silk threads from the ceiling and light up to lure insects into them.','The mountain weta of New Zealand can freeze solid overnight and walk away when it thaws.','Horseshoe crabs are not crabs and have blue blood. They were here before the dinosaurs.','A fire ant queen can live seven years and lay over a thousand eggs a day.','Ice crawlers, the earwig\'s cold cousins, really do live at the edge of glaciers and die in a warm hand.','A male dobsonfly\'s jaws are so long it cannot bite with them. The female\'s are shorter and pinch hard.','The atlas moth is one of the largest moths on Earth. Its wingtips look like snake heads to scare off birds.'];
 let factTxt='',factName='',factT=0;const learned=new Set();
 function showFact(name,fact){factName=name;factTxt=fact;factT=360;}
 // ================= WEAPON ASSORTMENT =================
@@ -547,7 +554,7 @@ const dayKey=()=>{const d=new Date();return d.getFullYear()*10000+(d.getMonth()+
 function seededPick(seed,n){let a=seed|0;a=Math.imul(a^a>>>15,1|a);a^=a+Math.imul(a^a>>>7,61|a);return ((a^(a>>>14))>>>0)%n;}
 const dailyContract=()=>CONTRACTS[1+seededPick(dayKey(),CONTRACTS.length-1)];
 const dailyBest=()=>+localStorage['hs_daily'+dayKey()]||0;
-function endRun(){if(dailyRun&&score>dailyBest())localStorage['hs_daily'+dayKey()]=score;}
+function endRun(){statSave();if(dailyRun&&score>dailyBest())localStorage['hs_daily'+dayKey()]=score;}
 
 function start(){STAT.runs++;statSave();learned.clear();POPS.length=0;ann=null;hitstop=0;factT=0;chain=0;chainT=0;chainBest=0;grazed=0;nextExt=0;state='play';score=0;stage=startStage;stageT=0;loop=0;bossAlive=false;boss=null;bullets=[];ebullets=[];enemies=[];pickups=[];parts=[];Object.assign(P,{x:W/2,y:H-100,lives:5,wpn:'honey',lvl:1,bombs:3,inv:120,fireT:0,dead:0,webbed:0});
  dailyRun=wantDaily?dayKey():null;wantDaily=false;
@@ -1057,6 +1064,7 @@ function chainTick(){if(chainT>0&&--chainT===0)chain=0;}
 // close kills pay double and feed the chain an extra step -- parking on a bug's face is
 // a choice, so it pays like one. 84px is "in their face" without kissing hitboxes.
 function killScore(e){const near=!P.dead&&(e.x-P.x)**2+(e.y-P.y)**2<84*84;
+ STAT.dex[e.type]=(STAT.dex[e.type]||0)+1;   // the Bug-Dex counts every kill
  const got=addScore(e.sc*(near?2:1));onKill();
  if(!e.tiny){pop(e.x,e.y,'+'+got,near?'#8dff9a':e.elite?'#ffd23f':'#fff',near||e.elite?15:11);ring(e.x,e.y,near?'#8dff9a':'#ffd166');}
  if(e.elite)stop(3);
@@ -1124,7 +1132,7 @@ function update(){t++;juiceTick();if(shake>0)shake--;if(msgT>0)msgT--;bugChorus(
   else if(bossWarn>0){bossWarn--;if(bossWarn%45===0){swell(70,.5,'sine',.07,.08);rumble(.5,.04);}if(bossWarn===0)spawnBoss();}
   else{stageT++;wave();if(stageT>LV().len){for(const e of enemies){if(e.pat!=='fall'){e.pat='fall';e.vy=6;}}bossWarn=210;ebullets=[];shake=10;music('boss');drop(clamp(P.x-50,40,W-40),P.y-260,randWeapon());drop(clamp(P.x+50,40,W-40),P.y-280,'nectar');if(P.bombs<2)drop(P.x,P.y-300,'bomb');}}}
  else if(boss&&boss.dying>0){boss.dying--;boss.fl=2;boss.x+=R(-3,3);if(boss.dying%7===0){boom(boss.x+R(-40,40),boss.y+R(-40,40),['#fff','#ffd166',boss.col][RI(0,2)],18,6);shake=8;rumble(.35,.06);noise(.12,.03,900,.7,250,'lowpass');click(R(1500,3000),.02);}if(boss.dying%20===0)hiss(.3,.03,R(2000,5000),800);if(boss.dying===0){boss.hp=0;}}
- else if(boss){updBoss(boss);if(boss.hp<=0&&boss.dying==null){boss.dying=90;ebullets=[];say(boss.name+' IS GOING DOWN!');announce('BOSS DOWN!');stop(8);buzz('heavy');rumble(1.5,.07);swell(80,1.4,'triangle',.05,.3,30);return;}if(boss.hp<=0){addScore(5000*(stage+loop));boom(boss.x,boss.y,boss.col,80,9);boom(boss.x,boss.y,'#fff',40,5);sparks(boss.x,boss.y,'#fff',40,12);flash=.6;shake=22;rumble(1.8,.1);swell(60,1.8,'sine',.07,.2,30);noise(.6,.05,700,.6,120,'lowpass');jingle([660,880,1108,1318,1760],'sine',.03,.09);
+ else if(boss){updBoss(boss);if(boss.hp<=0&&boss.dying==null){boss.dying=90;ebullets=[];say(boss.name+' IS GOING DOWN!');announce('BOSS DOWN!');stop(8);buzz('heavy');STAT.bdex[LV().boss]=(STAT.bdex[LV().boss]||0)+1;statSave();rumble(1.5,.07);swell(80,1.4,'triangle',.05,.3,30);return;}if(boss.hp<=0){addScore(5000*(stage+loop));boom(boss.x,boss.y,boss.col,80,9);boom(boss.x,boss.y,'#fff',40,5);sparks(boss.x,boss.y,'#fff',40,12);flash=.6;shake=22;rumble(1.8,.1);swell(60,1.8,'sine',.07,.2,30);noise(.6,.05,700,.6,120,'lowpass');jingle([660,880,1108,1318,1760],'sine',.03,.09);
   for(let i=0;i<3;i++)drop(clamp(boss.x-80+i*80,50,W-50),boss.y+i*10,i===0?'nectar':i===1?randWeapon():['nectar','bomb','bomb',(stage%2===0?'life':'bomb')][RI(0,3)]);
   boss=null;bossAlive=false;ebullets=[];enemies=[];levelClear=220;msgT=0;STAT.bosses++;statSave();SFX.levelClear();const w=MUSIC.tracks.win;if(w&&!w.bad){w.currentTime=0;music('win');}else music(null);}}
  // bullets
@@ -2065,7 +2073,10 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
    X.fillStyle=lock?'rgba(255,255,255,.35)':sel?'#ffd23f':'#cfe8ff';X.font='bold 14px '+FONT;X.fillText(lock?'\uD83D\uDD12':String(i+1),tl.x+tl.w/2,tl.y+17);
    X.font='7px '+FONT;X.fillStyle=lock?'rgba(255,255,255,.3)':sel?'#fff':'rgba(255,255,255,.7)';X.fillText(th.name.replace('THE ',''),tl.x+tl.w/2,tl.y+30);
    if(!lock&&bs>0){X.font='6px '+FONT;X.fillStyle='rgba(255,210,63,.85)';X.fillText(bs>=1000?(bs/1000).toFixed(bs>=10000?0:1)+'k':String(bs),tl.x+tl.w/2,tl.y+37);}}
+  // Bug-Dex chip
+  {const n=dexSeen();X.save();X.fillStyle='rgba(6,14,28,.78)';X.beginPath();X.roundRect(DBTN.x,DBTN.y,DBTN.w,DBTN.h,8);X.fill();X.strokeStyle='rgba(127,212,255,.5)';X.lineWidth=1;X.stroke();X.textAlign='center';X.shadowColor='#000';X.shadowBlur=3;X.fillStyle='#7fd4ff';X.font='bold 11px '+FONT;X.fillText('BUG-DEX  '+n+' / '+DEX.length+'   \u00b7   '+(touchMode?'tap to open':'D to open'),W/2,DBTN.y+16);X.restore();}
   X.shadowBlur=0;}
+ if(dexOpen&&state!=='play')drawDex();
  if(resumeCountdown>0){X.fillStyle='#0008';X.fillRect(0,0,W,H);X.textAlign='center';X.fillStyle='#fff';X.font='bold 22px '+FONT;X.fillText('GET READY',W/2,H/2-40);X.fillStyle='#ffd23f';X.font='bold 64px '+FONT;X.fillText(String(Math.ceil(resumeCountdown/60)),W/2,H/2+30);}
  else if(paused){X.fillStyle='#0008';X.fillRect(0,0,W,H);X.fillStyle='#fff';X.font='bold 30px '+FONT;X.textAlign='center';X.fillText('PAUSED',W/2,H/2);X.font='11px '+FONT;X.fillStyle='rgba(255,255,255,.75)';X.fillText('P or START to resume',W/2,H/2+26);}
 }
@@ -2178,4 +2189,57 @@ function frame(now){const dt=now-last,_w0=performance.now();
 }
 requestAnimationFrame(frame);
 addEventListener('error',e=>{if(!FRAMEERR)FRAMEERR='load: '+(e.message||e.type)+' '+((e.filename||'').split('/').pop()||'')+':'+(e.lineno||0);});
+// ---------- Bug-Dex: every bug you have beaten, with a fact ----------
+// A collection screen over data the game already had: BUGINFO facts, the sprites, and a
+// kill count per type that killScore() keeps in STAT.dex. Sixty-five bugs in roster
+// order, then the sixteen bosses. Undiscovered cards show a dark silhouette so the
+// player can see how many are left without being told what they are.
+// BOSSFACT (one line per boss) already lives in 05_state.js and feeds the fact card; reuse it.
+const DEX=Object.keys(ET).map(k=>({k,spr:k,name:(BUGINFO[k]||{}).name||k.toUpperCase(),fact:(BUGINFO[k]||{}).fact||'',n:()=>STAT.dex[k]||0}))
+ .concat(BOSSES.map((b,i)=>({k:'boss'+i,spr:'boss'+i,boss:i,name:b.name,fact:BOSSFACT[i]||'',n:()=>STAT.bdex[i]||0})));
+let dexOpen=false,dexPg=0,dexPick=null;
+const DEXC=5,DEXR=5,DEXW=88,DEXH=100,DEXX=(W-DEXC*DEXW)/2,DEXY=76,DEXPAGES=Math.ceil(DEX.length/(DEXC*DEXR));
+const dexSeen=()=>DEX.reduce((a,c)=>a+(c.n()>0?1:0),0);
+function dexPage(d){dexPg=(dexPg+d+DEXPAGES)%DEXPAGES;dexPick=null;click(1000,.02);}
+const DEXNAV={prev:{x:20,y:H-118,w:110,h:36},next:{x:W-130,y:H-118,w:110,h:36},close:{x:W-80,y:12,w:68,h:26}};
+function dexTap(p){
+ if(dexPick){dexPick=null;return;}
+ if(inBtn(p,DEXNAV.close)){dexOpen=false;return;}
+ if(inBtn(p,DEXNAV.prev)){dexPage(-1);return;}
+ if(inBtn(p,DEXNAV.next)){dexPage(1);return;}
+ const c=Math.floor((p.x-DEXX)/DEXW),r=Math.floor((p.y-DEXY)/DEXH);
+ if(c>=0&&c<DEXC&&r>=0&&r<DEXR){const i=dexPg*DEXC*DEXR+r*DEXC+c,card=DEX[i];if(card&&card.n()>0){dexPick=card;click(1400,.02);}}}
+function wrapText(s,maxW){const out=[];let line='';for(const w of s.split(' ')){const tr=line?line+' '+w:w;if(X.measureText(tr).width>maxW&&line){out.push(line);line=w;}else line=tr;}if(line)out.push(line);return out;}
+function dexSprite(card,h,dim){const im=SPR[card.spr];
+ if(card.boss!=null&&SPR[card.spr]===undefined)bossSprLoad(card.boss);   // bosses load on demand for the page you are looking at
+ if(!im||!im.height){X.fillStyle=dim?'rgba(255,255,255,.12)':'rgba(255,255,255,.35)';X.font='bold '+Math.round(h*.6)+'px '+FONT;X.textAlign='center';X.fillText('?',0,h*.22);return;}
+ X.save();if(dim){X.globalAlpha=.55;if(!LOW)X.filter='brightness(0.12)';}drawSprite(im,h,Math.PI);X.restore();}
+function drawDex(){X.save();X.setTransform(DPR,0,0,DPR,0,0);
+ X.fillStyle='rgba(4,10,20,.94)';X.fillRect(0,0,W,H);
+ X.textAlign='center';X.shadowColor='#000';X.shadowBlur=8;
+ X.fillStyle='#ffd23f';X.font='bold 26px '+FONT;X.fillText('BUG-DEX',W/2,42);
+ X.fillStyle='#cfe8ff';X.font='11px '+FONT;X.fillText('seen '+dexSeen()+' of '+DEX.length+'   \u00b7   tap a card you have beaten',W/2,60);
+ const btn=(b,s,col)=>{X.fillStyle='rgba(6,14,28,.9)';X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,8);X.fill();X.strokeStyle=col;X.lineWidth=1;X.stroke();X.fillStyle=col;X.font='bold 12px '+FONT;X.textAlign='center';X.fillText(s,b.x+b.w/2,b.y+b.h/2+4);};
+ btn(DEXNAV.close,'\u2715  CLOSE','#ff9f9f');
+ const start=dexPg*DEXC*DEXR;
+ for(let r=0;r<DEXR;r++)for(let c=0;c<DEXC;c++){const card=DEX[start+r*DEXC+c];if(!card)continue;
+  const x=DEXX+c*DEXW,y=DEXY+r*DEXH,seen=card.n()>0;
+  X.fillStyle=seen?'rgba(20,40,60,.7)':'rgba(10,16,28,.7)';X.beginPath();X.roundRect(x+3,y+3,DEXW-6,DEXH-6,8);X.fill();
+  X.strokeStyle=card.boss!=null?(seen?'rgba(255,120,120,.6)':'rgba(255,120,120,.18)'):(seen?'rgba(127,212,255,.45)':'rgba(255,255,255,.08)');X.lineWidth=1;X.stroke();
+  X.save();X.translate(x+DEXW/2,y+44);dexSprite(card,card.boss!=null?58:50,!seen);X.restore();
+  X.textAlign='center';X.font='bold 7.5px '+FONT;X.fillStyle=seen?'#fff':'rgba(255,255,255,.28)';X.fillText(seen?card.name:'? ? ?',x+DEXW/2,y+84);
+  if(seen){X.font='7px '+FONT;X.fillStyle='rgba(255,210,63,.9)';X.fillText('\u00d7'+card.n(),x+DEXW/2,y+93);}}
+ btn(DEXNAV.prev,'\u2039  PREV','#cfe8ff');btn(DEXNAV.next,'NEXT  \u203a','#cfe8ff');
+ X.fillStyle='#cfe8ff';X.font='bold 12px '+FONT;X.textAlign='center';X.fillText('PAGE '+(dexPg+1)+' / '+DEXPAGES,W/2,H-95);
+ X.font='9px '+FONT;X.fillStyle='rgba(255,255,255,.45)';X.fillText(touchMode?'tap outside a card to go back':'\u2190 \u2192 pages   \u00b7   ESC or D closes',W/2,H-64);
+ if(dexPick){const c=dexPick,pw=380,ph=380,px=(W-pw)/2,py=(H-ph)/2;
+  X.fillStyle='rgba(0,0,0,.6)';X.fillRect(0,0,W,H);
+  X.fillStyle='rgba(10,22,40,.97)';X.beginPath();X.roundRect(px,py,pw,ph,14);X.fill();X.strokeStyle=c.boss!=null?'#ff9f9f':'#7fd4ff';X.lineWidth=2;X.stroke();
+  X.save();X.translate(W/2,py+118);dexSprite(c,c.boss!=null?190:160,false);X.restore();
+  X.textAlign='center';X.fillStyle='#ffd23f';X.font='bold 22px '+FONT;X.fillText(c.name,W/2,py+232);
+  X.fillStyle='#8dff9a';X.font='bold 11px '+FONT;X.fillText((c.boss!=null?'defeated ':'beaten ')+c.n()+(c.n()===1?' time':' times'),W/2,py+250);
+  X.fillStyle='#e8f2ff';X.font='13px '+FONT;const lines=wrapText(c.fact||'No one has written this one down yet.',pw-50);
+  lines.forEach((l,i)=>X.fillText(l,W/2,py+278+i*18));
+  X.fillStyle='rgba(255,255,255,.45)';X.font='9px '+FONT;X.fillText('tap anywhere to go back',W/2,py+ph-14);}
+ X.restore();}
 </script></body></html>

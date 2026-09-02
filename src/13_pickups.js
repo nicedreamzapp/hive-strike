@@ -29,6 +29,7 @@ function chainTick(){if(chainT>0&&--chainT===0)chain=0;}
 // close kills pay double and feed the chain an extra step -- parking on a bug's face is
 // a choice, so it pays like one. 84px is "in their face" without kissing hitboxes.
 function killScore(e){const near=!P.dead&&(e.x-P.x)**2+(e.y-P.y)**2<84*84;
+ STAT.dex[e.type]=(STAT.dex[e.type]||0)+1;   // the Bug-Dex counts every kill
  const got=addScore(e.sc*(near?2:1));onKill();
  if(!e.tiny){pop(e.x,e.y,'+'+got,near?'#8dff9a':e.elite?'#ffd23f':'#fff',near||e.elite?15:11);ring(e.x,e.y,near?'#8dff9a':'#ffd166');}
  if(e.elite)stop(3);

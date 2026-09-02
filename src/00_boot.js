@@ -39,7 +39,9 @@ function fit(){const cs=getComputedStyle(document.body),
 addEventListener('resize',fit);addEventListener('orientationchange',()=>setTimeout(fit,120));
 if(window.visualViewport)visualViewport.addEventListener('resize',fit);
 fit();
-const keys={};addEventListener('keydown',e=>{keys[e.code]=1;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.code==='KeyP')paused=!paused;if(e.code==='KeyL'){setLow(!LOW);say('DETAIL '+(LOW?'LOW':'FULL'));}if(e.code==='Minus'){VOL=Math.max(0,+(VOL-.05).toFixed(2));localStorage.hs_vol=VOL;applyVol();say('VOLUME '+Math.round(VOL*100)+'%');}if(e.code==='Equal'){VOL=Math.min(1,+(VOL+.05).toFixed(2));localStorage.hs_vol=VOL;applyVol();say('VOLUME '+Math.round(VOL*100)+'%');}if(e.code==='KeyN')musicToggle();if(e.code==='KeyM')sfxToggle();if(state!=='play'){if(e.code==='ArrowLeft')pickStage(startStage-1);if(e.code==='ArrowRight')pickStage(startStage+1);if(/^Digit[1-8]$/.test(e.code))pickStage(+e.code.slice(5));}
+const keys={};addEventListener('keydown',e=>{keys[e.code]=1;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.code==='KeyP')paused=!paused;if(e.code==='KeyL'){setLow(!LOW);say('DETAIL '+(LOW?'LOW':'FULL'));}if(e.code==='Minus'){VOL=Math.max(0,+(VOL-.05).toFixed(2));localStorage.hs_vol=VOL;applyVol();say('VOLUME '+Math.round(VOL*100)+'%');}if(e.code==='Equal'){VOL=Math.min(1,+(VOL+.05).toFixed(2));localStorage.hs_vol=VOL;applyVol();say('VOLUME '+Math.round(VOL*100)+'%');}if(e.code==='KeyN')musicToggle();if(e.code==='KeyM')sfxToggle();if(dexOpen){if(e.code==='Escape'||e.code==='KeyD')dexOpen=false;else if(e.code==='ArrowLeft')dexPage(-1);else if(e.code==='ArrowRight')dexPage(1);else if(e.code==='Enter'||e.code==='Space')dexPick=null;return;}
+ if(state!=='play'&&e.code==='KeyD'){dexOpen=true;return;}
+ if(state!=='play'){if(e.code==='ArrowLeft')pickStage(startStage-1);if(e.code==='ArrowRight')pickStage(startStage+1);if(/^Digit[1-8]$/.test(e.code))pickStage(+e.code.slice(5));}
 if(state!=='play'&&(e.code==='Enter'||e.code==='Space')){if(state==='won')continueGame();else if(!armed){arm();}else start();}});
 addEventListener('keyup',e=>keys[e.code]=0);
 let touch=null,target=null,lastMove=0;
@@ -67,6 +69,8 @@ C.addEventListener('pointermove',e=>{target=ptr(e);lastMove=t;});
 const BTN={music:{x:W/2-46,y:4,w:40,h:22},sfx:{x:W/2+6,y:4,w:40,h:22}};const inBtn=(p,b)=>p.x>=b.x&&p.x<=b.x+b.w&&p.y>=b.y&&p.y<=b.y+b.h;
 // daily hive + queen's contract chips, title screen only
 const CBTN={daily:{x:8,y:30,w:W/2-14,h:30},contract:{x:W/2+6,y:30,w:W/2-14,h:30}};
+// the Bug-Dex chip sits between the world tiles and the score line
+const DBTN={x:W/2-104,y:H-58,w:208,h:24};
 C.addEventListener('pointerdown',e=>{const isT=e.pointerType==='touch',p=ptr(e),raw={x:p.x,y:p.y+(isT?TOUCH_LIFT:0)};
  audioWake();
  if(inBtn(raw,BTN.music)){musicToggle();return;}
@@ -81,7 +85,9 @@ C.addEventListener('pointerdown',e=>{const isT=e.pointerType==='touch',p=ptr(e),
   if(barHit(raw,BARS.sfx)){setSfxLv(barVal(raw,BARS.sfx));click(1400,.02);say('EFFECTS '+Math.round(SFXLV*100)+'%');return;}
  }
  target=p;lastMove=t;
+ if(dexOpen){dexTap(raw);return;}
  if(state!=='play'){
+  if(inBtn(raw,DBTN)){dexOpen=true;click(1200,.02);return;}
   if(inBtn(raw,CBTN.daily)){if(!armed)arm();wantDaily=true;start();return;}
   if(inBtn(raw,CBTN.contract)){contractIx=(contractIx+1)%CONTRACTS.length;localStorage.hs_contract=contractIx;const c=CONTRACTS[contractIx];say(c.label+'  ·  '+c.terms+(c.mult!==1?'  ·  SCORE x'+c.mult:''));click(1200,.02);return;}
   for(let i=0;i<16;i++){if(inBtn(raw,TILE(i))){pickStage(i+1);if(!armed)arm();return;}}if(state==='won')continueGame();else if(!armed)arm();else start();return;}
