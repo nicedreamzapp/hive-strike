@@ -32,7 +32,7 @@ function chainTick(){if(chainT>0&&--chainT===0){chain=0;frenzyKills=0;if(frenzy>
 function killScore(e){const near=!P.dead&&(e.x-P.x)**2+(e.y-P.y)**2<84*84;
  STAT.dex[e.type]=(STAT.dex[e.type]||0)+1;   // the Bug-Dex counts every kill
  const got=addScore(e.sc*(near?2:1));onKill();
- if(!e.tiny){pop(e.x,e.y,'+'+got,near?'#8dff9a':e.elite?'#ffd23f':'#fff',near||e.elite?15:11);ring(e.x,e.y,near?'#8dff9a':'#ffd166');}
+ if(!e.tiny){pop(e.x,e.y,'+'+got,near?'#8dff9a':e.elite?'#ffd23f':'#fff',near||e.elite?15:11);kring(e.x,e.y,near?'#8dff9a':'#ffd166');}
  if(e.elite)stop(3);
  if(near){stop(2);buzz('light');chain++;if(chain>chainBest)chainBest=chain;chainT=230;sparks(e.x,e.y,'#8dff9a',5,7);
   if(!learned.has('pb')){say('POINT BLANK x2  \u00b7  CLOSE KILLS PAY DOUBLE');learned.add('pb');}}}
@@ -64,10 +64,15 @@ let hitstop=0,ann=null,slowmo=0;const POPS=[];
 // HIVE FRENZY: reaching chain x8 (and every 24 kills you hold it) buys five seconds of
 // double fire rate under a gold sky, with the music pushed up. x8 was just a number.
 let frenzy=0,frenzyKills=0;
+// set pieces (roadmap): the hive collapsing under you when the Centipede Mother dies, the
+// rooftop blackout, and the Atlas Moth's death taking the music with it.
+let collapse=0,collapseAt=null,blackout=0,blackoutStage=0;
 function frenzyStart(){frenzy=300;announce('HIVE FRENZY!','#ffd23f');buzz('success');flash=.35;shake=10;jingle([880,1108,1318,1760,2217],'square',.018,.06);}
 function stop(n){hitstop=Math.max(hitstop,n);}
 function pop(x,y,s,col='#fff',size=12){if(POPS.length>28)POPS.shift();POPS.push({x,y:y-6,s,col,size,t:0,vy:-1.1});}
-function ring(x,y,col){if(POPS.length>28)POPS.shift();POPS.push({x,y,ring:1,col,t:0});}
+// kring, not ring: 18_scene_motion.js owns ring() for the big shockwaves, and a later
+// declaration wins, so every kill was pushing a 60px shockwave instead of this flick.
+function kring(x,y,col){if(POPS.length>28)POPS.shift();POPS.push({x,y,ring:1,col,t:0});}
 function announce(s,col='#ffd23f'){ann={s,col,t:0};}
 function juiceTick(){if(frenzy>0){frenzy--;if(P.fireT>1)P.fireT--;if(t%3===0&&!P.dead)parts.push({x:P.x+R(-26,26),y:P.y+R(-20,26),vx:R(-.6,.6),vy:R(-2.2,-.8),l:R(14,26),c:['#ffd23f','#fff3b0','#ffb300'][RI(0,2)],r:R(1.2,2.6)});}for(let i=POPS.length;i--;){const p=POPS[i];p.t++;if(p.ring){if(p.t>14)POPS.splice(i,1);}else{p.y+=p.vy;p.vy*=.94;if(p.t>44)POPS.splice(i,1);}}if(ann&&++ann.t>60)ann=null;}
 function drawJuice(){

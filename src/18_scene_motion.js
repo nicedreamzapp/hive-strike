@@ -267,6 +267,16 @@ function ambient(k,name){X.save();const pulse=.5+Math.sin(t*.02)*.5;
  }
  X.restore();}
 let ringsFx=[];
+// hive collapse: cracks race out from where the Centipede Mother died, the light goes, the
+// whole comb (the world layer) drops away under the bee. Seeded so the cracks hold still.
+function drawCollapse(){const f=1-collapse/170,o=collapseAt||{x:W/2,y:H*.3};X.save();X.strokeStyle='rgba(20,8,0,.95)';X.lineCap='round';
+ for(let i=0;i<9;i++){let x=o.x,y=o.y,a=i/9*Math.PI*2+.3;X.lineWidth=1+f*7;X.beginPath();X.moveTo(x,y);const n=Math.floor(3+f*14);for(let k=0;k<n;k++){const s=((i*7919+k*104729)%1000)/1000;a+=(s-.5)*1.1;const L=26+s*30;x+=Math.cos(a)*L;y+=Math.sin(a)*L;X.lineTo(x,y);}X.stroke();}
+ X.fillStyle='rgba(0,0,0,'+Math.min(.85,f*1.1)+')';X.fillRect(-20,-H*2,W+40,H*4);X.restore();}
+// rooftop blackout: the city's lights die for four seconds. Only your shots, theirs, the bee's
+// own glow, a few fireflies, and the bugs' eyes are left. Matt's roadmap, word for word.
+function drawBlackout(){const a=blackout>230?(250-blackout)/20:blackout<30?blackout/30:1;X.save();X.fillStyle='rgba(0,0,12,'+(.92*a)+')';X.fillRect(-20,-20,W+40,H+40);X.globalCompositeOperation='lighter';
+ for(const e of enemies){if(e.dead||e.y<0)continue;const ex=e.x+pxo(e.x,e.y),s=dep(e.y);X.fillStyle='rgba(255,70,40,'+a+')';ell(ex-5*s,e.y-3*s,1.8,1.8);X.fill();ell(ex+5*s,e.y-3*s,1.8,1.8);X.fill();}
+ for(let i=0;i<10;i++){const fx=((i*97+t*.25)%(W+40))-20,fy=(i*61+Math.sin(t*.015+i)*24+H*.3)%H,g=Math.max(0,Math.sin(t*.04+i*1.7));X.fillStyle='rgba(200,255,120,'+(g*a*.85)+')';ell(fx,fy,2.2,2.2);X.fill();}X.restore();}
 function ring(x,y,c,max=60){ringsFx.push({x,y,c,r:4,max});}
 const _boom=boom;boom=function(x,y,c,n=12,sp=4){_boom(x,y,c,n,sp);ring(x,y,c,n>30?120:50);};
 function worldHazard(){
@@ -307,12 +317,15 @@ function drawPickup(p){emboss(p.x,p.y,70,()=>{const pulse=1.35+Math.sin(p.t*.15)
  X.save();X.strokeStyle='rgba(90,255,130,.95)';X.lineWidth=2.5;X.setLineDash([6,5]);X.lineDashOffset=-p.t*.6;ell(p.x,p.y,22,22);X.stroke();X.setLineDash([]);
  X.fillStyle=WEAPONS[p.k]?WEAPONS[p.k].col:'#c8ffd4';X.font='bold 11px '+FONT;X.textAlign='center';X.shadowColor='#000';X.shadowBlur=4;X.fillText(PLABEL[p.k],p.x,p.y+37);if(WEAPONS[p.k]){X.fillStyle='#fff';X.font='bold 9px '+FONT;X.fillText(P.wpn===p.k?'= LEVEL UP':'= SWITCH GUN (−1 Lv)',p.x,p.y+49);}X.restore();}
 function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shake)*.4);
+ if(collapse>0){const f=1-collapse/170;X.translate(0,-f*f*f*H*1.1);}   // you fall: the comb rushes UP past you
  drawWorld();
+ if(collapse>0)drawCollapse();
  for(const p of pickups){X.save();X.translate(pxo(p.x,p.y),0);drawPickup(p);X.restore();}
  for(const e of enemies){X.save();X.translate(pxo(e.x,e.y),0);drawEnemy(e);
   // an elite wears a tiny health bar: it is a named target, not just a tougher sprite
   if(e.elite&&e.maxhp&&!e.dead&&e.y>0){const f=Math.max(0,e.hp/e.maxhp);X.fillStyle='rgba(0,0,0,.5)';X.fillRect(e.x-16,e.y-e.r-14,32,4);X.fillStyle=f>.4?'#ffd23f':'#ff5a5a';X.fillRect(e.x-15,e.y-e.r-13,30*f,2);}X.restore();}
  if(boss){X.save();X.translate(pxo(boss.x,boss.y),0);drawBoss(boss);X.restore();}
+ if(blackout>0)drawBlackout();
  X.globalCompositeOperation='lighter';
  for(const b of bullets){const bd=dep(b.y)*1.1;
   if(b.evo){X.save();X.translate(b.x+pxo(b.x,b.y),b.y);const c=(WEAPONS[b.k]||{}).col||'#fff',rr=(b.k==='stinger'?b.r*1.6+4:b.r*2.4+7)*bd;X.fillStyle=rg(0,0,rr,hexA(c,.5),hexA(c,0));ell(0,0,rr,rr);X.fill();X.restore();}   // your shots shrink as they fly away from you
@@ -445,7 +458,7 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
   panel(12,66,W-24,74,10);X.fillStyle=`rgba(255,40,40,${.5+pulse*.5})`;X.fillRect(12,66,W-24,3);X.fillRect(12,137,W-24,3);
   X.save();X.beginPath();X.roundRect(14,68,W-28,70,9);X.clip();X.translate(60,103);X.scale(.42,.42);X.translate(-60,-103);drawBoss({...bd,x:60,y:103,t:t,fl:0,hp:1,max:1,rage:0,seg:[]},true);X.restore();
   X.textAlign='left';X.shadowColor='#000';X.shadowBlur=6;X.fillStyle=pulse>.5?'#fff':'#ffb0b0';X.font='bold 20px '+FONT;X.fillText('WARNING',118,92);X.fillStyle='#ffd23f';X.font='bold 17px '+FONT;X.fillText(bd.name,118,113);X.fillStyle='#ffd0d0';X.font='italic 11px '+FONT;X.fillText(bd.taunt,118,130);X.shadowBlur=0;X.restore();}
- if(state==='play'&&levelClear>0){X.textAlign='center';X.shadowColor='#000';X.shadowBlur=10;X.fillStyle='#fff';X.font='bold 46px '+FONT;X.fillText('LEVEL '+stage+' CLEAR!',W/2,H/2-40);X.font='bold 18px '+FONT;X.fillStyle='#ffd23f';X.fillText(BOSSES[LV().boss].name+' DEFEATED   +'+(5000*(stage+loop)),W/2,H/2);X.font='14px '+FONT;X.fillStyle='#c8ffd4';X.fillText('grab the goodies!',W/2,H/2+28);X.shadowBlur=0;}
+ if(state==='play'&&levelClear>0&&!collapse){X.textAlign='center';X.shadowColor='#000';X.shadowBlur=10;X.fillStyle='#fff';X.font='bold 46px '+FONT;X.fillText('LEVEL '+stage+' CLEAR!',W/2,H/2-40);X.font='bold 18px '+FONT;X.fillStyle='#ffd23f';X.fillText(BOSSES[LV().boss].name+' DEFEATED   +'+(5000*(stage+loop)),W/2,H/2);X.font='14px '+FONT;X.fillStyle='#c8ffd4';X.fillText('grab the goodies!',W/2,H/2+28);X.shadowBlur=0;}
  if(state!=='play'){const sp=splashFrame();if(sp){drawArt(sp,1,PXD.splash);X.save();cloudShadows(.2);X.globalCompositeOperation='lighter';X.globalAlpha=.10+(.5+Math.sin(t*.02)*.5)*.08;X.fillStyle=rg(W/2,H*.3,240,'rgba(255,220,140,.9)','rgba(255,220,140,0)');ell(W/2,H*.3,240,240);X.fill();X.restore();const g=X.createLinearGradient(0,H*.5,0,H);g.addColorStop(0,'rgba(0,10,25,0)');g.addColorStop(.35,'rgba(0,10,25,.42)');g.addColorStop(1,'rgba(0,10,25,.58)');X.fillStyle=g;X.fillRect(0,0,W,H);X.fillStyle='rgba(0,10,25,.16)';X.fillRect(0,0,W,150);}else{X.fillStyle='rgba(0,20,40,.45)';X.fillRect(0,0,W,H);}
   X.textAlign='center';X.shadowColor='#000';X.shadowBlur=14;X.fillStyle='#ffd23f';X.font='bold 64px '+FONT;X.fillText('HIVE STRIKE',W/2,sp?92:200);X.shadowBlur=0;
   if(!sp)emboss(W/2,265,150,()=>bee(0,0,26,'#ffd23f','#1a1a1a','#fff'),{alt:0});
