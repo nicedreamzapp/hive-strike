@@ -107,7 +107,13 @@ function face(e){if(e.tiny)return;const m=EYES[A(e.type)];if(!m)return;const dx=
  if(angry){X.strokeStyle='#100';X.lineWidth=Math.max(1,m.r*.5);X.lineCap='round';X.beginPath();X.moveTo(L[0]-m.r*1.1,L[1]+up*m.r*1.9);X.lineTo(L[0]+m.r*.7,L[1]+up*m.r*1.1);X.moveTo(Rr[0]+m.r*1.1,Rr[1]+up*m.r*1.9);X.lineTo(Rr[0]-m.r*.7,Rr[1]+up*m.r*1.1);X.stroke();}
  else if(scared){X.strokeStyle='#100';X.lineWidth=Math.max(.8,m.r*.4);X.lineCap='round';X.beginPath();X.moveTo(L[0]-m.r*1,L[1]+up*m.r*1.2);X.lineTo(L[0]+m.r*.6,L[1]+up*m.r*1.9);X.moveTo(Rr[0]+m.r*1,Rr[1]+up*m.r*1.2);X.lineTo(Rr[0]-m.r*.6,Rr[1]+up*m.r*1.9);X.stroke();
   const sw=(e.t*.4)%14;X.fillStyle='rgba(150,220,255,.9)';X.beginPath();X.moveTo(Rr[0]+m.r*1.8,Rr[1]-m.r+sw*.3);X.quadraticCurveTo(Rr[0]+m.r*2.4,Rr[1]+sw*.5,Rr[0]+m.r*1.8,Rr[1]+m.r*.6+sw*.5);X.quadraticCurveTo(Rr[0]+m.r*1.2,Rr[1]+sw*.5,Rr[0]+m.r*1.8,Rr[1]-m.r+sw*.3);X.fill();}}
-const dep=y=>.62+.46*clamp(y/H,0,1);   // 0.62 far at the top, ~1.08 right in your face
+// depth: the play field is a perspective shot, so a bug at the top of the screen is far away.
+// dep() is its size, perspK() is how much of its sideways position survives (things far
+// away crowd toward the vanishing point), pxo() is the screen shift that implements it.
+// Both are flat (1.0) in the bottom strip where the bee lives, so the thumb is never lied to.
+const dep=y=>.45+.55*clamp((y+40)/(H-100),0,1);   // 0.45 at the horizon, 1.0 from the bee's line down
+const perspK=y=>.55+.45*clamp((y+40)/(H-100),0,1);
+const pxo=(x,y)=>(W/2-x)*(1-perspK(y));
 function drawEnemy(e){if(e.tiny&&SPR[e.type]){X.save();X.globalAlpha=.22;X.fillStyle='#202030';ell(e.x,e.y,13,9);X.fill();X.globalAlpha=1;X.translate(e.x,e.y);X.rotate(faceRot(e.type)+Math.sin(e.t*.4+e.ph)*.2);if(e.fl>0)X.filter='brightness(2.6)';drawSprite(SPR[e.type],16*dep(e.y),0);X.filter='none';X.restore();return;}
  if(e.tiny){X.save();X.globalAlpha=.22;X.fillStyle='#202030';ell(e.x,e.y,13,9);X.fill();X.globalAlpha=1;X.translate(e.x,e.y);const wf=Math.sin(t*2+e.ph)*.5;X.globalAlpha=.7;X.fillStyle='#e8f0ff';ell(-3,-1,3.5,1.3,-.6+wf);X.fill();ell(3,-1,3.5,1.3,.6-wf);X.fill();X.globalAlpha=1;X.fillStyle='#fff';ell(0,0,3.2,3.6);X.fill();X.fillStyle=e.fl>0?'#fff':'#1a1a2a';ell(0,0,2.2,2.8);X.fill();X.fillStyle='#ff4040';ell(-.8,-1.2,.6,.6);X.fill();ell(.8,-1.2,.6,.6);X.fill();X.restore();return;}
  const sc=(e.elite?1.55:1.35)*dep(e.y),box=e.r*2*sc*5.0+30;const vx=e.x-(e.px==null?e.x:e.px),vy=e.y-(e.py==null?e.y:e.py);e.px=e.x;e.py=e.y;const sq=clamp(Math.abs(vx)*.03,0,.18),st=clamp(Math.abs(vy)*.025,0,.15);
