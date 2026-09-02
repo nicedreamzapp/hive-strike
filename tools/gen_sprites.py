@@ -64,6 +64,16 @@ BUGS={
  "sandfly":"a tiny hairy sand fly","blackfly":"a tiny black fly","whitefly":"a tiny white whitefly with powdery wings","springtail":"a tiny purple springtail",
  "leafhopper":"a tiny green leafhopper","fungusgnat":"a tiny dark fungus gnat","mayfly":"a tiny pale mayfly with long tails","noseeum":"a tiny grey biting midge",
  "psyllid":"a tiny golden psyllid","lacebug":"a tiny lace bug with lacy transparent wings","planthopper":"a tiny blue planthopper","crystalmite":"a tiny violet mite",
+ "hoverfly":"a hoverfly with yellow and black bands that mimic a wasp, huge eyes, two clear wings spread",
+ "rosechafer":"a metallic green rose chafer beetle with a bronze sheen, wing cases closed",
+ "divingbeetle":"a great diving beetle, dark olive oval body with a yellow rim, hind legs like oars",
+ "tigermoth":"a garden tiger moth with brown-and-cream patterned forewings and bright orange hindwings with blue-black spots, wings spread",
+ "lunamoth":"a pale green luna moth with long curved tails on its hindwings and feathered antennae, wings spread",
+ "damselfly":"a slender electric blue damselfly with clear wings held together over its back",
+ "antlion":"an antlion larva with a fat sandy bristled body and huge curved sickle jaws",
+ "rhinobeetle":"a rhinoceros beetle with a huge curved black horn and glossy dark armor",
+ "assassinbug":"a wheel bug assassin bug, grey armored body with a cog-shaped crest on its back and a curved beak",
+ "jewelbeetle":"a metallic rainbow jewel beetle, elongated body shimmering green, gold and violet",
 }
 BOSS_STYLE=("the insect is oriented with its HEAD pointing toward the BOTTOM of the frame and its abdomen toward the top, head-on toward the viewer, mandibles and eyes clearly at the bottom, extremely detailed photorealistic macro photograph, 8k, top-down view from directly above, the whole creature centered and fully visible, "
        "isolated on a pure white background, dramatic rim lighting, every hair and armor plate visible, sharp focus, menacing aggressive pose, "
@@ -150,7 +160,7 @@ if os.environ.get("REKEY"):
         if f.endswith(".png") and not f.startswith("boss"):
             key_white(os.path.join(RAW,f), os.path.join(ART,f)); print("rekeyed",f,flush=True)
     sys.exit(0)
-with reserve("flux-sprites", 34):
+with reserve("flux-sprites", int(os.environ.get("RESERVE_GB","34"))):
     started=False
     if not comfy_up():
         subprocess.Popen(["bash","start.sh"],cwd=COMFY_DIR,stdout=open("/tmp/comfy_hive.log","w"),stderr=subprocess.STDOUT); started=True
@@ -167,7 +177,8 @@ with reserve("flux-sprites", 34):
         raw=os.path.join(RAW,name+".png")
         size=1024
         prompt=BOSS_STYLE+desc
-        ok=gen(prompt, raw, seed, size)
+        ok=os.path.exists(raw) and not os.environ.get("FORCE")   # a raw render already on disk only needs keying
+        if not ok: ok=gen(prompt, raw, seed, size)
         if not ok: ok=gen(prompt, raw, seed+500, size)
         if ok: key_white(raw,dst); print(name,"ok",flush=True)
         else: print(name,"FAILED",flush=True)
