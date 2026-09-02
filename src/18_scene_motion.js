@@ -369,7 +369,18 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
   if(t%2===0)parts.push({x:P.x+R(-6,6),y:P.y+14,vx:R(-.3,.3),vy:R(1,2.5),l:R(8,16),c:'#ffe08a',r:R(1,2.5)});
   X.globalCompositeOperation='lighter';for(const m of muzzle){X.globalAlpha=m.l/4*.8;X.fillStyle=rg(m.x,m.y,14,'#fff',m.c);ell(m.x,m.y,6+(4-m.l)*3,10+(4-m.l)*2);X.fill();m.l--;}muzzle=muzzle.filter(m=>m.l>0);X.globalAlpha=1;
   X.fillStyle=rg(P.x,P.y+4,30,'rgba(255,220,80,.35)','rgba(255,220,80,0)');ell(P.x,P.y+4,30,30);X.fill();if(P.lvl>=5){const pr=(t%40)/40;X.globalAlpha=1-pr;X.strokeStyle=WEAPONS[P.wpn].col;X.lineWidth=3;ell(P.x,P.y,22+pr*26,22+pr*26);X.stroke();X.globalAlpha=1;}X.globalCompositeOperation='source-over';
-  emboss(P.x,P.y,120*(P.dep||1),()=>bee(0,0,16*(P.dep||1),'#ffd23f','#1a1a1a','#fff'),{alt:1.2});
+  // the bee wears its firepower: a glow in the weapon's colour that grows with level,
+  // a brighter body and weapon-tinted stripes from Lv3, motes orbiting from Lv4, a
+  // halo at Lv5. Hitbox untouched -- this is light, not size.
+  {const L=P.lvl,wc=(WEAPONS[P.wpn]||{}).col||'#ffd23f',d=P.dep||1,pu=.5+.5*Math.sin(t*.15);
+   X.save();X.globalCompositeOperation='lighter';
+   const gr=(22+9*L)*d*(1+pu*.08);X.fillStyle=rg(P.x,P.y,gr,hexA(wc,.16+.07*L),hexA(wc,0));ell(P.x,P.y,gr,gr);X.fill();
+   if(L>=2){X.fillStyle=rg(P.x,P.y-6*d,12*d,'rgba(255,255,255,'+(.10+.06*L)+')','rgba(255,255,255,0)');ell(P.x,P.y-6*d,12*d,12*d);X.fill();}
+   if(L>=4){for(let i=0;i<L;i++){const a=t*.06+i*Math.PI*2/L,mr=(26+3*L)*d;X.fillStyle=hexA(wc,.9);ell(P.x+Math.cos(a)*mr,P.y+Math.sin(a)*mr*.7,2.2*d,2.2*d);X.fill();X.fillStyle=hexA(wc,.25);ell(P.x+Math.cos(a)*mr,P.y+Math.sin(a)*mr*.7,5*d,5*d);X.fill();}}
+   if(L>=5){X.strokeStyle='rgba(255,255,255,'+(.35+pu*.3)+')';X.lineWidth=1.5;ell(P.x,P.y,31*d,22*d);X.stroke();X.strokeStyle=hexA(wc,.5);X.lineWidth=3;ell(P.x,P.y,31*d,22*d);X.stroke();}
+   X.restore();
+   const body=lerpC('#ffd23f','#fff3b0',(L-1)/4*.6),stripe=L>=3?lerpC('#1a1a1a',wc,.35+.1*(L-3)):'#1a1a1a';
+   emboss(P.x,P.y,120*d,()=>bee(0,0,16*d,body,stripe,'#fff'),{alt:1.2});}
   if(P.webbed>0){X.save();X.translate(P.x,P.y);X.globalAlpha=Math.min(1,P.webbed/30);X.strokeStyle='rgba(255,255,255,.9)';X.lineWidth=1.5;X.shadowColor='#000';X.shadowBlur=3;X.beginPath();for(let k=0;k<8;k++){const a=k*Math.PI/4;X.moveTo(0,0);X.lineTo(Math.cos(a)*34,Math.sin(a)*34);}for(let ring=1;ring<=3;ring++){for(let k=0;k<=8;k++){const a=k*Math.PI/4,rr=11*ring;if(k===0)X.moveTo(Math.cos(a)*rr,Math.sin(a)*rr);else X.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);}}X.stroke();X.restore();}
   if(P.wpn==='lash'){X.save();X.globalCompositeOperation='lighter';const tx=lashT&&t-lashT.t<4?lashT.x:P.x+Math.sin(t*.1)*10,ty=lashT&&t-lashT.t<4?lashT.y:P.y-260,cx=(P.x+tx)/2+Math.sin(t*.35)*40,cy=(P.y-14+ty)/2;for(const [w,c] of [[14,'rgba(255,247,176,.22)'],[6,'rgba(255,247,176,.7)'],[2.2,'#fff']]){X.strokeStyle=c;X.lineWidth=w;X.lineCap='round';X.beginPath();X.moveTo(P.x,P.y-14);X.quadraticCurveTo(cx,cy,tx,ty);X.stroke();}if(lashT&&t-lashT.t<4){X.fillStyle=rg(tx,ty,18,'rgba(255,255,255,.9)','rgba(255,220,120,0)');ell(tx,ty,18,18);X.fill();}X.restore();}
   if(keys.ShiftLeft||keys.ShiftRight){X.strokeStyle='#fff';X.lineWidth=1.5;ell(P.x,P.y,5,5);X.stroke();X.fillStyle='#f33';ell(P.x,P.y,2,2);X.fill();}}

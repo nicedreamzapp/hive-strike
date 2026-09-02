@@ -33,7 +33,7 @@ const FONT='"Avenir Next Condensed","Futura","Arial Narrow","Helvetica Neue",san
 // stamped by tools/assemble.py from the version in package.json and the git commit --
 // never edit by hand. It is how you tell at a glance whether the phone in your hand is
 // running the same build as the one next to it.
-const BUILD='v1.0.0  ·  f9f8ece+  ·  Sep 1';
+const BUILD='v1.0.0  ·  ea6edce+  ·  Sep 1';
 // letterbox the play field inside whatever the device actually gives us, safe-area padding
 // already removed by the body. visualViewport is the honest number on iOS.
 function fit(){const cs=getComputedStyle(document.body),
@@ -602,7 +602,7 @@ function fireInner(L,x,y){
  else if(P.wpn==='petal'){const want=2+Math.floor(L/2),have=bullets.filter(b=>b.orbit).length;if(have<want){for(let i=have;i<want;i++)bullets.push({x:P.x,y:P.y,vx:0,vy:0,d:.14+L*.03,r:7,k:'petal',orbit:1,pierce:1,a:i/want*Math.PI*2});FIRE.petal();}const n=L>=4?2:1;for(let i=0;i<n;i++)bullets.push({x:x+(i-(n-1)/2)*12,y,vx:0,vy:-11,d:.85+L*.18,r:5,k:'petal',a:-Math.PI/2});P.fireT=14;FIRE.petalDart();}
 }
 function bomb(){if(P.bombs<=0||P.dead)return;P.bombs--;shake=25;flash=1;stop(4);buzz('heavy');rumble(1,.08);swell(140,1,'sawtooth',.05,.15);noise(.5,.05,600,.7,120,'lowpass');say('SWARM CALL!');
- ebullets=[];for(const e of enemies){e.hp-=40;boom(e.x,e.y,'#ffd166',6);}if(boss){boss.hp-=60;}
+ ebullets=[];for(const e of enemies){e.hp-=40;boom(e.x,e.y,'#ffd166',6);}if(boss){boss.hp-=60;boss.bombDmg=(boss.bombDmg||0)+60;}
  for(let i=0;i<60;i++)parts.push({x:R(0,W),y:R(0,H),vx:R(-3,3),vy:R(-6,-1),l:R(30,70),c:'#ffd166',r:R(2,5),bee:1});}
 
 // ---------- LEVELS / THEMES ----------
@@ -1118,7 +1118,20 @@ function buzz(k){if(!SFX_ON||t-buzzT<4)return;buzzT=t;try{const Hp=window.Capaci
  if(Hp){if(k==='success')Hp.notification({type:'SUCCESS'});else if(k==='warn')Hp.notification({type:'WARNING'});else Hp.impact({style:k==='heavy'?'HEAVY':k==='medium'?'MEDIUM':'LIGHT'});}
  else if(navigator.vibrate)navigator.vibrate(k==='heavy'?45:k==='medium'?22:k==='light'?10:[20,30,20]);}catch(e){}}
 // ---------- update ----------
-function update(){t++;juiceTick();if(shake>0)shake--;if(msgT>0)msgT--;bugChorus();chainTick();grazeTick();volcanoTick();if(P.lives===0&&!P.dead&&t%64===0)SFX.heartbeat();
+// Boss fights have a floor. Measured 2026-09-01 (headless, bee parked, auto-fire): the
+// Stinger Beam at Lv5 killed boss 1 in 2.5 s and the Pollen Seekers in 3.3 s, while
+// Honey Spray took 19 s. So bullet damage to a boss is capped per frame at what would
+// empty its bar in BOSS_MIN_S seconds; bombs are exempt (they are a decision, not DPS).
+// Weaker weapons never touch the cap; the melters get a real fight.
+const BOSS_MIN_S=20;
+// A per-frame cap alone starved every weapon: hits land in bursts, so the cap threw away
+// the burst and the quiet frames' allowance went unused. Budget instead: allowance accrues
+// every frame and banks up to three seconds, so bursts spend it and the floor still holds.
+function update(){const _b=boss,_h=boss?boss.hp:0;updateInner();
+ if(boss&&boss===_b&&boss.dying==null){const perF=boss.max/(60*BOSS_MIN_S);boss.budget=Math.min((boss.budget==null?perF*180:boss.budget)+perF,perF*180);
+  const took=_h-boss.hp-(boss.bombDmg||0);boss.bombDmg=0;
+  if(took>boss.budget){boss.hp+=took-boss.budget;boss.budget=0;}else if(took>0)boss.budget-=took;}}
+function updateInner(){t++;juiceTick();if(shake>0)shake--;if(msgT>0)msgT--;bugChorus();chainTick();grazeTick();volcanoTick();if(P.lives===0&&!P.dead&&t%64===0)SFX.heartbeat();
  if(P.dead>0){P.dead--;if(P.dead===0){P.x=W/2;P.y=H-100;P.inv=240;}}
  else{const s=(keys.ShiftLeft||keys.ShiftRight||PAD.slow?2.5:4.5)*(P.webbed>0?.35:1);
   if(keys.ArrowLeft||keys.KeyA)P.x-=s;if(keys.ArrowRight||keys.KeyD)P.x+=s;if(keys.ArrowUp||keys.KeyW)P.y-=s;if(keys.ArrowDown||keys.KeyS)P.y+=s;
@@ -1187,6 +1200,7 @@ function update(){t++;juiceTick();if(shake>0)shake--;if(msgT>0)msgT--;bugChorus(
 // ---------- drawing helpers ----------
 function ell(x,y,rx,ry,a=0){X.beginPath();X.ellipse(x,y,rx,ry,a,0,7);}
 function rg(x,y,r,c1,c2){const g=X.createRadialGradient(x-r*.3,y-r*.3,r*.1,x,y,r);g.addColorStop(0,c1);g.addColorStop(1,c2);return g;}
+const hexA=(h,a)=>{const p=parseInt(h.slice(1),16);return 'rgba('+(p>>16)+','+((p>>8)&255)+','+(p&255)+','+a+')';};
 function lerpC(a,b,m){const pa=parseInt(a.slice(1),16),pb=parseInt(b.slice(1),16);const r=(pa>>16)+((pb>>16)-(pa>>16))*m,g=((pa>>8)&255)+(((pb>>8)&255)-((pa>>8)&255))*m,bl=(pa&255)+((pb&255)-(pa&255))*m;return `rgb(${r|0},${g|0},${bl|0})`;}
 // ---- EMBOSS: render a sprite offscreen, then composite ground shadow + drop shadow + light rim + dark rim.
 // This cached one scratch canvas per distinct glow size, forever. Thirty sizes x two
@@ -1962,7 +1976,18 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
   if(t%2===0)parts.push({x:P.x+R(-6,6),y:P.y+14,vx:R(-.3,.3),vy:R(1,2.5),l:R(8,16),c:'#ffe08a',r:R(1,2.5)});
   X.globalCompositeOperation='lighter';for(const m of muzzle){X.globalAlpha=m.l/4*.8;X.fillStyle=rg(m.x,m.y,14,'#fff',m.c);ell(m.x,m.y,6+(4-m.l)*3,10+(4-m.l)*2);X.fill();m.l--;}muzzle=muzzle.filter(m=>m.l>0);X.globalAlpha=1;
   X.fillStyle=rg(P.x,P.y+4,30,'rgba(255,220,80,.35)','rgba(255,220,80,0)');ell(P.x,P.y+4,30,30);X.fill();if(P.lvl>=5){const pr=(t%40)/40;X.globalAlpha=1-pr;X.strokeStyle=WEAPONS[P.wpn].col;X.lineWidth=3;ell(P.x,P.y,22+pr*26,22+pr*26);X.stroke();X.globalAlpha=1;}X.globalCompositeOperation='source-over';
-  emboss(P.x,P.y,120*(P.dep||1),()=>bee(0,0,16*(P.dep||1),'#ffd23f','#1a1a1a','#fff'),{alt:1.2});
+  // the bee wears its firepower: a glow in the weapon's colour that grows with level,
+  // a brighter body and weapon-tinted stripes from Lv3, motes orbiting from Lv4, a
+  // halo at Lv5. Hitbox untouched -- this is light, not size.
+  {const L=P.lvl,wc=(WEAPONS[P.wpn]||{}).col||'#ffd23f',d=P.dep||1,pu=.5+.5*Math.sin(t*.15);
+   X.save();X.globalCompositeOperation='lighter';
+   const gr=(22+9*L)*d*(1+pu*.08);X.fillStyle=rg(P.x,P.y,gr,hexA(wc,.16+.07*L),hexA(wc,0));ell(P.x,P.y,gr,gr);X.fill();
+   if(L>=2){X.fillStyle=rg(P.x,P.y-6*d,12*d,'rgba(255,255,255,'+(.10+.06*L)+')','rgba(255,255,255,0)');ell(P.x,P.y-6*d,12*d,12*d);X.fill();}
+   if(L>=4){for(let i=0;i<L;i++){const a=t*.06+i*Math.PI*2/L,mr=(26+3*L)*d;X.fillStyle=hexA(wc,.9);ell(P.x+Math.cos(a)*mr,P.y+Math.sin(a)*mr*.7,2.2*d,2.2*d);X.fill();X.fillStyle=hexA(wc,.25);ell(P.x+Math.cos(a)*mr,P.y+Math.sin(a)*mr*.7,5*d,5*d);X.fill();}}
+   if(L>=5){X.strokeStyle='rgba(255,255,255,'+(.35+pu*.3)+')';X.lineWidth=1.5;ell(P.x,P.y,31*d,22*d);X.stroke();X.strokeStyle=hexA(wc,.5);X.lineWidth=3;ell(P.x,P.y,31*d,22*d);X.stroke();}
+   X.restore();
+   const body=lerpC('#ffd23f','#fff3b0',(L-1)/4*.6),stripe=L>=3?lerpC('#1a1a1a',wc,.35+.1*(L-3)):'#1a1a1a';
+   emboss(P.x,P.y,120*d,()=>bee(0,0,16*d,body,stripe,'#fff'),{alt:1.2});}
   if(P.webbed>0){X.save();X.translate(P.x,P.y);X.globalAlpha=Math.min(1,P.webbed/30);X.strokeStyle='rgba(255,255,255,.9)';X.lineWidth=1.5;X.shadowColor='#000';X.shadowBlur=3;X.beginPath();for(let k=0;k<8;k++){const a=k*Math.PI/4;X.moveTo(0,0);X.lineTo(Math.cos(a)*34,Math.sin(a)*34);}for(let ring=1;ring<=3;ring++){for(let k=0;k<=8;k++){const a=k*Math.PI/4,rr=11*ring;if(k===0)X.moveTo(Math.cos(a)*rr,Math.sin(a)*rr);else X.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);}}X.stroke();X.restore();}
   if(P.wpn==='lash'){X.save();X.globalCompositeOperation='lighter';const tx=lashT&&t-lashT.t<4?lashT.x:P.x+Math.sin(t*.1)*10,ty=lashT&&t-lashT.t<4?lashT.y:P.y-260,cx=(P.x+tx)/2+Math.sin(t*.35)*40,cy=(P.y-14+ty)/2;for(const [w,c] of [[14,'rgba(255,247,176,.22)'],[6,'rgba(255,247,176,.7)'],[2.2,'#fff']]){X.strokeStyle=c;X.lineWidth=w;X.lineCap='round';X.beginPath();X.moveTo(P.x,P.y-14);X.quadraticCurveTo(cx,cy,tx,ty);X.stroke();}if(lashT&&t-lashT.t<4){X.fillStyle=rg(tx,ty,18,'rgba(255,255,255,.9)','rgba(255,220,120,0)');ell(tx,ty,18,18);X.fill();}X.restore();}
   if(keys.ShiftLeft||keys.ShiftRight){X.strokeStyle='#fff';X.lineWidth=1.5;ell(P.x,P.y,5,5);X.stroke();X.fillStyle='#f33';ell(P.x,P.y,2,2);X.fill();}}

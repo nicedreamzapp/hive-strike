@@ -1,5 +1,18 @@
 // ---------- update ----------
-function update(){t++;juiceTick();if(shake>0)shake--;if(msgT>0)msgT--;bugChorus();chainTick();grazeTick();volcanoTick();if(P.lives===0&&!P.dead&&t%64===0)SFX.heartbeat();
+// Boss fights have a floor. Measured 2026-09-01 (headless, bee parked, auto-fire): the
+// Stinger Beam at Lv5 killed boss 1 in 2.5 s and the Pollen Seekers in 3.3 s, while
+// Honey Spray took 19 s. So bullet damage to a boss is capped per frame at what would
+// empty its bar in BOSS_MIN_S seconds; bombs are exempt (they are a decision, not DPS).
+// Weaker weapons never touch the cap; the melters get a real fight.
+const BOSS_MIN_S=20;
+// A per-frame cap alone starved every weapon: hits land in bursts, so the cap threw away
+// the burst and the quiet frames' allowance went unused. Budget instead: allowance accrues
+// every frame and banks up to three seconds, so bursts spend it and the floor still holds.
+function update(){const _b=boss,_h=boss?boss.hp:0;updateInner();
+ if(boss&&boss===_b&&boss.dying==null){const perF=boss.max/(60*BOSS_MIN_S);boss.budget=Math.min((boss.budget==null?perF*180:boss.budget)+perF,perF*180);
+  const took=_h-boss.hp-(boss.bombDmg||0);boss.bombDmg=0;
+  if(took>boss.budget){boss.hp+=took-boss.budget;boss.budget=0;}else if(took>0)boss.budget-=took;}}
+function updateInner(){t++;juiceTick();if(shake>0)shake--;if(msgT>0)msgT--;bugChorus();chainTick();grazeTick();volcanoTick();if(P.lives===0&&!P.dead&&t%64===0)SFX.heartbeat();
  if(P.dead>0){P.dead--;if(P.dead===0){P.x=W/2;P.y=H-100;P.inv=240;}}
  else{const s=(keys.ShiftLeft||keys.ShiftRight||PAD.slow?2.5:4.5)*(P.webbed>0?.35:1);
   if(keys.ArrowLeft||keys.KeyA)P.x-=s;if(keys.ArrowRight||keys.KeyD)P.x+=s;if(keys.ArrowUp||keys.KeyW)P.y-=s;if(keys.ArrowDown||keys.KeyS)P.y+=s;

@@ -1,6 +1,7 @@
 // ---------- drawing helpers ----------
 function ell(x,y,rx,ry,a=0){X.beginPath();X.ellipse(x,y,rx,ry,a,0,7);}
 function rg(x,y,r,c1,c2){const g=X.createRadialGradient(x-r*.3,y-r*.3,r*.1,x,y,r);g.addColorStop(0,c1);g.addColorStop(1,c2);return g;}
+const hexA=(h,a)=>{const p=parseInt(h.slice(1),16);return 'rgba('+(p>>16)+','+((p>>8)&255)+','+(p&255)+','+a+')';};
 function lerpC(a,b,m){const pa=parseInt(a.slice(1),16),pb=parseInt(b.slice(1),16);const r=(pa>>16)+((pb>>16)-(pa>>16))*m,g=((pa>>8)&255)+(((pb>>8)&255)-((pa>>8)&255))*m,bl=(pa&255)+((pb&255)-(pa&255))*m;return `rgb(${r|0},${g|0},${bl|0})`;}
 // ---- EMBOSS: render a sprite offscreen, then composite ground shadow + drop shadow + light rim + dark rim.
 // This cached one scratch canvas per distinct glow size, forever. Thirty sizes x two
