@@ -41,7 +41,11 @@ function rageBoss(b){if(b.rage)return;b.rage=1;const real=LV().boss;say(PHASE2[r
  if(real===8)b.camoT=0;                                                                          // fades into the canopy; only the twig-sway tells
  if(real===15){const w=b.max*.16;b.wings={l:w,r:w,max:w};say('THE WINGS BECOME SHIELDS!');}      // break a wing, feast on the scales
 }
-function updBoss(b){b.t++;if(b.fl>0)b.fl--;if(b.y>0)sfxBossIdle(b);let sp=.55+D()*.5;if(!b.rage&&b.hp<b.max*.5)rageBoss(b);if(b.rage)sp*=1.15;if(b.rage)phase2(b);const rf=b.rage?.8:1;
+// the landing: the first frame a boss is properly on screen the ground answers -- shake,
+// dust, a roar, a shockwave and its name punched in. It arrives; it does not just appear.
+function bossLand(b){b.landed=1;shake=18;stop(3);buzz('heavy');announce(b.name,'#ff9f9f');rumble(1.2,.08);noise(.5,.05,500,.8,150,'lowpass');ring(b.x,b.y,b.col,240);
+ for(let k=0;k<28;k++)parts.push({x:b.x+R(-80,80),y:b.y+R(20,70),vx:R(-2.6,2.6),vy:R(-1.6,.4),l:R(22,44),c:['#8a7a5a','#6a5a3a','#b0a080'][RI(0,2)],r:R(2,5)});}
+function updBoss(b){b.t++;if(b.fl>0)b.fl--;if(!b.landed&&b.y>=60)bossLand(b);if(b.y>0)sfxBossIdle(b);let sp=.55+D()*.5;if(!b.rage&&b.hp<b.max*.5)rageBoss(b);if(b.rage)sp*=1.15;if(b.rage)phase2(b);const rf=b.rage?.8:1;
  if(LV().boss===8&&b.rage){b.camoT=(b.camoT||0)+1;const ph=b.camoT%300;b.camo=ph>=150;if(ph===150&&!b.saidCamo){b.saidCamo=1;say('ONLY THE TWIG-SWAY TELLS');}
   if(b.camo&&b.t%26===0)parts.push({x:b.x+R(-30,30),y:b.y+R(-20,40),vx:R(-.3,.3),vy:R(.2,.8),l:22,c:'#7a8a4a',r:2});}
  const rest=BARCH[LV().boss]===5?60:BSIZE[LV().boss]*.5+14;if(b.y<rest){b.y+=1.2;return;}   // centipede drives its own Y; everyone else stops low enough that the whole sprite is on screen

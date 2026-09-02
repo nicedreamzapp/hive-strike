@@ -23,9 +23,10 @@ function onKill(){chain++;chainT=190;if(chain>chainBest)chainBest=chain;
   // pays, then go back to the short form so it stops being noise.
   if(learned.has('chain'))announce('CHAIN x'+chainMult());else say('CHAIN x2  \u00b7  EVERY POINT DOUBLED');
   learned.add('chain');buzz('medium');
-  snd(700+chainMult()*90,.06,'sine',.03,1400);}}
-function breakChain(){if(chain>2)say('CHAIN LOST');chain=0;chainT=0;}
-function chainTick(){if(chainT>0&&--chainT===0)chain=0;}
+  snd(700+chainMult()*90,.06,'sine',.03,1400);}
+ if(chainMult()===8){frenzyKills++;if(frenzy<=0&&(frenzyKills===1||frenzyKills%24===0))frenzyStart();}}
+function breakChain(){if(chain>2)say('CHAIN LOST');chain=0;chainT=0;frenzyKills=0;if(frenzy>0)frenzy=Math.min(frenzy,30);}
+function chainTick(){if(chainT>0&&--chainT===0){chain=0;frenzyKills=0;if(frenzy>0)frenzy=Math.min(frenzy,30);}}
 // close kills pay double and feed the chain an extra step -- parking on a bug's face is
 // a choice, so it pays like one. 84px is "in their face" without kissing hitboxes.
 function killScore(e){const near=!P.dead&&(e.x-P.x)**2+(e.y-P.y)**2<84*84;
@@ -59,13 +60,20 @@ function hitPlayer(){if(P.inv>0||P.dead)return;if(P.bombs>0){bomb();P.inv=90;say
 // update while it counts down); pops are the numbers that fly off a kill; rings mark the
 // spot; the announcer is the chain step, punched in big and gone fast. All of it draws
 // above the world and under the HUD, and none of it is something to dodge.
-let hitstop=0,ann=null;const POPS=[];
+let hitstop=0,ann=null,slowmo=0;const POPS=[];
+// HIVE FRENZY: reaching chain x8 (and every 24 kills you hold it) buys five seconds of
+// double fire rate under a gold sky, with the music pushed up. x8 was just a number.
+let frenzy=0,frenzyKills=0;
+function frenzyStart(){frenzy=300;announce('HIVE FRENZY!','#ffd23f');buzz('success');flash=.35;shake=10;jingle([880,1108,1318,1760,2217],'square',.018,.06);}
 function stop(n){hitstop=Math.max(hitstop,n);}
 function pop(x,y,s,col='#fff',size=12){if(POPS.length>28)POPS.shift();POPS.push({x,y:y-6,s,col,size,t:0,vy:-1.1});}
 function ring(x,y,col){if(POPS.length>28)POPS.shift();POPS.push({x,y,ring:1,col,t:0});}
 function announce(s,col='#ffd23f'){ann={s,col,t:0};}
-function juiceTick(){for(let i=POPS.length;i--;){const p=POPS[i];p.t++;if(p.ring){if(p.t>14)POPS.splice(i,1);}else{p.y+=p.vy;p.vy*=.94;if(p.t>44)POPS.splice(i,1);}}if(ann&&++ann.t>60)ann=null;}
-function drawJuice(){if(!POPS.length&&!ann)return;X.save();
+function juiceTick(){if(frenzy>0){frenzy--;if(P.fireT>1)P.fireT--;if(t%3===0&&!P.dead)parts.push({x:P.x+R(-26,26),y:P.y+R(-20,26),vx:R(-.6,.6),vy:R(-2.2,-.8),l:R(14,26),c:['#ffd23f','#fff3b0','#ffb300'][RI(0,2)],r:R(1.2,2.6)});}for(let i=POPS.length;i--;){const p=POPS[i];p.t++;if(p.ring){if(p.t>14)POPS.splice(i,1);}else{p.y+=p.vy;p.vy*=.94;if(p.t>44)POPS.splice(i,1);}}if(ann&&++ann.t>60)ann=null;}
+function drawJuice(){
+ if(frenzy>0){const k=Math.min(1,frenzy/30)*(.85+.15*Math.sin(t*.3));X.save();const g=X.createRadialGradient(W/2,H/2,H*.28,W/2,H/2,H*.72);g.addColorStop(0,'rgba(255,200,40,0)');g.addColorStop(1,'rgba(255,190,30,'+(.34*k)+')');X.fillStyle=g;X.fillRect(0,0,W,H);
+  X.textAlign='left';X.font='bold 11px '+FONT;X.fillStyle='rgba(255,220,80,'+k+')';X.shadowColor='#000';X.shadowBlur=4;X.fillText('HIVE FRENZY  '+(frenzy/60).toFixed(1)+'s  ·  double fire',10,H-44);X.restore();}
+ if(!POPS.length&&!ann)return;X.save();
  for(const p of POPS){if(p.ring){const f=p.t/14;X.strokeStyle=p.col;X.globalAlpha=(1-f)*.8;X.lineWidth=3-2*f;X.beginPath();X.arc(p.x+pxo(p.x,p.y),p.y,6+f*30,0,7);X.stroke();continue;}
   const k=Math.min(1,p.t/6),sc=1.6-.6*k,a=p.t>30?1-(p.t-30)/14:1;X.save();X.translate(p.x+pxo(p.x,p.y),p.y);X.scale(sc,sc);X.globalAlpha=a;X.font='bold '+p.size+'px '+FONT;X.textAlign='center';X.lineWidth=3;X.strokeStyle='rgba(0,0,0,.7)';X.strokeText(p.s,0,0);X.fillStyle=p.col;X.fillText(p.s,0,0);X.restore();}
  if(ann){const k=Math.min(1,ann.t/8),e=1-(1-k)*(1-k),sc=2.4-1.4*e,a=ann.t>40?1-(ann.t-40)/20:1;X.translate(W/2,H*.36);X.scale(sc,sc);X.globalAlpha=a;X.font='bold 30px '+FONT;X.textAlign='center';X.shadowColor='#000';X.shadowBlur=12;X.lineWidth=4;X.strokeStyle='rgba(0,0,0,.75)';X.strokeText(ann.s,0,0);X.fillStyle=ann.col;X.fillText(ann.s,0,0);}

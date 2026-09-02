@@ -1,6 +1,9 @@
 // ---------- player fire ----------
 // HONEY = wide fan, solid damage up close (great vs swarms).  STINGER = one thin piercing beam, best single-target.  POLLEN = slow homing seekers, weakest but never misses.
-function fire(){const L=P.lvl,x=P.x,y=P.y-14;P.shots++;gainScale=.3;try{fireInner(L,x,y);}finally{gainScale=1;}}
+// At Lv5 every shot is EVOLVED: same damage, same hitbox, but it wears an aura in its
+// weapon's colour and the big three get a flourish (honey swells, stinger crackles wider,
+// pollen leaves a sparkle wake). The bee already glows at Lv5; now the shots match.
+function fire(){const L=P.lvl,x=P.x,y=P.y-14,n0=bullets.length;P.shots++;gainScale=.3;try{fireInner(L,x,y);}finally{gainScale=1;}if(L>=5)for(let i=n0;i<bullets.length;i++)bullets[i].evo=1;}
 function fireInner(L,x,y){
  if(P.wpn==='honey'){const n=Math.min(5,L+1),spread=.16;for(let i=0;i<n;i++){const a=-Math.PI/2+(i-(n-1)/2)*spread;bullets.push({x:x+(i-(n-1)/2)*5,y,vx:Math.cos(a)*10,vy:Math.sin(a)*10,d:1.5,r:5,k:'honey'});}P.fireT=13;FIRE.honey();flashMuzzle(x,y,'#ffd166');}
  else if(P.wpn==='stinger'){const w=3+L*1.6;bullets.push({x,y,vx:0,vy:-18,d:.6+L*.22,r:w,k:'stinger',pierce:1});if(L>=4){bullets.push({x:x-16,y,vx:-1.2,vy:-17,d:.15,r:3,k:'stinger',pierce:1});bullets.push({x:x+16,y,vx:1.2,vy:-17,d:.15,r:3,k:'stinger',pierce:1});}P.fireT=5;FIRE.stinger();flashMuzzle(x,y,'#e0b0ff');}

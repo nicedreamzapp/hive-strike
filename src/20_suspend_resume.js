@@ -53,6 +53,7 @@ function frame(now){const dt=now-last,_w0=performance.now();
   acc+=Math.min(100,dt);last=now;padTick();
   while(acc>=STEP){acc-=STEP;
    if(hitstop>0&&state==='play'&&!paused){hitstop--;continue;}   // the world holds its breath
+   if(slowmo>0&&state==='play'&&!paused){slowmo--;if(slowmo&1)continue;}   // half speed for a beat
    if(resumeCountdown>0){resumeCountdown--;if(resumeCountdown===0)paused=false;t++;}
    else if(state==='play'&&!paused)update();else t++;}
   musicTick();ambTick();draw();

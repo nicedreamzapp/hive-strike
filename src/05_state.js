@@ -65,7 +65,7 @@ const dailyContract=()=>CONTRACTS[1+seededPick(dayKey(),CONTRACTS.length-1)];
 const dailyBest=()=>+localStorage['hs_daily'+dayKey()]||0;
 function endRun(){statSave();if(dailyRun&&score>dailyBest())localStorage['hs_daily'+dayKey()]=score;}
 
-function start(){STAT.runs++;statSave();learned.clear();POPS.length=0;ann=null;hitstop=0;factT=0;chain=0;chainT=0;chainBest=0;grazed=0;nextExt=0;state='play';score=0;stage=startStage;stageT=0;loop=0;bossAlive=false;boss=null;bullets=[];ebullets=[];enemies=[];pickups=[];parts=[];Object.assign(P,{x:W/2,y:H-100,lives:5,wpn:'honey',lvl:1,bombs:3,inv:120,fireT:0,dead:0,webbed:0});
+function start(){STAT.runs++;statSave();learned.clear();POPS.length=0;ann=null;hitstop=0;slowmo=0;frenzy=0;frenzyKills=0;factT=0;chain=0;chainT=0;chainBest=0;grazed=0;nextExt=0;state='play';score=0;stage=startStage;stageT=0;loop=0;bossAlive=false;boss=null;bullets=[];ebullets=[];enemies=[];pickups=[];parts=[];Object.assign(P,{x:W/2,y:H-100,lives:5,wpn:'honey',lvl:1,bombs:3,inv:120,fireT:0,dead:0,webbed:0});
  dailyRun=wantDaily?dayKey():null;wantDaily=false;
  const c=dailyRun?dailyContract():CONTRACTS[contractIx];MODS=c.mods;cmult=c.mult;
  if(dailyRun)stage=1;                                  // a daily score means nothing unless everyone starts at the door

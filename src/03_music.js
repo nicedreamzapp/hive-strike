@@ -35,7 +35,7 @@ function musicTick(){
  const dtgt=MUSIC.duckT>0?.12:1;
  MUSIC.duck+=(dtgt-MUSIC.duck)*(MUSIC.duckT>0?.18:.028);   // dip fast, come back gently
  for(const k in MUSIC.tracks){const a=MUSIC.tracks[k],boss=k.startsWith('boss'),
-  target=(k===MUSIC.want&&(state==='play'||k==='title')&&!paused&&MUSIC.on&&!(k==='win'&&a.ended))?VOL*MUSLV*MUSIC.duck*(boss?1.08:k==='win'?1.2:1):0;
+  target=(k===MUSIC.want&&(state==='play'||k==='title')&&!paused&&MUSIC.on&&!(k==='win'&&a.ended))?VOL*MUSLV*MUSIC.duck*(boss?1.08:k==='win'?1.2:1)*(typeof frenzy!=='undefined'&&frenzy>0?1.3:1):0;
   if(target>0&&a.paused){if(a.bad){MUSIC.want=k.startsWith('boss')?'boss':'main';return;}musicGain(k,a);a.play().catch(()=>{});}
   if(target<=0&&a.paused)continue;                       // nothing to fade on a stopped track
   const v=mvol(k,a)+(target-mvol(k,a))*.04;
