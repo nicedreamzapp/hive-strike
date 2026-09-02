@@ -10,6 +10,12 @@ const MUSIC={tracks:{},gains:{},cur:null,want:null,duck:1,on:localStorage.hs_mus
 function musicGain(k,a){
  let g=MUSIC.gains[k];
  if(g!==undefined)return g;
+ // Opened straight from disk (the Desktop launcher, a double-clicked index.html) the page
+ // is file:// and Chromium treats every file as its own origin, so a media element pushed
+ // through Web Audio is "cross-origin" and comes out as pure silence -- the track plays,
+ // currentTime climbs, and nothing reaches the speakers (measured 2026-09-01: peak 0.0000).
+ // Desktop browsers honour a.volume, so on file:// skip the graph and use it directly.
+ if(location.protocol==='file:'){MUSIC.gains[k]=null;return null;}
  try{const ac=ctx();const src=ac.createMediaElementSource(a);g=ac.createGain();g.gain.value=0;src.connect(g).connect(ac.destination);}
  catch(e){g=null;}                       // fall back to a.volume if the graph refuses
  MUSIC.gains[k]=g;return g;}
