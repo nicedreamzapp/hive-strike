@@ -43,7 +43,7 @@ const FONT='"Avenir Next Condensed","Futura","Arial Narrow","Helvetica Neue",san
 // stamped by tools/assemble.py from the version in package.json and the git commit --
 // never edit by hand. It is how you tell at a glance whether the phone in your hand is
 // running the same build as the one next to it.
-const BUILD='v1.0.0  ·  2f152f9+  ·  Sep 2';
+const BUILD='v1.0.0  ·  e53c0aa+  ·  Sep 2';
 // letterbox the play field inside whatever the device actually gives us, safe-area padding
 // already removed by the body. visualViewport is the honest number on iOS.
 function fit(){const cs=getComputedStyle(document.body),
@@ -852,11 +852,14 @@ function wave(){const lv=LV(),pr=stageT/lv.len;
  // real wave keeps coming in the same breath. spaced out too, since levels are twice as long.
  if(stageT>=nextCloud){nextCloud=stageT+RI(1250,1850)-(lv.decor==='pond'?250:0);FORMS.cloud();say((BUGINFO[LV().cloud]?BUGINFO[LV().cloud].name:'GNATS')+' SWARMING!');}
  const fod=lv.roster.filter(k=>FODDER.includes(k)),sho=lv.roster.filter(k=>SHOOTERS.includes(k));
+ // the newest bug of each world (last in its roster) was one random pick among six and went
+ // unseen for whole runs; give it four in ten of the waves it qualifies for
+ const nwst=lv.roster[lv.roster.length-1],pick=a=>(a.includes(nwst)&&Math.random()<.4)?nwst:a[RI(0,a.length-1)];
  if(!rushDone&&pr>.55){rushDone=true;say('SWARM INCOMING!');snd(300,.3,'square',.04,600);FORMS.line(fod[0]||'fly');FORMS.vee(fod[RI(0,fod.length-1)]||'fly');return;}
  const sig=lv.roster[0];const useShooter=sho.length&&Math.random()<.35+pr*.2;if(Math.random()<.45){if(SHOOTERS.includes(sig)&&!FODDER.includes(sig)){const as2=A(sig);if(as2==='cicada')FORMS.screamer(sig);else if(as2==='dragon')FORMS.heavy(sig);else if(as2==='snail')FORMS.crawler(sig);else if(as2==='stinkbug')FORMS.stinker(sig);else if(as2==='glowworm'||as2==='dungbeetle')spawn(sig,R(60,W-60),-30,{pat:as2==='glowworm'?'creep':'slow'});else FORMS[SHOOTER_FORMS[RI(0,1)]](sig);}else{let f=FODDER_FORMS[RI(0,FODDER_FORMS.length-1)];if(sig==='grasshopper')f='hoppers';if(sig==='hornet')f='chargers';if(sig==='spiderling')f='threads';if(sig==='earwig')f='zig';const asig=A(sig);if(asig==='ladybug')f=['line','vee','column'][RI(0,2)];if(asig==='firefly')f='column';if(asig==='dragon')f='skaters';if(asig==='grasshopper')f='hoppers';if(asig==='butterfly')f='flutters';if(asig==='ant')f='column';if(asig==='fly')f=['line','vee','column'][RI(0,2)];if(asig==='earwig')f='zig';if(asig==='gnat')f='swarm';if(asig==='mosquito')f='divers';if(asig==='strider')f='skaters';if(asig==='wasp')f='flank';FORMS[f](sig);}return;}
- if(useShooter){const k=sho[RI(0,sho.length-1)];const ak=A(k);if(ak==='cicada')FORMS.screamer(k);else if(ak==='stinkbug')FORMS.stinker(k);else if(ak==='snail')FORMS.crawler(k);else if(ak==='spiderling')FORMS.threads(k);else if(ak==='glowworm'||ak==='dungbeetle')spawn(k,R(60,W-60),-30,{pat:ak==='glowworm'?'creep':'slow'});else FORMS[SHOOTER_FORMS[RI(0,1)]](k);}
- else if(Math.random()<.55){const k=fod[RI(0,fod.length-1)]||'fly';SYMFORMS[RI(0,SYMFORMS.length-1)](k,RI(4,6));}
- else{const k=fod[RI(0,fod.length-1)]||'fly',ak=A(k);let f=FODDER_FORMS[RI(0,FODDER_FORMS.length-1)];if(ak==='gnat')f='swarm';if(ak==='grasshopper')f='hoppers';if(ak==='hornet')f=Math.random()<.6?'chargers':'pincer';if(ak==='spiderling')f='threads';if(ak==='butterfly')f='flutters';if(ak==='earwig')f=Math.random()<.6?'zig':'pincer';if(ak==='katydid')f='hoppers';if(ak==='strider')f='skaters';if(ak==='weevil')f='chargers';if(ak==='termite')f='scurry';if(ak==='horsefly')f='divers';if(ak==='ant')f=Math.random()<.5?'column':'line';if(k==='ant'&&(f==='pincer'||f==='ambush'))f='column';FORMS[f](k);}
+ if(useShooter){const k=pick(sho);const ak=A(k);if(ak==='cicada')FORMS.screamer(k);else if(ak==='stinkbug')FORMS.stinker(k);else if(ak==='snail')FORMS.crawler(k);else if(ak==='spiderling')FORMS.threads(k);else if(ak==='glowworm'||ak==='dungbeetle')spawn(k,R(60,W-60),-30,{pat:ak==='glowworm'?'creep':'slow'});else FORMS[SHOOTER_FORMS[RI(0,1)]](k);}
+ else if(Math.random()<.55){const k=pick(fod)||'fly';SYMFORMS[RI(0,SYMFORMS.length-1)](k,RI(4,6));}
+ else{const k=pick(fod)||'fly',ak=A(k);let f=FODDER_FORMS[RI(0,FODDER_FORMS.length-1)];if(ak==='gnat')f='swarm';if(ak==='grasshopper')f='hoppers';if(ak==='hornet')f=Math.random()<.6?'chargers':'pincer';if(ak==='spiderling')f='threads';if(ak==='butterfly')f='flutters';if(ak==='earwig')f=Math.random()<.6?'zig':'pincer';if(ak==='katydid')f='hoppers';if(ak==='strider')f='skaters';if(ak==='weevil')f='chargers';if(ak==='termite')f='scurry';if(ak==='horsefly')f='divers';if(ak==='ant')f=Math.random()<.5?'column':'line';if(k==='ant'&&(f==='pincer'||f==='ambush'))f='column';FORMS[f](k);}
  if(Math.random()<.22+((stage-1)%NL)*.052+loop*.1&&enemies.length){const e=enemies[enemies.length-1];if(!e.elite&&!e.tiny){e.elite=1;e.hp*=2.2+((stage-1)%NL)*.06;e.maxhp=e.hp;e.sc*=3;}}
 }
 const anyBug=()=>{const r=LV().roster;return r[RI(0,r.length-1)];};
@@ -1373,7 +1376,7 @@ const pxo=(x,y)=>(W/2-x)*(1-perspK(y));
 function drawEnemy(e){if(e.tiny&&SPR[e.type]){X.save();X.globalAlpha=.22;X.fillStyle='#202030';ell(e.x,e.y,13,9);X.fill();X.globalAlpha=1;X.translate(e.x,e.y);X.rotate(faceRot(e.type)+Math.sin(e.t*.4+e.ph)*.2);if(e.fl>0)X.filter='brightness(2.6)';drawSprite(SPR[e.type],16*dep(e.y),0);X.filter='none';X.restore();return;}
  if(e.tiny){X.save();X.globalAlpha=.22;X.fillStyle='#202030';ell(e.x,e.y,13,9);X.fill();X.globalAlpha=1;X.translate(e.x,e.y);const wf=Math.sin(t*2+e.ph)*.5;X.globalAlpha=.7;X.fillStyle='#e8f0ff';ell(-3,-1,3.5,1.3,-.6+wf);X.fill();ell(3,-1,3.5,1.3,.6-wf);X.fill();X.globalAlpha=1;X.fillStyle='#fff';ell(0,0,3.2,3.6);X.fill();X.fillStyle=e.fl>0?'#fff':'#1a1a2a';ell(0,0,2.2,2.8);X.fill();X.fillStyle='#ff4040';ell(-.8,-1.2,.6,.6);X.fill();ell(.8,-1.2,.6,.6);X.fill();X.restore();return;}
  const sc=(e.elite?1.55:1.35)*dep(e.y),box=e.r*2*sc*5.0+30;const vx=e.x-(e.px==null?e.x:e.px),vy=e.y-(e.py==null?e.y:e.py);e.px=e.x;e.py=e.y;const sq=clamp(Math.abs(vx)*.03,0,.18),st=clamp(Math.abs(vy)*.025,0,.15);
- const spr=SPR[e.type];if(spr){emboss(e.x,e.y,box,()=>{const br=1+Math.sin(e.t*.25+e.ph)*.03,wob=Math.sin(e.t*.4+e.ph)*.05;X.scale((1+sq-st*.5)*br,(1-sq*.5+st)/br);const rot=e.pat==='dash'?(e.dx>0?-Math.PI/2:Math.PI/2):(faceRot(e.type)+Math.atan2(vx,vy)*.18+wob);drawSprite(spr,e.r*2*sc*4.0,rot);},{filter:e.fl>0?'brightness(2.6) saturate(.3)':e.slow>0?'sepia(.7) brightness(1.1)':(e.elite?'saturate(1.6) brightness(1.15)':null)});
+ const spr=SPR[e.type];if(spr){const sh=e.r*2*sc*4.0,sbox=Math.max(box,Math.ceil(sh*Math.max(1,(spr.naturalWidth||1)/(spr.naturalHeight||1))*1.12)+16);emboss(e.x,e.y,sbox,()=>{const br=1+Math.sin(e.t*.25+e.ph)*.03,wob=Math.sin(e.t*.4+e.ph)*.05;X.scale((1+sq-st*.5)*br,(1-sq*.5+st)/br);const rot=e.pat==='dash'?(e.dx>0?-Math.PI/2:Math.PI/2):(faceRot(e.type)+Math.atan2(vx,vy)*.18+wob);drawSprite(spr,e.r*2*sc*4.0,rot);},{filter:e.fl>0?'brightness(2.6) saturate(.3)':e.slow>0?'sepia(.7) brightness(1.1)':(e.elite?'saturate(1.6) brightness(1.15)':null)});
   if(e.label>0&&BUGINFO[e.type]){X.save();X.globalAlpha=Math.min(1,e.label/40);X.fillStyle='#fff';X.font='bold 11px '+FONT;X.textAlign='center';X.shadowColor='#000';X.shadowBlur=4;X.fillText(BUGINFO[e.type].name,e.x,e.y+e.r*sc+(e.elite?36:24));X.restore();}return;}
  if(e.elite){X.save();X.strokeStyle='rgba(255,215,0,.9)';X.lineWidth=3;X.setLineDash([5,4]);X.lineDashOffset=-e.t*.5;ell(e.x,e.y,e.r*sc+10,e.r*sc+10);X.stroke();X.setLineDash([]);X.fillStyle='#ffd700';X.font='bold 10px '+FONT;X.textAlign='center';X.shadowColor='#000';X.shadowBlur=3;X.fillText('ELITE',e.x,e.y+e.r*sc+24);X.restore();}
  emboss(e.x,e.y,box,()=>{X.scale(sc*(1+sq-st*.5),sc*(1-sq*.5+st));const ph=e.t*.3;
@@ -1584,7 +1587,11 @@ function drawBoss(b,portrait){const real=LV().boss,i=BARCH[real];
   // the split twin: same plates, mirrored trail. shares the mother's health -- one hunger, two mouths
   if(b.rage&&b.seg2&&b.seg2.length>8){X.save();X.translate(b.x2,b.y2);if(b.fl>0)X.filter='brightness(2) saturate(.5)';centipedeSprite({...b,x:b.x2,y:b.y2,seg:b.seg2});X.filter='none';X.restore();}}
  else if(i===5){if(!b.seg.length)b.seg=Array.from({length:150},(_,k)=>({x:b.x+Math.sin(k*.06)*40,y:b.y+k*.9}));emboss(b.x,b.y,220,()=>{centipedeSprite(b);menace(b,5);},{alt:0});}
- else if(SPR['boss'+real])emboss(b.x,b.y,300,()=>{const sc=(1+(b.rage?Math.sin(b.t*.3)*.03:0))*(1+Math.sin(b.t*.12)*.025);X.scale(sc,sc);X.rotate(Math.sin(b.t*.07)*.04);drawSprite(SPR['boss'+real],BSIZE[real],faceRot('boss'+real));},{filter:b.fl>0?'brightness(2) saturate(.5)':(b.camo?'opacity(0.13) blur(1px)':(b.rage?'saturate(1.5) contrast(1.15)':null)),alt:portrait||b.camo?0:1});
+ else if(SPR['boss'+real]){const bim=SPR['boss'+real],bh=BSIZE[real],bw=bh*(bim.naturalWidth||1)/(bim.naturalHeight||1);
+  // the scratch box used to be a fixed 300: the 768x600 dobsonfly, the 768x627 boss and the atlas moth
+  // drew wider than that and came back with their wingtips and legs sliced off (Matt, 9/2)
+  const bbox=Math.ceil(Math.max(bw,bh)*1.16)+8;
+  emboss(b.x,b.y,bbox,()=>{const sc=(1+(b.rage?Math.sin(b.t*.3)*.03:0))*(1+Math.sin(b.t*.12)*.025);X.scale(sc,sc);X.rotate(Math.sin(b.t*.07)*.04);drawSprite(SPR['boss'+real],BSIZE[real],faceRot('boss'+real));},{filter:b.fl>0?'brightness(2) saturate(.5)':(b.camo?'opacity(0.13) blur(1px)':(b.rage?'saturate(1.5) contrast(1.15)':null)),alt:portrait||b.camo?0:1});}
  else emboss(b.x,b.y,230,()=>{bossSprite(b,i);menace(b,i);},{filter:b.fl>0?'brightness(2) saturate(.5)':(b.camo?'opacity(0.13) blur(1px)':null),alt:portrait?0:1});
  if(portrait)return;
  // scorpion's planted tail-turret: rooted where the job change happened, pulsing so you know it is live
