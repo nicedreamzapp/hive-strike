@@ -9,7 +9,7 @@ function recordBest(n,sc){if(n>=1&&n<=16&&sc>bestFor(n))localStorage['hs_best'+n
 const STAT={runs:+localStorage.hs_runs||0,bosses:+localStorage.hs_bosses||0,deepest:+localStorage.hs_deepest||1,dex:{},bdex:{}};
 try{STAT.dex=JSON.parse(localStorage.hs_dex||'{}')||{};STAT.bdex=JSON.parse(localStorage.hs_bdex||'{}')||{};}catch(e){}
 function statSave(){localStorage.hs_runs=STAT.runs;localStorage.hs_bosses=STAT.bosses;localStorage.hs_deepest=STAT.deepest;try{localStorage.hs_dex=JSON.stringify(STAT.dex);localStorage.hs_bdex=JSON.stringify(STAT.bdex);}catch(e){}}
-function pickStage(n){n=clamp(n,1,16);if(n>unlocked){say('LEVEL '+n+' LOCKED  \u2014  REACH IT TO PLAY IT');noise(.12,.025,300,1.2,140,'lowpass');return;}startStage=n;localStorage.hs_start=startStage;click(1200,.02);}
+function pickStage(n){if(locked()){payOpen=true;return;}n=clamp(n,1,16);if(n>unlocked){say('LEVEL '+n+' LOCKED  \u2014  REACH IT TO PLAY IT');noise(.12,.025,300,1.2,140,'lowpass');return;}startStage=n;localStorage.hs_start=startStage;click(1200,.02);}
 // 4x4 world grid in the middle of the title screen (was 8x2 at the bottom, 48px tiles nobody could read)
 const WCHIP=(i)=>({cx:65+(i%8)*50,cy:548+Math.floor(i/8)*64,r:24,x:44+(i%8)*50,y:524+Math.floor(i/8)*64,w:42,h:56});   // two rows of eight comb cells, each a picture of its world
 function arm(){armed=true;ctx();music('title');}
@@ -88,7 +88,7 @@ function resumeRun(){const c=loadCheckpoint();if(!c)return false;
  stage=c.stage;loop=c.loop|0;score=c.score|0;chainBest=c.chainBest|0;dailyRun=c.daily||null;
  Object.assign(P,{lives:c.lives,wpn:c.wpn||'honey',lvl:c.lvl||1,bombs:c.bombs|0});
  buildDecor((stage-1)%NL);palA=palB=(stage-1)%NL;clearCheckpoint();say('RESUMED  \u00b7  WORLD '+((stage-1)%NL+1));return true;}
-function playOrResume(){if(firstHelp())return;if(!resumeRun())start();}
+function playOrResume(){if(locked()){payOpen=true;return;}if(firstHelp())return;if(!resumeRun())start();}
 function sparks(x,y,c,n=8,sp=9){for(let i=0;i<n;i++){const a=R(0,Math.PI*2),s=R(sp*.5,sp);parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,l:R(8,18),c,r:R(1,2),spark:1});}}
 let muzzle=[];function flashMuzzle(x,y,c){muzzle.push({x,y,c,l:4});}
 function gibs(e){const n=RI(4,7);for(let i=0;i<n;i++){const a=R(0,7),v=R(1.5,4.5);parts.push({x:e.x,y:e.y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-2,l:R(30,55),c:e.col,r:R(2,4),gib:1,a:R(0,7),va:R(-.3,.3),rx:R(1.2,2.2)});}for(let i=0;i<2;i++){const a=R(0,7);parts.push({x:e.x,y:e.y,vx:Math.cos(a)*2,vy:-2,l:R(35,60),c:'rgba(230,245,255,.85)',r:R(3,5),gib:1,wing:1,a:R(0,7),va:R(-.2,.2),rx:2.4});}}

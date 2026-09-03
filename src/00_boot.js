@@ -96,6 +96,7 @@ C.addEventListener('pointerdown',e=>{const isT=e.pointerType==='touch',p=ptr(e),
   if(inBtn(raw,TBTN.bomb)){wantBomb=1;return;}
   if(paused||resumeCountdown>0){resumeCountdown=0;paused=false;return;}
  }
+ if(state!=='play'&&payOpen){if(payHit(raw))return;if(!locked()){payOpen=false;}return;}
  if(state!=='play'&&settingsOpen&&!dexOpen){
   if(barHit(raw,BARS.mus)){setMusLv(barVal(raw,BARS.mus));say('MUSIC '+Math.round(MUSLV*100)+'%');return;}
   if(barHit(raw,BARS.sfx)){setSfxLv(barVal(raw,BARS.sfx));click(1400,.02);say('EFFECTS '+Math.round(SFXLV*100)+'%');return;}

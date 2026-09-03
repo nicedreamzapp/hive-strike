@@ -48,8 +48,10 @@ function drawTitleUI(sp){
  {const b=CBTN.gear;X.save();X.translate(b.x+b.w/2,b.y+b.h/2);X.shadowColor='#000';X.shadowBlur=4;X.strokeStyle='rgba(255,255,255,.8)';X.lineWidth=2.5;for(let k=0;k<8;k++){const a=k*Math.PI/4;X.beginPath();X.moveTo(Math.cos(a)*5,Math.sin(a)*5);X.lineTo(Math.cos(a)*9,Math.sin(a)*9);X.stroke();}
   X.beginPath();X.arc(0,0,5,0,7);X.stroke();X.restore();}
  X.shadowBlur=0;
+ drawTrialLine();
  if(settingsOpen)drawSettingsSheet();
- if(cardOpen)drawCard(cardOpen);}
+ if(cardOpen)drawCard(cardOpen);
+ if(payOpen)drawPaywall();}
 function drawSettingsSheet(){
  X.save();X.fillStyle='rgba(0,0,0,.35)';X.fillRect(0,0,W,H);
  X.fillStyle='rgba(10,20,36,.82)';X.beginPath();X.roundRect(40,H-262,W-80,190,14);X.fill();X.strokeStyle='rgba(255,255,255,.3)';X.lineWidth=1;X.stroke();

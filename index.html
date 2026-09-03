@@ -43,7 +43,7 @@ const FONT='"Avenir Next Condensed","Futura","Arial Narrow","Helvetica Neue",san
 // stamped by tools/assemble.py from the version in package.json and the git commit --
 // never edit by hand. It is how you tell at a glance whether the phone in your hand is
 // running the same build as the one next to it.
-const BUILD='v1.0.0  ·  a0acbbe+  ·  Sep 3';
+const BUILD='v1.3.0  ·  970e6cd+  ·  Sep 3';
 // letterbox the play field inside whatever the device actually gives us, safe-area padding
 // already removed by the body. visualViewport is the honest number on iOS.
 function fit(){const cs=getComputedStyle(document.body),
@@ -111,6 +111,7 @@ C.addEventListener('pointerdown',e=>{const isT=e.pointerType==='touch',p=ptr(e),
   if(inBtn(raw,TBTN.bomb)){wantBomb=1;return;}
   if(paused||resumeCountdown>0){resumeCountdown=0;paused=false;return;}
  }
+ if(state!=='play'&&payOpen){if(payHit(raw))return;if(!locked()){payOpen=false;}return;}
  if(state!=='play'&&settingsOpen&&!dexOpen){
   if(barHit(raw,BARS.mus)){setMusLv(barVal(raw,BARS.mus));say('MUSIC '+Math.round(MUSLV*100)+'%');return;}
   if(barHit(raw,BARS.sfx)){setSfxLv(barVal(raw,BARS.sfx));click(1400,.02);say('EFFECTS '+Math.round(SFXLV*100)+'%');return;}
@@ -549,7 +550,7 @@ function recordBest(n,sc){if(n>=1&&n<=16&&sc>bestFor(n))localStorage['hs_best'+n
 const STAT={runs:+localStorage.hs_runs||0,bosses:+localStorage.hs_bosses||0,deepest:+localStorage.hs_deepest||1,dex:{},bdex:{}};
 try{STAT.dex=JSON.parse(localStorage.hs_dex||'{}')||{};STAT.bdex=JSON.parse(localStorage.hs_bdex||'{}')||{};}catch(e){}
 function statSave(){localStorage.hs_runs=STAT.runs;localStorage.hs_bosses=STAT.bosses;localStorage.hs_deepest=STAT.deepest;try{localStorage.hs_dex=JSON.stringify(STAT.dex);localStorage.hs_bdex=JSON.stringify(STAT.bdex);}catch(e){}}
-function pickStage(n){n=clamp(n,1,16);if(n>unlocked){say('LEVEL '+n+' LOCKED  \u2014  REACH IT TO PLAY IT');noise(.12,.025,300,1.2,140,'lowpass');return;}startStage=n;localStorage.hs_start=startStage;click(1200,.02);}
+function pickStage(n){if(locked()){payOpen=true;return;}n=clamp(n,1,16);if(n>unlocked){say('LEVEL '+n+' LOCKED  \u2014  REACH IT TO PLAY IT');noise(.12,.025,300,1.2,140,'lowpass');return;}startStage=n;localStorage.hs_start=startStage;click(1200,.02);}
 // 4x4 world grid in the middle of the title screen (was 8x2 at the bottom, 48px tiles nobody could read)
 const WCHIP=(i)=>({cx:65+(i%8)*50,cy:548+Math.floor(i/8)*64,r:24,x:44+(i%8)*50,y:524+Math.floor(i/8)*64,w:42,h:56});   // two rows of eight comb cells, each a picture of its world
 function arm(){armed=true;ctx();music('title');}
@@ -628,7 +629,7 @@ function resumeRun(){const c=loadCheckpoint();if(!c)return false;
  stage=c.stage;loop=c.loop|0;score=c.score|0;chainBest=c.chainBest|0;dailyRun=c.daily||null;
  Object.assign(P,{lives:c.lives,wpn:c.wpn||'honey',lvl:c.lvl||1,bombs:c.bombs|0});
  buildDecor((stage-1)%NL);palA=palB=(stage-1)%NL;clearCheckpoint();say('RESUMED  \u00b7  WORLD '+((stage-1)%NL+1));return true;}
-function playOrResume(){if(firstHelp())return;if(!resumeRun())start();}
+function playOrResume(){if(locked()){payOpen=true;return;}if(firstHelp())return;if(!resumeRun())start();}
 function sparks(x,y,c,n=8,sp=9){for(let i=0;i<n;i++){const a=R(0,Math.PI*2),s=R(sp*.5,sp);parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,l:R(8,18),c,r:R(1,2),spark:1});}}
 let muzzle=[];function flashMuzzle(x,y,c){muzzle.push({x,y,c,l:4});}
 function gibs(e){const n=RI(4,7);for(let i=0;i<n;i++){const a=R(0,7),v=R(1.5,4.5);parts.push({x:e.x,y:e.y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-2,l:R(30,55),c:e.col,r:R(2,4),gib:1,a:R(0,7),va:R(-.3,.3),rx:R(1.2,2.2)});}for(let i=0;i<2;i++){const a=R(0,7);parts.push({x:e.x,y:e.y,vx:Math.cos(a)*2,vy:-2,l:R(35,60),c:'rgba(230,245,255,.85)',r:R(3,5),gib:1,wing:1,a:R(0,7),va:R(-.2,.2),rx:2.4});}}
@@ -2330,8 +2331,10 @@ function drawTitleUI(sp){
  {const b=CBTN.gear;X.save();X.translate(b.x+b.w/2,b.y+b.h/2);X.shadowColor='#000';X.shadowBlur=4;X.strokeStyle='rgba(255,255,255,.8)';X.lineWidth=2.5;for(let k=0;k<8;k++){const a=k*Math.PI/4;X.beginPath();X.moveTo(Math.cos(a)*5,Math.sin(a)*5);X.lineTo(Math.cos(a)*9,Math.sin(a)*9);X.stroke();}
   X.beginPath();X.arc(0,0,5,0,7);X.stroke();X.restore();}
  X.shadowBlur=0;
+ drawTrialLine();
  if(settingsOpen)drawSettingsSheet();
- if(cardOpen)drawCard(cardOpen);}
+ if(cardOpen)drawCard(cardOpen);
+ if(payOpen)drawPaywall();}
 function drawSettingsSheet(){
  X.save();X.fillStyle='rgba(0,0,0,.35)';X.fillRect(0,0,W,H);
  X.fillStyle='rgba(10,20,36,.82)';X.beginPath();X.roundRect(40,H-262,W-80,190,14);X.fill();X.strokeStyle='rgba(255,255,255,.3)';X.lineWidth=1;X.stroke();
@@ -2545,4 +2548,105 @@ function drawDex(){X.save();X.setTransform(DPR,0,0,DPR,0,0);
   lines.forEach((l,i)=>X.fillText(l,W/2,py+278+i*18));
   X.fillStyle='rgba(255,255,255,.45)';X.font='9px '+FONT;X.fillText('tap anywhere to go back',W/2,py+ph-14);}
  X.restore();}
+// ---------- store: thirty days free, then ninety-nine cents forever ----------
+// Neither Apple nor Google offers a free trial on a ONE-TIME purchase; their trials exist only
+// for subscriptions. So the game ships free, counts its own thirty days, and then asks once for
+// the unlock (a non-consumable on Apple, a one-time product on Google Play).
+//
+// It fails OPEN on purpose. If the billing plugin is missing, the store is unreachable, or the
+// player is on the desktop build, the game simply plays. A dollar is not worth locking someone
+// out of a game they already downloaded because a network call failed.
+const PAY_ID='com.nicedreamz.hivestrike.unlock';
+const TRIAL_DAYS=30;
+const STORE={ready:false,owned:false,price:'$0.99',busy:false,note:'',native:false};
+let payOpen=false;
+
+function native(){try{return !!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());}catch(e){return false;}}
+function trialStart(){try{let v=+localStorage.hs_t0;if(!v){v=Date.now();localStorage.hs_t0=v;}return v;}catch(e){return Date.now();}}
+function trialDaysLeft(){const used=(Date.now()-trialStart())/86400000;return Math.max(0,Math.ceil(TRIAL_DAYS-used));}
+// locked only when there is a real store to buy from, the trial is spent, and nothing is owned
+function locked(){return STORE.native&&!STORE.owned&&trialDaysLeft()<=0;}
+function ownedSave(v){STORE.owned=!!v;try{localStorage.hs_owned=v?'1':'';}catch(e){}}
+
+function storeInit(){
+ STORE.native=native();
+ try{if(localStorage.hs_owned)STORE.owned=true;}catch(e){}
+ trialStart();
+ if(!STORE.native||!window.CdvPurchase){STORE.note=STORE.native?'store unavailable':'';return;}
+ try{
+  const {store,ProductType,Platform}=window.CdvPurchase;
+  const plats=[];
+  if(window.CdvPurchase.Utils&&/iP(hone|ad|od)/.test(navigator.userAgent)){plats.push(Platform.APPLE_APPSTORE);}
+  else plats.push(Platform.GOOGLE_PLAY);
+  store.register(plats.map(p=>({id:PAY_ID,type:ProductType.NON_CONSUMABLE,platform:p})));
+  store.when()
+   .productUpdated(p=>{if(p.id===PAY_ID){const o=p.getOffer&&p.getOffer();if(o&&o.pricingPhases&&o.pricingPhases[0]&&o.pricingPhases[0].price)STORE.price=o.pricingPhases[0].price;}})
+   .approved(tr=>{try{tr.verify();}catch(e){try{tr.finish();}catch(_){}ownedSave(true);}})
+   .verified(rc=>{try{rc.finish();}catch(e){}ownedSave(true);STORE.busy=false;STORE.note='Thank you. Unlocked for good.';})
+   .receiptsReady(()=>{try{if(store.owned(PAY_ID))ownedSave(true);}catch(e){}STORE.ready=true;});
+  store.error(err=>{STORE.busy=false;STORE.note=(err&&err.message)?String(err.message).slice(0,60):'purchase failed';});
+  store.initialize(plats).then(()=>{STORE.ready=true;try{if(store.owned(PAY_ID))ownedSave(true);}catch(e){}});
+ }catch(e){STORE.note='store unavailable';}
+}
+function storeBuy(){
+ if(STORE.busy)return;
+ if(!STORE.native||!window.CdvPurchase){STORE.note='no store on this device';return;}
+ try{const {store}=window.CdvPurchase;const p=store.get(PAY_ID);
+  if(!p){STORE.note='product not found yet';return;}
+  const o=p.getOffer();if(!o){STORE.note='no offer yet';return;}
+  STORE.busy=true;STORE.note='opening the store...';store.order(o);
+ }catch(e){STORE.busy=false;STORE.note='could not open the store';}
+}
+function storeRestore(){                        // Apple requires this button to exist
+ if(!STORE.native||!window.CdvPurchase){STORE.note='nothing to restore here';return;}
+ try{STORE.busy=true;STORE.note='checking your purchases...';
+  window.CdvPurchase.store.restorePurchases().then(()=>{STORE.busy=false;
+   try{if(window.CdvPurchase.store.owned(PAY_ID)){ownedSave(true);STORE.note='Restored. Thank you.';}
+       else STORE.note='no purchase found on this account';}catch(e){}});
+ }catch(e){STORE.busy=false;STORE.note='could not reach the store';}
+}
+
+// ---- the paywall, drawn in the title's own language: glass over the painting ----
+const PAYB={buy:{x:56,y:492,w:W-112,h:54},restore:{x:56,y:562,w:(W-122)/2,h:40},later:{x:66+(W-122)/2,y:562,w:(W-122)/2,h:40}};
+function payHit(p){
+ if(inBtn(p,PAYB.buy)){storeBuy();return true;}
+ if(inBtn(p,locked()?{x:W/2-90,y:PAYB.restore.y,w:180,h:PAYB.restore.h}:PAYB.restore)){storeRestore();return true;}
+ if(inBtn(p,PAYB.later)){if(!locked()){payOpen=false;}return true;}
+ return false;
+}
+function drawPaywall(){
+ X.save();
+ X.fillStyle='rgba(4,10,20,.965)';X.fillRect(0,0,W,H);
+ X.textAlign='center';X.shadowColor='#000';X.shadowBlur=6;X.lineJoin='round';
+ const line=(txt,y,size,col,w)=>{X.font=(size>=15?'bold ':'')+size+'px '+FONT;X.strokeStyle='rgba(0,0,0,.85)';X.lineWidth=w||3;X.strokeText(txt,W/2,y);X.fillStyle=col;X.fillText(txt,W/2,y);};
+ const d=trialDaysLeft();
+ line(locked()?'YOUR THIRTY DAYS ARE UP':'KEEP HIVE STRIKE',108,24,'#ffd23f',4);
+ line(locked()?'One payment. Yours for good.':d+(d===1?' day left of your free month':' days left of your free month'),136,14,'#cfe8ff',3);
+ {const hs=SPR.hero;X.save();X.translate(W/2,58);X.globalAlpha=.92;if(hs&&hs.width)drawSprite(hs,64,0);else bee(0,0,20,'#ffd23f','#1a1a1a','#fff');X.restore();}
+ const rows=[['All sixteen worlds','and all sixteen bosses'],['Every bug in the Bug-Dex','forty-eight of them'],['No adverts, ever','and nothing else to buy'],['One payment','not a subscription']];
+ let y=206;
+ for(const r of rows){X.textAlign='left';X.font='bold 14px '+FONT;X.strokeStyle='rgba(0,0,0,.85)';X.lineWidth=3;
+  X.strokeText('•  '+r[0],46,y);X.fillStyle='#fff';X.fillText('•  '+r[0],46,y);
+  X.font='12px '+FONT;X.strokeText(r[1],66,y+17);X.fillStyle='rgba(200,225,255,.85)';X.fillText(r[1],66,y+17);y+=44;}
+ X.textAlign='center';
+ // the price, big
+ line(STORE.price,432,46,'#ffd23f',5);
+ line('once, forever',458,13,'#cfe8ff',3);
+ const pill=(b,txt,fg,bg,edge)=>{X.fillStyle=bg;X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,b.h/2);X.fill();X.strokeStyle=edge;X.lineWidth=1.4;X.stroke();
+  X.fillStyle=fg;X.font='bold '+(b.h>44?17:13)+'px '+FONT;X.strokeStyle='rgba(0,0,0,.6)';X.lineWidth=2.5;X.strokeText(txt,b.x+b.w/2,b.y+b.h/2+5);X.fillText(txt,b.x+b.w/2,b.y+b.h/2+5);};
+ pill(PAYB.buy,STORE.busy?'ONE MOMENT...':'UNLOCK FOR '+STORE.price,'#1a1400','rgba(255,210,63,.94)','rgba(255,236,160,.95)');
+ if(locked())pill({x:W/2-90,y:PAYB.restore.y,w:180,h:PAYB.restore.h},'RESTORE PURCHASE','#fff','rgba(0,0,0,.35)','rgba(255,255,255,.55)');
+ else{pill(PAYB.restore,'RESTORE','#fff','rgba(0,0,0,.35)','rgba(255,255,255,.55)');pill(PAYB.later,'NOT YET','#fff','rgba(0,0,0,.35)','rgba(255,255,255,.55)');}
+ if(STORE.note){X.font='11px '+FONT;X.fillStyle='rgba(220,235,255,.8)';X.strokeStyle='rgba(0,0,0,.8)';X.lineWidth=3;X.strokeText(STORE.note,W/2,662);X.fillText(STORE.note,W/2,662);}
+ X.restore();
+}
+// the quiet reminder on the title while the trial is still running
+function drawTrialLine(){
+ if(!STORE.native||STORE.owned)return;
+ const d=trialDaysLeft();if(d>TRIAL_DAYS)return;
+ X.save();X.textAlign='center';X.font='bold 10px '+FONT;X.lineJoin='round';X.strokeStyle='rgba(0,0,0,.85)';X.lineWidth=3;
+ const s=d>0?('FREE MONTH  ·  '+d+(d===1?' DAY LEFT':' DAYS LEFT')):'TAP PLAY TO UNLOCK  ·  '+STORE.price;
+ X.strokeText(s,W/2,H-14);X.fillStyle=d>3?'rgba(220,235,255,.85)':'#ffd23f';X.fillText(s,W/2,H-14);X.restore();
+}
+storeInit();
 </script></body></html>
