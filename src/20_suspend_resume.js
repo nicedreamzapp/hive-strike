@@ -59,10 +59,12 @@ function frame(now){const dt=now-last,_w0=performance.now();
   musicTick();ambTick();draw();
   if(!shownOnce){shownOnce=true;nativeReady();}
   if(state==='play'&&!paused&&dt>0&&dt<200){_pt+=dt;_pw+=performance.now()-_w0;
-   if(++_pn>=120||(LOW&&!LOW2&&_pn>=30)){const gap=_pt/_pn,work=_pw/_pn;_pn=0;_pt=0;_pw=0;
+   if(++_pn>=120||(LOW&&!LOW3&&_pn>=30)){const gap=_pt/_pn,work=_pw/_pn;_pn=0;_pt=0;_pw=0;
     if(!LOW&&gap>21){setLow(true);say('DETAIL LOWERED FOR THIS PHONE');}
     else if(LOW&&!LOW2&&gap>45){setLow2(true);say('LOWEST DETAIL FOR THIS PHONE');}   // 30-frame window: at 5 fps, 120 frames is 24 s of misery
-    else if(LOW2&&work<6&&gap<22&&_ups<2){_ups++;setLow2(false);say('LOW DETAIL');}
+    else if(LOW2&&!LOW3&&gap>40){setLow3(true);say('BARE-BONES MODE FOR THIS PHONE');}
+    else if(LOW3&&work<6&&gap<26&&_ups<2){_ups++;setLow3(false);say('LOWEST DETAIL');}
+    else if(LOW2&&!LOW3&&work<6&&gap<22&&_ups<2){_ups++;setLow2(false);say('LOW DETAIL');}
     else if(LOW&&!LOW2&&work<4&&gap<17.5&&_ups<2){_ups++;setLow(false);say('FULL DETAIL');}}}
  }catch(e){
   _errN++;

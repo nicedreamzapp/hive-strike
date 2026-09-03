@@ -28,17 +28,22 @@ const C=document.getElementById('c');let X=C.getContext('2d');const W=480,H=720;
 // MT6765 burner: 5 fps in LOW with 11 bugs on screen). It renders at 1.0 raster and draws every
 // embossed sprite in one direct pass -- no offscreen rim/gloss/shadow passes, which were the
 // whole cost (5 -> 12.5 fps on the frozen frame). hs_low: '0' full, '1' LOW, '2' LOW2.
-let LOW=false,LOW2=false; try{const v=localStorage.hs_low;LOW=v==='1'||v==='2';LOW2=v==='2';}catch(e){}
-const RASTER_MAX=()=>LOW2?1:LOW?1.25:4;
-function setLow(v){if(LOW===v&&!(LOW2&&!v))return;LOW=v;if(!v)LOW2=false;try{localStorage.hs_low=v?'1':'0';}catch(e){}fit();}
-function setLow2(v){if(LOW2===v)return;LOW2=v;if(v)LOW=true;try{localStorage.hs_low=v?'2':(LOW?'1':'0');}catch(e){}fit();}
+// LOW3 is bare bones under LOW2 (Matt, 2026-09-02, still glitchy on the burner): 0.85 raster,
+// no glows (rg returns a flat body colour and drops transparent-edged glows), no enemy-shot
+// trails, no bee aura, at most 40 particles drawn.
+let LOW=false,LOW2=false,LOW3=false; try{const v=localStorage.hs_low;LOW=v==='1'||v==='2'||v==='3';LOW2=v==='2'||v==='3';LOW3=v==='3';}catch(e){}
+const RASTER_MAX=()=>LOW3?0.85:LOW2?1:LOW?1.25:4;
+function lowSave(){try{localStorage.hs_low=LOW3?'3':LOW2?'2':LOW?'1':'0';}catch(e){}}
+function setLow(v){if(LOW===v&&!(LOW2&&!v))return;LOW=v;if(!v){LOW2=false;LOW3=false;}lowSave();fit();}
+function setLow2(v){if(LOW2===v&&!(LOW3&&!v))return;LOW2=v;if(v)LOW=true;else LOW3=false;lowSave();fit();}
+function setLow3(v){if(LOW3===v)return;LOW3=v;if(v){LOW=true;LOW2=true;}lowSave();fit();}
 let DPR=Math.min(3,window.devicePixelRatio||1);
 C.width=W*DPR;C.height=H*DPR;C.style.width=W+'px';C.style.height=H+'px';X.setTransform(DPR,0,0,DPR,0,0);
 const FONT='"Avenir Next Condensed","Futura","Arial Narrow","Helvetica Neue",sans-serif';
 // stamped by tools/assemble.py from the version in package.json and the git commit --
 // never edit by hand. It is how you tell at a glance whether the phone in your hand is
 // running the same build as the one next to it.
-const BUILD='v1.0.0  ·  1a32b19+  ·  Sep 2';
+const BUILD='v1.0.0  ·  2f152f9+  ·  Sep 2';
 // letterbox the play field inside whatever the device actually gives us, safe-area padding
 // already removed by the body. visualViewport is the honest number on iOS.
 function fit(){const cs=getComputedStyle(document.body),
@@ -50,7 +55,7 @@ function fit(){const cs=getComputedStyle(document.body),
  C.style.width=Math.round(W*sc)+'px';C.style.height=Math.round(H*sc)+'px';
  // render exactly the pixels this screen will show -- no upscale on a tablet, no waste
  // on a phone. Capped at 4 so a huge display cannot blow the memory budget.
- const want=Math.max(1,Math.min(RASTER_MAX(),+(sc*(window.devicePixelRatio||1)).toFixed(3)));
+ const want=Math.max(LOW3?0.85:1,Math.min(RASTER_MAX(),+(sc*(window.devicePixelRatio||1)).toFixed(3)));
  if(Math.abs(want-DPR)>0.01||C.width!==Math.round(W*want)){
   DPR=want;C.width=Math.round(W*DPR);C.height=Math.round(H*DPR);
   X.setTransform(DPR,0,0,DPR,0,0);
@@ -1245,7 +1250,8 @@ function updateInner(){t++;juiceTick();if(collapse>0){collapse--;if(collapse%9==
 
 // ---------- drawing helpers ----------
 function ell(x,y,rx,ry,a=0){X.beginPath();X.ellipse(x,y,rx,ry,a,0,7);}
-function rg(x,y,r,c1,c2){const g=X.createRadialGradient(x-r*.3,y-r*.3,r*.1,x,y,r);g.addColorStop(0,c1);g.addColorStop(1,c2);return g;}
+function rg(x,y,r,c1,c2){if(LOW3)return /,\s*0\)\s*$/.test(c2)?'rgba(0,0,0,0)':c1;   // bare bones: flat bodies, no glows
+ const g=X.createRadialGradient(x-r*.3,y-r*.3,r*.1,x,y,r);g.addColorStop(0,c1);g.addColorStop(1,c2);return g;}
 const hexA=(h,a)=>{const p=parseInt(h.slice(1),16);return 'rgba('+(p>>16)+','+((p>>8)&255)+','+(p&255)+','+a+')';};
 function lerpC(a,b,m){const pa=parseInt(a.slice(1),16),pb=parseInt(b.slice(1),16);const r=(pa>>16)+((pb>>16)-(pa>>16))*m,g=((pa>>8)&255)+(((pb>>8)&255)-((pa>>8)&255))*m,bl=(pa&255)+((pb&255)-(pa&255))*m;return `rgb(${r|0},${g|0},${bl|0})`;}
 // ---- EMBOSS: render a sprite offscreen, then composite ground shadow + drop shadow + light rim + dark rim.
@@ -2005,7 +2011,7 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
  X.globalCompositeOperation='source-over';
  for(const b of ebullets){b.t=(b.t||0)+1;const r=b.r,dd=dep(b.y);X.save();X.translate(b.x+pxo(b.x,b.y),b.y);X.scale(dd,dd);X.fillStyle='rgba(0,0,0,.25)';ell(4,7,r*1.4,r*.8);X.fill();
   // a short trail says which way it is going before it gets close
-  if(b.kind!=='web'){X.globalCompositeOperation='lighter';for(const k of [1.5,3]){X.fillStyle='rgba(255,60,220,'+(.32/k)+')';ell(-b.vx*k*2,-b.vy*k*2,r*1.15,r*1.15);X.fill();}X.globalCompositeOperation='source-over';}
+  if(b.kind!=='web'&&!LOW3){X.globalCompositeOperation='lighter';for(const k of [1.5,3]){X.fillStyle='rgba(255,60,220,'+(.32/k)+')';ell(-b.vx*k*2,-b.vy*k*2,r*1.15,r*1.15);X.fill();}X.globalCompositeOperation='source-over';}
   switch(b.kind){
    case 'venom':X.rotate(Math.atan2(b.vy,b.vx)+Math.PI/2);X.fillStyle='#1a3a00';X.beginPath();X.moveTo(0,-r*2.1);X.quadraticCurveTo(r*1.5,r*.2,0,r*1.5);X.quadraticCurveTo(-r*1.5,r*.2,0,-r*2.1);X.fill();X.fillStyle=rg(0,0,r,'#e8ff90','#5aa000');X.beginPath();X.moveTo(0,-r*1.7);X.quadraticCurveTo(r*1.1,r*.2,0,r*1.1);X.quadraticCurveTo(-r*1.1,r*.2,0,-r*1.7);X.fill();break;
    case 'seed':X.rotate(b.t*.2);X.fillStyle='#000';X.beginPath();for(let k=0;k<12;k++){const a=k*Math.PI/6,rr=k%2?r*1.9:r*1.1;X.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);}X.closePath();X.fill();X.fillStyle=rg(0,0,r,'#e0c0ff','#7a3ab0');ell(0,0,r*.95,r*.95);X.fill();break;
@@ -2035,21 +2041,23 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
   if(b.hot&&!b.grz){const pl=(r*1.45+7)*(1+Math.sin(t*.5)*.18);X.strokeStyle='rgba(141,255,154,.9)';X.lineWidth=2;ell(0,0,pl,pl);X.stroke();X.strokeStyle='rgba(255,255,255,.5)';X.lineWidth=1;ell(0,0,pl,pl);X.stroke();}
   X.restore();}
  for(const r of ringsFx){r.r+=(r.max-r.r)*.15;X.globalAlpha=Math.max(0,1-r.r/r.max);X.strokeStyle='#fff';X.lineWidth=3;ell(r.x+pxo(r.x,r.y),r.y,r.r,r.r);X.stroke();X.strokeStyle=r.c;X.lineWidth=1.5;ell(r.x+pxo(r.x,r.y),r.y,r.r*.8,r.r*.8);X.stroke();}X.globalAlpha=1;ringsFx=ringsFx.filter(r=>r.r<r.max-2);
- X.globalCompositeOperation='lighter';X.lineCap='round';for(const p of parts){X.save();X.translate(pxo(p.x,p.y),0);X.globalAlpha=Math.min(1,p.l/15);if(p.spark){X.strokeStyle=p.c;X.lineWidth=p.r;X.beginPath();X.moveTo(p.x,p.y);X.lineTo(p.x-p.vx*2.5,p.y-p.vy*2.5);X.stroke();}else if(p.gib){X.globalCompositeOperation='source-over';X.fillStyle='rgba(0,0,0,.25)';ell(p.x+3,p.y+5,p.r*p.rx,p.r*.6,p.a);X.fill();X.fillStyle=p.c;ell(p.x,p.y,p.r*p.rx,p.r*.6,p.a);X.fill();X.globalCompositeOperation='lighter';}else{X.fillStyle=p.c;ell(p.x,p.y,p.r,p.r);X.fill();}X.restore();}X.globalAlpha=1;X.globalCompositeOperation='source-over';
+ X.globalCompositeOperation='lighter';X.lineCap='round';for(const p of (LOW3?parts.slice(-40):parts)){X.save();X.translate(pxo(p.x,p.y),0);X.globalAlpha=Math.min(1,p.l/15);if(p.spark){X.strokeStyle=p.c;X.lineWidth=p.r;X.beginPath();X.moveTo(p.x,p.y);X.lineTo(p.x-p.vx*2.5,p.y-p.vy*2.5);X.stroke();}else if(p.gib){X.globalCompositeOperation='source-over';X.fillStyle='rgba(0,0,0,.25)';ell(p.x+3,p.y+5,p.r*p.rx,p.r*.6,p.a);X.fill();X.fillStyle=p.c;ell(p.x,p.y,p.r*p.rx,p.r*.6,p.a);X.fill();X.globalCompositeOperation='lighter';}else{X.fillStyle=p.c;ell(p.x,p.y,p.r,p.r);X.fill();}X.restore();}X.globalAlpha=1;X.globalCompositeOperation='source-over';
  if(state==='play'&&!P.dead&&(P.inv===0||(t>>2)&1)){
-  if(t%2===0)parts.push({x:P.x+R(-6,6),y:P.y+14,vx:R(-.3,.3),vy:R(1,2.5),l:R(8,16),c:'#ffe08a',r:R(1,2.5)});
+  // only while the world moves: while paused nothing in update() retires particles, so this
+  // exhaust used to pile up to 1000+ during a pause and stutter the game on resume (9/2)
+  if(t%2===0&&!paused&&resumeCountdown===0)parts.push({x:P.x+R(-6,6),y:P.y+14,vx:R(-.3,.3),vy:R(1,2.5),l:R(8,16),c:'#ffe08a',r:R(1,2.5)});
   X.globalCompositeOperation='lighter';for(const m of muzzle){X.globalAlpha=m.l/4*.8;X.fillStyle=rg(m.x,m.y,14,'#fff',m.c);ell(m.x,m.y,6+(4-m.l)*3,10+(4-m.l)*2);X.fill();m.l--;}muzzle=muzzle.filter(m=>m.l>0);X.globalAlpha=1;
   X.fillStyle=rg(P.x,P.y+4,30,'rgba(255,220,80,.35)','rgba(255,220,80,0)');ell(P.x,P.y+4,30,30);X.fill();if(P.lvl>=5){const pr=(t%40)/40;X.globalAlpha=1-pr;X.strokeStyle=WEAPONS[P.wpn].col;X.lineWidth=3;ell(P.x,P.y,22+pr*26,22+pr*26);X.stroke();X.globalAlpha=1;}X.globalCompositeOperation='source-over';
   // the bee wears its firepower: a glow in the weapon's colour that grows with level,
   // a brighter body and weapon-tinted stripes from Lv3, motes orbiting from Lv4, a
   // halo at Lv5. Hitbox untouched -- this is light, not size.
   {const L=P.lvl,wc=(WEAPONS[P.wpn]||{}).col||'#ffd23f',d=P.dep||1,pu=.5+.5*Math.sin(t*.15);
-   X.save();X.globalCompositeOperation='lighter';
+   if(!LOW3){X.save();X.globalCompositeOperation='lighter';
    const gr=(22+9*L)*d*(1+pu*.08);X.fillStyle=rg(P.x,P.y,gr,hexA(wc,.16+.07*L),hexA(wc,0));ell(P.x,P.y,gr,gr);X.fill();
    if(L>=2){X.fillStyle=rg(P.x,P.y-6*d,12*d,'rgba(255,255,255,'+(.10+.06*L)+')','rgba(255,255,255,0)');ell(P.x,P.y-6*d,12*d,12*d);X.fill();}
    if(L>=4){for(let i=0;i<L;i++){const a=t*.06+i*Math.PI*2/L,mr=(26+3*L)*d;X.fillStyle=hexA(wc,.9);ell(P.x+Math.cos(a)*mr,P.y+Math.sin(a)*mr*.7,2.2*d,2.2*d);X.fill();X.fillStyle=hexA(wc,.25);ell(P.x+Math.cos(a)*mr,P.y+Math.sin(a)*mr*.7,5*d,5*d);X.fill();}}
    if(L>=5){X.strokeStyle='rgba(255,255,255,'+(.35+pu*.3)+')';X.lineWidth=1.5;ell(P.x,P.y,31*d,22*d);X.stroke();X.strokeStyle=hexA(wc,.5);X.lineWidth=3;ell(P.x,P.y,31*d,22*d);X.stroke();}
-   X.restore();
+   X.restore();}
    const body=lerpC('#ffd23f','#fff3b0',(L-1)/4*.6),stripe=L>=3?lerpC('#1a1a1a',wc,.35+.1*(L-3)):'#1a1a1a';
    emboss(P.x,P.y,120*d,()=>bee(0,0,16*d,body,stripe,'#fff'),{alt:1.2});}
   if(P.webbed>0){X.save();X.translate(P.x,P.y);X.globalAlpha=Math.min(1,P.webbed/30);X.strokeStyle='rgba(255,255,255,.9)';X.lineWidth=1.5;X.shadowColor='#000';X.shadowBlur=3;X.beginPath();for(let k=0;k<8;k++){const a=k*Math.PI/4;X.moveTo(0,0);X.lineTo(Math.cos(a)*34,Math.sin(a)*34);}for(let ring=1;ring<=3;ring++){for(let k=0;k<=8;k++){const a=k*Math.PI/4,rr=11*ring;if(k===0)X.moveTo(Math.cos(a)*rr,Math.sin(a)*rr);else X.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);}}X.stroke();X.restore();}
@@ -2276,10 +2284,12 @@ function frame(now){const dt=now-last,_w0=performance.now();
   musicTick();ambTick();draw();
   if(!shownOnce){shownOnce=true;nativeReady();}
   if(state==='play'&&!paused&&dt>0&&dt<200){_pt+=dt;_pw+=performance.now()-_w0;
-   if(++_pn>=120||(LOW&&!LOW2&&_pn>=30)){const gap=_pt/_pn,work=_pw/_pn;_pn=0;_pt=0;_pw=0;
+   if(++_pn>=120||(LOW&&!LOW3&&_pn>=30)){const gap=_pt/_pn,work=_pw/_pn;_pn=0;_pt=0;_pw=0;
     if(!LOW&&gap>21){setLow(true);say('DETAIL LOWERED FOR THIS PHONE');}
     else if(LOW&&!LOW2&&gap>45){setLow2(true);say('LOWEST DETAIL FOR THIS PHONE');}   // 30-frame window: at 5 fps, 120 frames is 24 s of misery
-    else if(LOW2&&work<6&&gap<22&&_ups<2){_ups++;setLow2(false);say('LOW DETAIL');}
+    else if(LOW2&&!LOW3&&gap>40){setLow3(true);say('BARE-BONES MODE FOR THIS PHONE');}
+    else if(LOW3&&work<6&&gap<26&&_ups<2){_ups++;setLow3(false);say('LOWEST DETAIL');}
+    else if(LOW2&&!LOW3&&work<6&&gap<22&&_ups<2){_ups++;setLow2(false);say('LOW DETAIL');}
     else if(LOW&&!LOW2&&work<4&&gap<17.5&&_ups<2){_ups++;setLow(false);say('FULL DETAIL');}}}
  }catch(e){
   _errN++;

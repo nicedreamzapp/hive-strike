@@ -13,10 +13,15 @@ const C=document.getElementById('c');let X=C.getContext('2d');const W=480,H=720;
 // MT6765 burner: 5 fps in LOW with 11 bugs on screen). It renders at 1.0 raster and draws every
 // embossed sprite in one direct pass -- no offscreen rim/gloss/shadow passes, which were the
 // whole cost (5 -> 12.5 fps on the frozen frame). hs_low: '0' full, '1' LOW, '2' LOW2.
-let LOW=false,LOW2=false; try{const v=localStorage.hs_low;LOW=v==='1'||v==='2';LOW2=v==='2';}catch(e){}
-const RASTER_MAX=()=>LOW2?1:LOW?1.25:4;
-function setLow(v){if(LOW===v&&!(LOW2&&!v))return;LOW=v;if(!v)LOW2=false;try{localStorage.hs_low=v?'1':'0';}catch(e){}fit();}
-function setLow2(v){if(LOW2===v)return;LOW2=v;if(v)LOW=true;try{localStorage.hs_low=v?'2':(LOW?'1':'0');}catch(e){}fit();}
+// LOW3 is bare bones under LOW2 (Matt, 2026-09-02, still glitchy on the burner): 0.85 raster,
+// no glows (rg returns a flat body colour and drops transparent-edged glows), no enemy-shot
+// trails, no bee aura, at most 40 particles drawn.
+let LOW=false,LOW2=false,LOW3=false; try{const v=localStorage.hs_low;LOW=v==='1'||v==='2'||v==='3';LOW2=v==='2'||v==='3';LOW3=v==='3';}catch(e){}
+const RASTER_MAX=()=>LOW3?0.85:LOW2?1:LOW?1.25:4;
+function lowSave(){try{localStorage.hs_low=LOW3?'3':LOW2?'2':LOW?'1':'0';}catch(e){}}
+function setLow(v){if(LOW===v&&!(LOW2&&!v))return;LOW=v;if(!v){LOW2=false;LOW3=false;}lowSave();fit();}
+function setLow2(v){if(LOW2===v&&!(LOW3&&!v))return;LOW2=v;if(v)LOW=true;else LOW3=false;lowSave();fit();}
+function setLow3(v){if(LOW3===v)return;LOW3=v;if(v){LOW=true;LOW2=true;}lowSave();fit();}
 let DPR=Math.min(3,window.devicePixelRatio||1);
 C.width=W*DPR;C.height=H*DPR;C.style.width=W+'px';C.style.height=H+'px';X.setTransform(DPR,0,0,DPR,0,0);
 const FONT='"Avenir Next Condensed","Futura","Arial Narrow","Helvetica Neue",sans-serif';
@@ -35,7 +40,7 @@ function fit(){const cs=getComputedStyle(document.body),
  C.style.width=Math.round(W*sc)+'px';C.style.height=Math.round(H*sc)+'px';
  // render exactly the pixels this screen will show -- no upscale on a tablet, no waste
  // on a phone. Capped at 4 so a huge display cannot blow the memory budget.
- const want=Math.max(1,Math.min(RASTER_MAX(),+(sc*(window.devicePixelRatio||1)).toFixed(3)));
+ const want=Math.max(LOW3?0.85:1,Math.min(RASTER_MAX(),+(sc*(window.devicePixelRatio||1)).toFixed(3)));
  if(Math.abs(want-DPR)>0.01||C.width!==Math.round(W*want)){
   DPR=want;C.width=Math.round(W*DPR);C.height=Math.round(H*DPR);
   X.setTransform(DPR,0,0,DPR,0,0);

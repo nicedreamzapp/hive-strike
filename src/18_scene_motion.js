@@ -348,7 +348,7 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
  X.globalCompositeOperation='source-over';
  for(const b of ebullets){b.t=(b.t||0)+1;const r=b.r,dd=dep(b.y);X.save();X.translate(b.x+pxo(b.x,b.y),b.y);X.scale(dd,dd);X.fillStyle='rgba(0,0,0,.25)';ell(4,7,r*1.4,r*.8);X.fill();
   // a short trail says which way it is going before it gets close
-  if(b.kind!=='web'){X.globalCompositeOperation='lighter';for(const k of [1.5,3]){X.fillStyle='rgba(255,60,220,'+(.32/k)+')';ell(-b.vx*k*2,-b.vy*k*2,r*1.15,r*1.15);X.fill();}X.globalCompositeOperation='source-over';}
+  if(b.kind!=='web'&&!LOW3){X.globalCompositeOperation='lighter';for(const k of [1.5,3]){X.fillStyle='rgba(255,60,220,'+(.32/k)+')';ell(-b.vx*k*2,-b.vy*k*2,r*1.15,r*1.15);X.fill();}X.globalCompositeOperation='source-over';}
   switch(b.kind){
    case 'venom':X.rotate(Math.atan2(b.vy,b.vx)+Math.PI/2);X.fillStyle='#1a3a00';X.beginPath();X.moveTo(0,-r*2.1);X.quadraticCurveTo(r*1.5,r*.2,0,r*1.5);X.quadraticCurveTo(-r*1.5,r*.2,0,-r*2.1);X.fill();X.fillStyle=rg(0,0,r,'#e8ff90','#5aa000');X.beginPath();X.moveTo(0,-r*1.7);X.quadraticCurveTo(r*1.1,r*.2,0,r*1.1);X.quadraticCurveTo(-r*1.1,r*.2,0,-r*1.7);X.fill();break;
    case 'seed':X.rotate(b.t*.2);X.fillStyle='#000';X.beginPath();for(let k=0;k<12;k++){const a=k*Math.PI/6,rr=k%2?r*1.9:r*1.1;X.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);}X.closePath();X.fill();X.fillStyle=rg(0,0,r,'#e0c0ff','#7a3ab0');ell(0,0,r*.95,r*.95);X.fill();break;
@@ -378,21 +378,23 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
   if(b.hot&&!b.grz){const pl=(r*1.45+7)*(1+Math.sin(t*.5)*.18);X.strokeStyle='rgba(141,255,154,.9)';X.lineWidth=2;ell(0,0,pl,pl);X.stroke();X.strokeStyle='rgba(255,255,255,.5)';X.lineWidth=1;ell(0,0,pl,pl);X.stroke();}
   X.restore();}
  for(const r of ringsFx){r.r+=(r.max-r.r)*.15;X.globalAlpha=Math.max(0,1-r.r/r.max);X.strokeStyle='#fff';X.lineWidth=3;ell(r.x+pxo(r.x,r.y),r.y,r.r,r.r);X.stroke();X.strokeStyle=r.c;X.lineWidth=1.5;ell(r.x+pxo(r.x,r.y),r.y,r.r*.8,r.r*.8);X.stroke();}X.globalAlpha=1;ringsFx=ringsFx.filter(r=>r.r<r.max-2);
- X.globalCompositeOperation='lighter';X.lineCap='round';for(const p of parts){X.save();X.translate(pxo(p.x,p.y),0);X.globalAlpha=Math.min(1,p.l/15);if(p.spark){X.strokeStyle=p.c;X.lineWidth=p.r;X.beginPath();X.moveTo(p.x,p.y);X.lineTo(p.x-p.vx*2.5,p.y-p.vy*2.5);X.stroke();}else if(p.gib){X.globalCompositeOperation='source-over';X.fillStyle='rgba(0,0,0,.25)';ell(p.x+3,p.y+5,p.r*p.rx,p.r*.6,p.a);X.fill();X.fillStyle=p.c;ell(p.x,p.y,p.r*p.rx,p.r*.6,p.a);X.fill();X.globalCompositeOperation='lighter';}else{X.fillStyle=p.c;ell(p.x,p.y,p.r,p.r);X.fill();}X.restore();}X.globalAlpha=1;X.globalCompositeOperation='source-over';
+ X.globalCompositeOperation='lighter';X.lineCap='round';for(const p of (LOW3?parts.slice(-40):parts)){X.save();X.translate(pxo(p.x,p.y),0);X.globalAlpha=Math.min(1,p.l/15);if(p.spark){X.strokeStyle=p.c;X.lineWidth=p.r;X.beginPath();X.moveTo(p.x,p.y);X.lineTo(p.x-p.vx*2.5,p.y-p.vy*2.5);X.stroke();}else if(p.gib){X.globalCompositeOperation='source-over';X.fillStyle='rgba(0,0,0,.25)';ell(p.x+3,p.y+5,p.r*p.rx,p.r*.6,p.a);X.fill();X.fillStyle=p.c;ell(p.x,p.y,p.r*p.rx,p.r*.6,p.a);X.fill();X.globalCompositeOperation='lighter';}else{X.fillStyle=p.c;ell(p.x,p.y,p.r,p.r);X.fill();}X.restore();}X.globalAlpha=1;X.globalCompositeOperation='source-over';
  if(state==='play'&&!P.dead&&(P.inv===0||(t>>2)&1)){
-  if(t%2===0)parts.push({x:P.x+R(-6,6),y:P.y+14,vx:R(-.3,.3),vy:R(1,2.5),l:R(8,16),c:'#ffe08a',r:R(1,2.5)});
+  // only while the world moves: while paused nothing in update() retires particles, so this
+  // exhaust used to pile up to 1000+ during a pause and stutter the game on resume (9/2)
+  if(t%2===0&&!paused&&resumeCountdown===0)parts.push({x:P.x+R(-6,6),y:P.y+14,vx:R(-.3,.3),vy:R(1,2.5),l:R(8,16),c:'#ffe08a',r:R(1,2.5)});
   X.globalCompositeOperation='lighter';for(const m of muzzle){X.globalAlpha=m.l/4*.8;X.fillStyle=rg(m.x,m.y,14,'#fff',m.c);ell(m.x,m.y,6+(4-m.l)*3,10+(4-m.l)*2);X.fill();m.l--;}muzzle=muzzle.filter(m=>m.l>0);X.globalAlpha=1;
   X.fillStyle=rg(P.x,P.y+4,30,'rgba(255,220,80,.35)','rgba(255,220,80,0)');ell(P.x,P.y+4,30,30);X.fill();if(P.lvl>=5){const pr=(t%40)/40;X.globalAlpha=1-pr;X.strokeStyle=WEAPONS[P.wpn].col;X.lineWidth=3;ell(P.x,P.y,22+pr*26,22+pr*26);X.stroke();X.globalAlpha=1;}X.globalCompositeOperation='source-over';
   // the bee wears its firepower: a glow in the weapon's colour that grows with level,
   // a brighter body and weapon-tinted stripes from Lv3, motes orbiting from Lv4, a
   // halo at Lv5. Hitbox untouched -- this is light, not size.
   {const L=P.lvl,wc=(WEAPONS[P.wpn]||{}).col||'#ffd23f',d=P.dep||1,pu=.5+.5*Math.sin(t*.15);
-   X.save();X.globalCompositeOperation='lighter';
+   if(!LOW3){X.save();X.globalCompositeOperation='lighter';
    const gr=(22+9*L)*d*(1+pu*.08);X.fillStyle=rg(P.x,P.y,gr,hexA(wc,.16+.07*L),hexA(wc,0));ell(P.x,P.y,gr,gr);X.fill();
    if(L>=2){X.fillStyle=rg(P.x,P.y-6*d,12*d,'rgba(255,255,255,'+(.10+.06*L)+')','rgba(255,255,255,0)');ell(P.x,P.y-6*d,12*d,12*d);X.fill();}
    if(L>=4){for(let i=0;i<L;i++){const a=t*.06+i*Math.PI*2/L,mr=(26+3*L)*d;X.fillStyle=hexA(wc,.9);ell(P.x+Math.cos(a)*mr,P.y+Math.sin(a)*mr*.7,2.2*d,2.2*d);X.fill();X.fillStyle=hexA(wc,.25);ell(P.x+Math.cos(a)*mr,P.y+Math.sin(a)*mr*.7,5*d,5*d);X.fill();}}
    if(L>=5){X.strokeStyle='rgba(255,255,255,'+(.35+pu*.3)+')';X.lineWidth=1.5;ell(P.x,P.y,31*d,22*d);X.stroke();X.strokeStyle=hexA(wc,.5);X.lineWidth=3;ell(P.x,P.y,31*d,22*d);X.stroke();}
-   X.restore();
+   X.restore();}
    const body=lerpC('#ffd23f','#fff3b0',(L-1)/4*.6),stripe=L>=3?lerpC('#1a1a1a',wc,.35+.1*(L-3)):'#1a1a1a';
    emboss(P.x,P.y,120*d,()=>bee(0,0,16*d,body,stripe,'#fff'),{alt:1.2});}
   if(P.webbed>0){X.save();X.translate(P.x,P.y);X.globalAlpha=Math.min(1,P.webbed/30);X.strokeStyle='rgba(255,255,255,.9)';X.lineWidth=1.5;X.shadowColor='#000';X.shadowBlur=3;X.beginPath();for(let k=0;k<8;k++){const a=k*Math.PI/4;X.moveTo(0,0);X.lineTo(Math.cos(a)*34,Math.sin(a)*34);}for(let ring=1;ring<=3;ring++){for(let k=0;k<=8;k++){const a=k*Math.PI/4,rr=11*ring;if(k===0)X.moveTo(Math.cos(a)*rr,Math.sin(a)*rr);else X.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);}}X.stroke();X.restore();}
