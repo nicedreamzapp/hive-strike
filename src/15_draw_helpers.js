@@ -75,7 +75,8 @@ function heroWing(sgn,r,D,a,alpha){X.save();X.translate(sgn*r*.22,-r*.5);X.rotat
   for(let k=1;k<=4;k++){const x=sgn*r*(.4+k*.38);X.moveTo(x,-r*(.95-k*.06));X.lineTo(x*.97,r*(.05+k*.05));}
   X.stroke();X.globalAlpha=alpha*.45;X.fillStyle='#fff';ell(sgn*r*.7,-r*.55,r*.45,r*.14,sgn*-.45);X.fill();}
  X.restore();}
-function heroWings(r,D){const a=Math.sin(t*1.7)*.16;for(const sgn of[-1,1]){if(D)heroWing(sgn,r,false,a*-1.4,.18);heroWing(sgn,r,D,a,.86);}}
+function heroWings(r,D){const a=D?Math.sin(t*1.7)*.16:0;   /* the little HUD lives hold still (Matt: no fluttering) */
+ for(const sgn of[-1,1]){if(D)heroWing(sgn,r,false,a*-1.4,.18);heroWing(sgn,r,D,a,.86);}}
 // the HERO bee (only the player uses this). Full detail when r>=10 (the HUD lives use a plain small version).
 function bee(x,y,r,col,stripe,_w,ang=0){X.save();X.translate(x,y);X.rotate(ang);const bob=Math.sin(t*.25)*r*.03;X.translate(0,bob);const D=r>=10;
  // legs: jointed, hairy, with pollen baskets on the back pair
