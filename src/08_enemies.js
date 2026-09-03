@@ -53,7 +53,7 @@ const ET={
  hoverfly:{hp:5,r:11,sc:150,col:'#f0c030'},rosechafer:{hp:14,r:13,sc:380,col:'#3fc060'},divingbeetle:{hp:16,r:14,sc:420,col:'#5a7a20'},tigermoth:{hp:12,r:15,sc:380,col:'#ff8a30'},lunamoth:{hp:8,r:16,sc:300,col:'#b8f0b0'},damselfly:{hp:6,r:12,sc:250,col:'#40a0ff'},antlion:{hp:15,r:13,sc:400,col:'#c8a060'},rhinobeetle:{hp:22,r:16,sc:500,col:'#3a2a1a'},assassinbug:{hp:13,r:13,sc:400,col:'#8a8a9a'},jewelbeetle:{hp:12,r:13,sc:450,col:'#40e0c0'},
 };
 loadSprites();
-function spawn(type,x,y,o={}){const d=ET[type];const e=Object.assign({type,x,y,hp:(o.tiny?1.6:d.hp*1.05)*(1+loop*.6),r:o.tiny?4:d.r,sc:o.tiny?20:d.sc,col:d.col,t:0,ft:RI(40,100),dir:Math.random()<.5?-1:1,ph:R(0,7)},o);if(e.elite){e.hp*=2.2;e.sc*=3;}e.maxhp=e.hp;e.px=e.x;e.py=e.y;enemies.push(e);return e;}
+function spawn(type,x,y,o={}){const d=ET[type];const e=Object.assign({type,x,y,hp:(o.tiny?1.6:d.hp*EHP)*(1+loop*.6),r:o.tiny?4:d.r,sc:o.tiny?20:d.sc,col:d.col,t:0,ft:RI(40,100),dir:Math.random()<.5?-1:1,ph:R(0,7)},o);if(e.elite){e.hp*=2.2;e.sc*=3;}e.maxhp=e.hp;e.px=e.x;e.py=e.y;enemies.push(e);return e;}
 // FORMATIONS — every wave is a shape, not a drip. fodder = the bugs that fly in shapes; shooters = the ones that take a position and fire.
 // ARCH: what an unseen bug behaves like (movement + shooting + voice recipe). PITCH: how its voice is tuned so no two sound alike.
 const ARCH={midge:'gnat',aphid:'gnat',thrips:'gnat',fruitfly:'gnat',sandfly:'gnat',blackfly:'gnat',whitefly:'gnat',springtail:'gnat',leafhopper:'gnat',fungusgnat:'gnat',mayfly:'gnat',noseeum:'gnat',psyllid:'gnat',lacebug:'gnat',planthopper:'gnat',crystalmite:'gnat',leafcutter:'ant',morpho:'butterfly',harlequin:'beetle',cavecricket:'grasshopper',millipede:'snail',whipscorpion:'earwig',stonefly:'fly',apollo:'butterfly',snowflea:'gnat',sandhopper:'grasshopper',isopod:'stinkbug',shorefly:'fly',lavacricket:'grasshopper',ashmoth:'moth',blisterbeetle:'beetle',scorpionfly:'mosquito',iceworm:'snail',woollybear:'snail',cockroach:'earwig',silverfish:'strider',bedbug:'ant',glasswing:'butterfly',jewelwasp:'wasp',lanternbug:'cicada',hoverfly:'fly',rosechafer:'beetle',divingbeetle:'beetle',tigermoth:'moth',lunamoth:'moth',damselfly:'dragon',antlion:'earwig',rhinobeetle:'beetle',assassinbug:'stinkbug',jewelbeetle:'beetle'};
@@ -80,7 +80,7 @@ const FORMS={
  threads(k){for(let i=0;i<3;i++)spawn(k||'spiderling',90+i*(W-180)/2,-20,{pat:'thread',hang:R(140,260)});},      // spiderlings drop in on silk and hang there
  flutters(k){for(let i=0;i<2;i++)spawn(k||'butterfly',R(60,W-60),-20-i*80,{pat:'flutter'});},
  crawler(k){spawn(k||'snail',R(60,W-60),-30,{pat:'creep'});},
- cloud(k){const cx=R(120,W-120),n=22+stage*2;const sp2=LV().cloud||'gnat';for(let i=0;i<n;i++){const a=R(0,7),rr=Math.sqrt(Math.random());spawn(sp2,cx+Math.cos(a)*rr*110,-40+Math.sin(a)*rr*55,{pat:'cloud',tiny:1,cx,ph:R(0,7)});}},
+ cloud(k){const cx=R(120,W-120),n=Math.min(26,12+stage);   /* 22+stage*2 put 54 gnats on a phone screen: clutter, not danger */const sp2=LV().cloud||'gnat';for(let i=0;i<n;i++){const a=R(0,7),rr=Math.sqrt(Math.random());spawn(sp2,cx+Math.cos(a)*rr*110,-40+Math.sin(a)*rr*55,{pat:'cloud',tiny:1,cx,ph:R(0,7)});}},
 };
 const FODDER_FORMS=['line','vee','column','pincer','zig','ambush','divers','swarm'],SHOOTER_FORMS=['flank','heavy'];
 let nextWave=0,rushDone=false,nextCloud=0;

@@ -39,7 +39,7 @@ function volcanoTick(){
  if(volc.t%2===0)parts.push({x:volc.x+R(-volc.w/2,volc.w/2),y:H,vx:R(-.3,.3),vy:-R(6,10),l:R(20,40),c:['#ffd166','#ff9030','#ff5a10'][RI(0,2)],r:R(1.5,3),spark:1});
  for(const b of ebullets)if(!b.dead&&inBand(b.x)&&b.y>40){b.dead=1;sparks(b.x,b.y,'#ff9030',3,5);}
  if(!P.dead&&P.inv===0&&inBand(P.x)&&volc.t%20===0)hitPlayer();
- if(volc.t%12===0)for(const e of enemies){if(!e.dead&&inBand(e.x)&&e.y>0){e.hp-=1.2;e.fl=3;if(e.hp<=0){e.dead=1;killScore(e);boom(e.x,e.y,'#ff9030',14);if(!e.tiny)gibs(e);sfxKill(e);}}}
+ if(volc.t%12===0)for(const e of enemies){if(!e.dead&&inBand(e.x)&&e.y>0){e.hp-=1.2;e.fl=3;if(e.hp<=0){e.dead=1;killScore(e);killFx(e);if(!e.tiny)gibs(e);sfxKill(e);}}}
 }
 // the cave goes dark: you only see a pool of light around the bee
 function worldOverlay(){

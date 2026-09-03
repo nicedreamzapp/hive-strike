@@ -74,12 +74,32 @@ function pop(x,y,s,col='#fff',size=12){if(POPS.length>28)POPS.shift();POPS.push(
 // declaration wins, so every kill was pushing a 60px shockwave instead of this flick.
 function kring(x,y,col){if(POPS.length>28)POPS.shift();POPS.push({x,y,ring:1,col,t:0});}
 function announce(s,col='#ffd23f'){ann={s,col,t:0};}
-function juiceTick(){if(frenzy>0){frenzy--;if(P.fireT>1)P.fireT--;if(t%3===0&&!P.dead)parts.push({x:P.x+R(-26,26),y:P.y+R(-20,26),vx:R(-.6,.6),vy:R(-2.2,-.8),l:R(14,26),c:['#ffd23f','#fff3b0','#ffb300'][RI(0,2)],r:R(1.2,2.6)});}for(let i=POPS.length;i--;){const p=POPS[i];p.t++;if(p.ring){if(p.t>14)POPS.splice(i,1);}else{p.y+=p.vy;p.vy*=.94;if(p.t>44)POPS.splice(i,1);}}if(ann&&++ann.t>60)ann=null;}
+// ---------- the pop when a bug dies (9/3) ----------
+// Matt: "the way that things get blown up ... the way things look in anime". Three cheap beats,
+// in this order: the world holds still for a frame or two, the bug goes white and blows apart
+// along radial lines, and a ring snaps outward. Bigger bugs get a longer hold and a screen flash.
+let killHeldAt=-1;
+function killFx(e){
+ const big=!!e.elite||e.r>=17;
+ // one hold per frame, so a whole wave dying together cannot lock the game up
+ if(killHeldAt!==t){killHeldAt=t;stop(big?4:2);}
+ ring(e.x,e.y,big?'#ffffff':e.col,big?110:70);
+ boom(e.x,e.y,e.col,big?32:20,big?7:5.2);
+ sparks(e.x,e.y,'#fff',big?16:10,big?12:9);
+ const n=big?12:8;                                   // radial speed lines: the impact tell
+ for(let i=0;i<n;i++){const a=i/n*Math.PI*2+R(-.12,.12),sp2=R(7,12.5);
+  parts.push({x:e.x,y:e.y,vx:Math.cos(a)*sp2,vy:Math.sin(a)*sp2,l:R(7,13),c:'#fff',r:R(1,2),spark:1});}
+ if(POPS.length>28)POPS.shift();
+ POPS.push({x:e.x,y:e.y,flare:1,col:big?'#fff':'#ffe9a8',size:big?e.r*3.4:e.r*2.6,t:0});
+ if(big){flash=Math.max(flash,.32);shake=Math.max(shake,9);}
+}
+function juiceTick(){if(frenzy>0){frenzy--;if(P.fireT>1)P.fireT--;if(t%3===0&&!P.dead)parts.push({x:P.x+R(-26,26),y:P.y+R(-20,26),vx:R(-.6,.6),vy:R(-2.2,-.8),l:R(14,26),c:['#ffd23f','#fff3b0','#ffb300'][RI(0,2)],r:R(1.2,2.6)});}for(let i=POPS.length;i--;){const p=POPS[i];p.t++;if(p.flare){if(p.t>11)POPS.splice(i,1);continue;}if(p.ring){if(p.t>14)POPS.splice(i,1);}else{p.y+=p.vy;p.vy*=.94;if(p.t>44)POPS.splice(i,1);}}if(ann&&++ann.t>60)ann=null;}
 function drawJuice(){
  if(frenzy>0){const k=Math.min(1,frenzy/30)*(.85+.15*Math.sin(t*.3));X.save();const g=X.createRadialGradient(W/2,H/2,H*.28,W/2,H/2,H*.72);g.addColorStop(0,'rgba(255,200,40,0)');g.addColorStop(1,'rgba(255,190,30,'+(.34*k)+')');X.fillStyle=g;X.fillRect(0,0,W,H);
   X.textAlign='left';X.font='bold 11px '+FONT;X.fillStyle='rgba(255,220,80,'+k+')';X.shadowColor='#000';X.shadowBlur=4;X.fillText('HIVE FRENZY  '+(frenzy/60).toFixed(1)+'s  ·  double fire',10,H-44);X.restore();}
- if(!POPS.length&&!ann)return;X.save();
- for(const p of POPS){if(p.ring){const f=p.t/14;X.strokeStyle=p.col;X.globalAlpha=(1-f)*.8;X.lineWidth=3-2*f;X.beginPath();X.arc(p.x+pxo(p.x,p.y),p.y,6+f*30,0,7);X.stroke();continue;}
+ if(!POPS.length&&!ann)return;X.save();X.globalAlpha=1;
+ for(const p of POPS){if(p.flare){const f=p.t/11;X.save();X.globalCompositeOperation='lighter';X.globalAlpha=(1-f)*(1-f);X.fillStyle=rg(p.x+pxo(p.x,p.y),p.y,p.size*(1+f*1.5),p.col,'rgba(255,255,255,0)');ell(p.x+pxo(p.x,p.y),p.y,p.size*(1+f*1.5),p.size*(1+f*1.5));X.fill();X.restore();continue;}
+  if(p.ring){const f=p.t/14;X.strokeStyle=p.col;X.globalAlpha=(1-f)*.8;X.lineWidth=3-2*f;X.beginPath();X.arc(p.x+pxo(p.x,p.y),p.y,6+f*30,0,7);X.stroke();continue;}
   const k=Math.min(1,p.t/6),sc=1.6-.6*k,a=p.t>30?1-(p.t-30)/14:1;X.save();X.translate(p.x+pxo(p.x,p.y),p.y);X.scale(sc,sc);X.globalAlpha=a;X.font='bold '+p.size+'px '+FONT;X.textAlign='center';X.lineWidth=3;X.strokeStyle='rgba(0,0,0,.7)';X.strokeText(p.s,0,0);X.fillStyle=p.col;X.fillText(p.s,0,0);X.restore();}
  if(ann){const k=Math.min(1,ann.t/8),e=1-(1-k)*(1-k),sc=2.4-1.4*e,a=ann.t>40?1-(ann.t-40)/20:1;X.translate(W/2,H*.36);X.scale(sc,sc);X.globalAlpha=a;X.font='bold 30px '+FONT;X.textAlign='center';X.shadowColor='#000';X.shadowBlur=12;X.lineWidth=4;X.strokeStyle='rgba(0,0,0,.75)';X.strokeText(ann.s,0,0);X.fillStyle=ann.col;X.fillText(ann.s,0,0);}
  X.restore();}

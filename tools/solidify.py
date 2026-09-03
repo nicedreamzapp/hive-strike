@@ -30,6 +30,15 @@ for name in sys.argv[1:]:
     mx=rgb.max(2); mn=rgb.min(2)
     dout=ndimage.distance_transform_edt(hard)
     rim=hard&(mn>float(os.environ.get("RIM_WHITE","200")))&((mx-mn)<float(os.environ.get("RIM_SAT","30")))&(dout<=float(os.environ.get("RIM_PX","12")))
+    # 9/3: the plate ALSO survives in pockets far from the outline -- the white wedge between a
+    # damselfly's legs, under a diving beetle's head. Those are SMOOTH; a pale wing or a frosted
+    # back is textured. So: opaque + near-white + flat = backdrop, anywhere in the picture.
+    lum=rgb.mean(2); m=ndimage.uniform_filter(lum,5); m2=ndimage.uniform_filter(lum*lum,5)
+    tex=np.sqrt(np.maximum(m2-m*m,0))
+    flat=hard&(mn>float(os.environ.get("POCKET_WHITE","208")))&((mx-mn)<float(os.environ.get("POCKET_SAT","26")))&(tex<float(os.environ.get("POCKET_TEX","3.2")))
+    flat=ndimage.binary_opening(flat,iterations=2)                 # ignore stray speckles
+    flat=ndimage.binary_dilation(flat,iterations=1)&hard           # take the soft halo around each pocket too
+    rim=rim|flat
     hard=hard&~rim; al=np.where(rim,0,al)
     holes=ndimage.binary_fill_holes(hard)&~hard
     lab,n=ndimage.label(holes)

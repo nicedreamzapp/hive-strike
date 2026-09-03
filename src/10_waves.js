@@ -41,7 +41,7 @@ function wave(){const lv=LV(),pr=stageT/lv.len;
  // instead of waiting out the timer.
  if(big===0&&nextWave>stageT)nextWave=stageT;
  if(stageT<nextWave||big>=cap)return;
- const gap=Math.max(120-((stage-1)%NL)*5,236-pr*100-(stage-1)*12-loop*20);nextWave=stageT+gap;
+ const gap=Math.max(96-((stage-1)%NL)*4,206-pr*95-(stage-1)*11-loop*20);   /* fewer bugs at once, so they arrive sooner */nextWave=stageT+gap;
  // a gnat cloud is atmosphere, not a wave. it used to consume the wave slot and return,
  // so a level could be nothing but gnats for ten seconds. now it drops the cloud and the
  // real wave keeps coming in the same breath. spaced out too, since levels are twice as long.
@@ -51,7 +51,7 @@ function wave(){const lv=LV(),pr=stageT/lv.len;
  // unseen for whole runs; give it four in ten of the waves it qualifies for
  const nwst=lv.roster[lv.roster.length-1],pick=a=>(a.includes(nwst)&&Math.random()<.4)?nwst:a[RI(0,a.length-1)];
  if(!rushDone&&pr>.55){rushDone=true;say('SWARM INCOMING!');snd(300,.3,'square',.04,600);FORMS.line(fod[0]||'fly');FORMS.vee(fod[RI(0,fod.length-1)]||'fly');return;}
- const sig=lv.roster[0];const useShooter=sho.length&&Math.random()<.35+pr*.2;if(Math.random()<.45){if(SHOOTERS.includes(sig)&&!FODDER.includes(sig)){const as2=A(sig);if(as2==='cicada')FORMS.screamer(sig);else if(as2==='dragon')FORMS.heavy(sig);else if(as2==='snail')FORMS.crawler(sig);else if(as2==='stinkbug')FORMS.stinker(sig);else if(as2==='glowworm'||as2==='dungbeetle')spawn(sig,R(60,W-60),-30,{pat:as2==='glowworm'?'creep':'slow'});else FORMS[SHOOTER_FORMS[RI(0,1)]](sig);}else{let f=FODDER_FORMS[RI(0,FODDER_FORMS.length-1)];if(sig==='grasshopper')f='hoppers';if(sig==='hornet')f='chargers';if(sig==='spiderling')f='threads';if(sig==='earwig')f='zig';const asig=A(sig);if(asig==='ladybug')f=['line','vee','column'][RI(0,2)];if(asig==='firefly')f='column';if(asig==='dragon')f='skaters';if(asig==='grasshopper')f='hoppers';if(asig==='butterfly')f='flutters';if(asig==='ant')f='column';if(asig==='fly')f=['line','vee','column'][RI(0,2)];if(asig==='earwig')f='zig';if(asig==='gnat')f='swarm';if(asig==='mosquito')f='divers';if(asig==='strider')f='skaters';if(asig==='wasp')f='flank';FORMS[f](sig);}return;}
+ const sig=lv.roster[0];const useShooter=sho.length&&Math.random()<.46+pr*.24;if(Math.random()<.45){if(SHOOTERS.includes(sig)&&!FODDER.includes(sig)){const as2=A(sig);if(as2==='cicada')FORMS.screamer(sig);else if(as2==='dragon')FORMS.heavy(sig);else if(as2==='snail')FORMS.crawler(sig);else if(as2==='stinkbug')FORMS.stinker(sig);else if(as2==='glowworm'||as2==='dungbeetle')spawn(sig,R(60,W-60),-30,{pat:as2==='glowworm'?'creep':'slow'});else FORMS[SHOOTER_FORMS[RI(0,1)]](sig);}else{let f=FODDER_FORMS[RI(0,FODDER_FORMS.length-1)];if(sig==='grasshopper')f='hoppers';if(sig==='hornet')f='chargers';if(sig==='spiderling')f='threads';if(sig==='earwig')f='zig';const asig=A(sig);if(asig==='ladybug')f=['line','vee','column'][RI(0,2)];if(asig==='firefly')f='column';if(asig==='dragon')f='skaters';if(asig==='grasshopper')f='hoppers';if(asig==='butterfly')f='flutters';if(asig==='ant')f='column';if(asig==='fly')f=['line','vee','column'][RI(0,2)];if(asig==='earwig')f='zig';if(asig==='gnat')f='swarm';if(asig==='mosquito')f='divers';if(asig==='strider')f='skaters';if(asig==='wasp')f='flank';FORMS[f](sig);}return;}
  if(useShooter){const k=pick(sho);const ak=A(k);if(ak==='cicada')FORMS.screamer(k);else if(ak==='stinkbug')FORMS.stinker(k);else if(ak==='snail')FORMS.crawler(k);else if(ak==='spiderling')FORMS.threads(k);else if(ak==='glowworm'||ak==='dungbeetle')spawn(k,R(60,W-60),-30,{pat:ak==='glowworm'?'creep':'slow'});else FORMS[SHOOTER_FORMS[RI(0,1)]](k);}
  else if(Math.random()<.55){const k=pick(fod)||'fly';SYMFORMS[RI(0,SYMFORMS.length-1)](k,RI(4,6));}
  else{const k=pick(fod)||'fly',ak=A(k);let f=FODDER_FORMS[RI(0,FODDER_FORMS.length-1)];if(ak==='gnat')f='swarm';if(ak==='grasshopper')f='hoppers';if(ak==='hornet')f=Math.random()<.6?'chargers':'pincer';if(ak==='spiderling')f='threads';if(ak==='butterfly')f='flutters';if(ak==='earwig')f=Math.random()<.6?'zig':'pincer';if(ak==='katydid')f='hoppers';if(ak==='strider')f='skaters';if(ak==='weevil')f='chargers';if(ak==='termite')f='scurry';if(ak==='horsefly')f='divers';if(ak==='ant')f=Math.random()<.5?'column':'line';if(k==='ant'&&(f==='pincer'||f==='ambush'))f='column';FORMS[f](k);}
@@ -59,7 +59,15 @@ function wave(){const lv=LV(),pr=stageT/lv.len;
 }
 const anyBug=()=>{const r=LV().roster;return r[RI(0,r.length-1)];};
 const PD=1.70; // player damage multiplier — guns felt weak at 1.15
-const EB=.5;const FR0=1.3; // FR = how much longer bugs wait between volleys
+// 9/3 rebalance. Five guns (thorn, saw, static, grenade, lure) could not physically REACH a
+// boss, and honey got weaker as it levelled; all fixed in 06_player_fire. With real guns the
+// old health made every fight a formality, so bugs and bosses are tougher and there are FEWER
+// of them: the late worlds were 85 sprites of clutter, not 85 sprites of danger.
+const EHP=1.75;      // per-bug health (was a flat 1.05)
+const BHP=2.90;      // boss health (was .95)
+const EB=.55;const FR0=1.14; // FR = how much longer bugs wait between volleys. 9/3: the wave phase
+// was a stroll (a dodging bot took 0-5 hits across a whole world), so bugs shoot sooner and their
+// shots travel a little faster. There are fewer bugs now, so the pressure comes from them, not from a crowd.
 Object.defineProperty(globalThis,'FR',{get(){const lv=(stage-1)%NL;return Math.max(.55,FR0-lv*.055-loop*.1)*(MODS.quick?.72:1);}});
 // kinds: dart (default), venom (green drop), seed (spiky seed), dust (moth scale puff), ember (firefly spark), drop (water), gas (stink cloud), wave (cicada sound ring), web (sticks to you and slows you), blade (mantis scythe), acorn (beetle king)
 function eshot(x,y,a,sp,r=4,col='#ff3b3b',kind='dart'){const bf=(bossAlive?.85:1)*(MODS.quick?1.12:1);ebullets.push({x,y,vx:Math.cos(a)*sp*EB*bf,vy:Math.sin(a)*sp*EB*bf,r:Math.max(6,r+2),col,t:0,kind});}

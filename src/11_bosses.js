@@ -11,7 +11,7 @@ const BOSSES=[
  {name:'GIANT WALKING STICK',taunt:'"You looked right at me. Twice."',           hp:560,r:52,col:'#7a8a4a'},
  {name:'CAVE GLOWWORM',    taunt:'"Follow the lights. Everyone does."',         hp:520,r:50,col:'#9fe8ff'},
  {name:'ICE WETA',         taunt:'"Cold. Slow. Still faster than you."',        hp:540,r:48,col:'#d8f0ff'},
- {name:'HORSESHOE CRAB',   taunt:'"Older than the flowers you drink from."',    hp:640,r:54,col:'#4a5a4a'},
+ {name:'ARMOR CRAB KING',  taunt:'"Older than the flowers you drink from."',    hp:640,r:54,col:'#4a5a4a'},
  {name:'FIRE ANT QUEEN',   taunt:'"Every ember is one of my children."',        hp:580,r:46,col:'#ff5a10'},
  {name:'GLACIER EARWIG',   taunt:'"The cold pinches. So do I."',                 hp:600,r:48,col:'#a0e0ff'},
  {name:'DOBSONFLY',        taunt:'"The lights brought me. You brought dinner."',hp:620,r:46,col:'#d8b070'},
@@ -21,6 +21,6 @@ const faceRot=k=>0;  // every sprite PNG is stored head-down now, so nothing is 
 const BSIZE=[250,250,250,250,196,250,250,225,250,250,250,225,250,250,250,235]; // per-boss draw height: the stag beetle's antlers and the crab's claws ran off the sides
 const BROT=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]; // art is rendered head-down now, so no sprite is flipped
 const BARCH=[0,1,2,3,4,5,6,7,4,2,0,4,1,1,0,3]; // which of the eight hand-built fight patterns each boss uses
-function spawnBoss(){const b=BOSSES[LV().boss];boss={...b,hp:b.hp*.95*(1+loop*.7),max:b.hp*.95*(1+loop*.7),x:W/2,y:-80,t:0,ph:0,rage:0,seg:[]};bossAlive=true;enemies=[];bossIntro=110;shake=30;say(b.name+'  —  FIGHT!');rumble(1.6,.07);swell(55,1.6,'triangle',.06,.5);
+function spawnBoss(){const b=BOSSES[LV().boss];boss={...b,hp:b.hp*BHP*(1+loop*.7),max:b.hp*BHP*(1+loop*.7),x:W/2,y:-80,t:0,ph:0,rage:0,seg:[]};bossAlive=true;enemies=[];bossIntro=110;shake=30;say(b.name+'  —  FIGHT!');rumble(1.6,.07);swell(55,1.6,'triangle',.06,.5);
  if(MODS.angry)rageBoss(boss); // ANGRY HIVES: the job change starts at the door
 }
