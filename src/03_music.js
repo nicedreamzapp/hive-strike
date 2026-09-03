@@ -16,12 +16,25 @@ function musicGain(k,a){
  // currentTime climbs, and nothing reaches the speakers (measured 2026-09-01: peak 0.0000).
  // Desktop browsers honour a.volume, so on file:// skip the graph and use it directly.
  if(location.protocol==='file:'){MUSIC.gains[k]=null;return null;}
+ // Android WebView (Capacitor serves the bundle from https://localhost through an intercepted
+ // request) does the same thing: the element plays, currentTime climbs, and the graph output is
+ // exactly 0 -- measured on the burner phone 2026-09-02 with an AnalyserNode on the gain node
+ // (music peak 0.00000 while a control oscillator read fine). Android honours a.volume, so
+ // skip the graph there too. Only iOS needs the GainNode route.
+ if(/Android/i.test(navigator.userAgent)){MUSIC.gains[k]=null;return null;}
  try{const ac=ctx();const src=ac.createMediaElementSource(a);g=ac.createGain();g.gain.value=0;src.connect(g).connect(ac.destination);}
  catch(e){g=null;}                       // fall back to a.volume if the graph refuses
  MUSIC.gains[k]=g;return g;}
 const mvol=(k,a)=>{const g=MUSIC.gains[k];return g?g.gain.value:a.volume;};
 function msetvol(k,a,v){const g=musicGain(k,a);if(g)g.gain.value=v;else a.volume=v;}
+// Diagnostic readout (2026-09-02, Android burner reported no music): the music button's
+// toast now shows the audio context state and the wanted track's element state so the
+// cause can be read straight off the phone -- no adb needed.
+function musicDiag(){const k=MUSIC.want,a=k&&MUSIC.tracks[k],acs=(typeof AC!=='undefined'&&AC)?AC.state:'noctx';
+ if(!a)return 'ac:'+acs+' want:'+k;
+ return 'ac:'+acs+' '+k+' rs'+a.readyState+' ns'+a.networkState+(a.error?' err'+a.error.code:'')+(a.bad?' BAD':'')+(a.paused?' paused':' playing')+' t'+a.currentTime.toFixed(1)+' g'+mvol(k,a).toFixed(3)+' lv'+MUSLV+' '+((typeof LOW!=='undefined'&&LOW)?'LOW':'full');}
 function musicToggle(){MUSIC.on=!MUSIC.on;localStorage.hs_music=MUSIC.on?'1':'0';say(MUSIC.on?'MUSIC ON':'MUSIC OFF');}
+window.musicDiag=musicDiag;
 function musicLoad(){const names=['main','boss','win','title'];for(let n=1;n<=16;n++){names.push('level'+n,'boss'+n);}for(const k of names){const a=new Audio('music/'+k+'.mp3');a.loop=k!=='win';a.volume=0;a.preload='none';a.ok=false;a.addEventListener('canplay',()=>{a.ok=true;});a.addEventListener('error',()=>{a.ok=false;a.bad=true;});MUSIC.tracks[k]=a;}}
 function musicPick(kind){if(kind==='win')return 'win';if(kind==='title')return 'title';const n=(stage-1)%NL+1,k=(kind==='boss'?'boss':'level')+n,a=MUSIC.tracks[k];if(a&&!a.bad){if(a.preload==='none'){a.preload='auto';a.load();}return k;}return kind==='boss'?'boss':'main';}
 // A scene change should not be a hard cut between two of Matt's songs. Whenever the

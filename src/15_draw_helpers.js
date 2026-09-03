@@ -32,7 +32,11 @@ function oc(k,s){
  } else { const i=OCLRU.indexOf(k); if(i>=0)OCLRU.splice(i,1); }
  OCLRU.push(k);
  return c;}
-function emboss(x,y,box,fn,o={}){const S=box|0,A=oc('A'+S,S),B=oc('B'+S,S),a=A.g,b=B.g,alt=o.alt==null?1:o.alt;
+function emboss(x,y,box,fn,o={}){
+ if(LOW2){const alt=o.alt==null?1:o.alt,bob=alt>0?(Math.sin(t*.18+x*.02+y*.01)*.5+.5):0,lift=bob*4*alt;y-=lift;
+  X.save();if(alt>0){X.globalAlpha=.30*alt*(1-bob*.25);X.fillStyle=LV().shadow;ell(x+8*alt+bob*3,y+box*.24*alt+lift+bob*2,box*.14,box*.052);X.fill();}
+  X.globalAlpha=1;if(o.filter)X.filter=o.filter;X.translate(x,y);fn();X.restore();return;}
+ const S=box|0,A=oc('A'+S,S),B=oc('B'+S,S),a=A.g,b=B.g,alt=o.alt==null?1:o.alt;
  const _X=X;X=a;a.setTransform(DPR,0,0,DPR,0,0);a.clearRect(0,0,S,S);a.save();a.translate(S/2,S/2);fn();a.restore();X=_X;
  const rim=(dx,dy,col)=>{b.setTransform(DPR,0,0,DPR,0,0);b.globalCompositeOperation='source-over';b.clearRect(0,0,S,S);b.drawImage(A,0,0,S,S);b.globalCompositeOperation='source-in';b.fillStyle=col;b.fillRect(0,0,S,S);b.globalCompositeOperation='destination-out';b.drawImage(A,dx,dy,S,S);};
  // hover: the sprite bobs up and down a few px; its cast shadow on the ground shrinks/grows the opposite way — that separation is what sells the height

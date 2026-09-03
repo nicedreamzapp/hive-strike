@@ -9,9 +9,14 @@ const C=document.getElementById('c');let X=C.getContext('2d');const W=480,H=720;
 // Skia does not GPU-accelerate ctx.filter blur, so each blurred draw is a fresh offscreen
 // layer. LOW caps the raster and drops the blurs. It turns itself on after a slow couple
 // of seconds of real play and remembers the answer for next launch.
-let LOW=false; try{LOW=localStorage.hs_low==='1';}catch(e){}
-const RASTER_MAX=()=>LOW?1.25:4;
-function setLow(v){if(LOW===v)return;LOW=v;try{localStorage.hs_low=v?'1':'0';}catch(e){}fit();}
+// LOW2 is the floor under LOW, for 2018-class budget chips (measured 2026-09-02 on a MediaTek
+// MT6765 burner: 5 fps in LOW with 11 bugs on screen). It renders at 1.0 raster and draws every
+// embossed sprite in one direct pass -- no offscreen rim/gloss/shadow passes, which were the
+// whole cost (5 -> 12.5 fps on the frozen frame). hs_low: '0' full, '1' LOW, '2' LOW2.
+let LOW=false,LOW2=false; try{const v=localStorage.hs_low;LOW=v==='1'||v==='2';LOW2=v==='2';}catch(e){}
+const RASTER_MAX=()=>LOW2?1:LOW?1.25:4;
+function setLow(v){if(LOW===v&&!(LOW2&&!v))return;LOW=v;if(!v)LOW2=false;try{localStorage.hs_low=v?'1':'0';}catch(e){}fit();}
+function setLow2(v){if(LOW2===v)return;LOW2=v;if(v)LOW=true;try{localStorage.hs_low=v?'2':(LOW?'1':'0');}catch(e){}fit();}
 let DPR=Math.min(3,window.devicePixelRatio||1);
 C.width=W*DPR;C.height=H*DPR;C.style.width=W+'px';C.style.height=H+'px';X.setTransform(DPR,0,0,DPR,0,0);
 const FONT='"Avenir Next Condensed","Futura","Arial Narrow","Helvetica Neue",sans-serif';

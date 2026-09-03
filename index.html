@@ -24,16 +24,21 @@ const C=document.getElementById('c');let X=C.getContext('2d');const W=480,H=720;
 // Skia does not GPU-accelerate ctx.filter blur, so each blurred draw is a fresh offscreen
 // layer. LOW caps the raster and drops the blurs. It turns itself on after a slow couple
 // of seconds of real play and remembers the answer for next launch.
-let LOW=false; try{LOW=localStorage.hs_low==='1';}catch(e){}
-const RASTER_MAX=()=>LOW?1.25:4;
-function setLow(v){if(LOW===v)return;LOW=v;try{localStorage.hs_low=v?'1':'0';}catch(e){}fit();}
+// LOW2 is the floor under LOW, for 2018-class budget chips (measured 2026-09-02 on a MediaTek
+// MT6765 burner: 5 fps in LOW with 11 bugs on screen). It renders at 1.0 raster and draws every
+// embossed sprite in one direct pass -- no offscreen rim/gloss/shadow passes, which were the
+// whole cost (5 -> 12.5 fps on the frozen frame). hs_low: '0' full, '1' LOW, '2' LOW2.
+let LOW=false,LOW2=false; try{const v=localStorage.hs_low;LOW=v==='1'||v==='2';LOW2=v==='2';}catch(e){}
+const RASTER_MAX=()=>LOW2?1:LOW?1.25:4;
+function setLow(v){if(LOW===v&&!(LOW2&&!v))return;LOW=v;if(!v)LOW2=false;try{localStorage.hs_low=v?'1':'0';}catch(e){}fit();}
+function setLow2(v){if(LOW2===v)return;LOW2=v;if(v)LOW=true;try{localStorage.hs_low=v?'2':(LOW?'1':'0');}catch(e){}fit();}
 let DPR=Math.min(3,window.devicePixelRatio||1);
 C.width=W*DPR;C.height=H*DPR;C.style.width=W+'px';C.style.height=H+'px';X.setTransform(DPR,0,0,DPR,0,0);
 const FONT='"Avenir Next Condensed","Futura","Arial Narrow","Helvetica Neue",sans-serif';
 // stamped by tools/assemble.py from the version in package.json and the git commit --
 // never edit by hand. It is how you tell at a glance whether the phone in your hand is
 // running the same build as the one next to it.
-const BUILD='v1.0.0  ·  cf9949c+  ·  Sep 1';
+const BUILD='v1.0.0  ·  1a32b19+  ·  Sep 2';
 // letterbox the play field inside whatever the device actually gives us, safe-area padding
 // already removed by the body. visualViewport is the honest number on iOS.
 function fit(){const cs=getComputedStyle(document.body),
@@ -404,12 +409,25 @@ function musicGain(k,a){
  // currentTime climbs, and nothing reaches the speakers (measured 2026-09-01: peak 0.0000).
  // Desktop browsers honour a.volume, so on file:// skip the graph and use it directly.
  if(location.protocol==='file:'){MUSIC.gains[k]=null;return null;}
+ // Android WebView (Capacitor serves the bundle from https://localhost through an intercepted
+ // request) does the same thing: the element plays, currentTime climbs, and the graph output is
+ // exactly 0 -- measured on the burner phone 2026-09-02 with an AnalyserNode on the gain node
+ // (music peak 0.00000 while a control oscillator read fine). Android honours a.volume, so
+ // skip the graph there too. Only iOS needs the GainNode route.
+ if(/Android/i.test(navigator.userAgent)){MUSIC.gains[k]=null;return null;}
  try{const ac=ctx();const src=ac.createMediaElementSource(a);g=ac.createGain();g.gain.value=0;src.connect(g).connect(ac.destination);}
  catch(e){g=null;}                       // fall back to a.volume if the graph refuses
  MUSIC.gains[k]=g;return g;}
 const mvol=(k,a)=>{const g=MUSIC.gains[k];return g?g.gain.value:a.volume;};
 function msetvol(k,a,v){const g=musicGain(k,a);if(g)g.gain.value=v;else a.volume=v;}
+// Diagnostic readout (2026-09-02, Android burner reported no music): the music button's
+// toast now shows the audio context state and the wanted track's element state so the
+// cause can be read straight off the phone -- no adb needed.
+function musicDiag(){const k=MUSIC.want,a=k&&MUSIC.tracks[k],acs=(typeof AC!=='undefined'&&AC)?AC.state:'noctx';
+ if(!a)return 'ac:'+acs+' want:'+k;
+ return 'ac:'+acs+' '+k+' rs'+a.readyState+' ns'+a.networkState+(a.error?' err'+a.error.code:'')+(a.bad?' BAD':'')+(a.paused?' paused':' playing')+' t'+a.currentTime.toFixed(1)+' g'+mvol(k,a).toFixed(3)+' lv'+MUSLV+' '+((typeof LOW!=='undefined'&&LOW)?'LOW':'full');}
 function musicToggle(){MUSIC.on=!MUSIC.on;localStorage.hs_music=MUSIC.on?'1':'0';say(MUSIC.on?'MUSIC ON':'MUSIC OFF');}
+window.musicDiag=musicDiag;
 function musicLoad(){const names=['main','boss','win','title'];for(let n=1;n<=16;n++){names.push('level'+n,'boss'+n);}for(const k of names){const a=new Audio('music/'+k+'.mp3');a.loop=k!=='win';a.volume=0;a.preload='none';a.ok=false;a.addEventListener('canplay',()=>{a.ok=true;});a.addEventListener('error',()=>{a.ok=false;a.bad=true;});MUSIC.tracks[k]=a;}}
 function musicPick(kind){if(kind==='win')return 'win';if(kind==='title')return 'title';const n=(stage-1)%NL+1,k=(kind==='boss'?'boss':'level')+n,a=MUSIC.tracks[k];if(a&&!a.bad){if(a.preload==='none'){a.preload='auto';a.load();}return k;}return kind==='boss'?'boss':'main';}
 // A scene change should not be a hard cut between two of Matt's songs. Whenever the
@@ -1259,7 +1277,11 @@ function oc(k,s){
  } else { const i=OCLRU.indexOf(k); if(i>=0)OCLRU.splice(i,1); }
  OCLRU.push(k);
  return c;}
-function emboss(x,y,box,fn,o={}){const S=box|0,A=oc('A'+S,S),B=oc('B'+S,S),a=A.g,b=B.g,alt=o.alt==null?1:o.alt;
+function emboss(x,y,box,fn,o={}){
+ if(LOW2){const alt=o.alt==null?1:o.alt,bob=alt>0?(Math.sin(t*.18+x*.02+y*.01)*.5+.5):0,lift=bob*4*alt;y-=lift;
+  X.save();if(alt>0){X.globalAlpha=.30*alt*(1-bob*.25);X.fillStyle=LV().shadow;ell(x+8*alt+bob*3,y+box*.24*alt+lift+bob*2,box*.14,box*.052);X.fill();}
+  X.globalAlpha=1;if(o.filter)X.filter=o.filter;X.translate(x,y);fn();X.restore();return;}
+ const S=box|0,A=oc('A'+S,S),B=oc('B'+S,S),a=A.g,b=B.g,alt=o.alt==null?1:o.alt;
  const _X=X;X=a;a.setTransform(DPR,0,0,DPR,0,0);a.clearRect(0,0,S,S);a.save();a.translate(S/2,S/2);fn();a.restore();X=_X;
  const rim=(dx,dy,col)=>{b.setTransform(DPR,0,0,DPR,0,0);b.globalCompositeOperation='source-over';b.clearRect(0,0,S,S);b.drawImage(A,0,0,S,S);b.globalCompositeOperation='source-in';b.fillStyle=col;b.fillRect(0,0,S,S);b.globalCompositeOperation='destination-out';b.drawImage(A,dx,dy,S,S);};
  // hover: the sprite bobs up and down a few px; its cast shadow on the ground shrinks/grows the opposite way — that separation is what sells the height
@@ -2254,9 +2276,11 @@ function frame(now){const dt=now-last,_w0=performance.now();
   musicTick();ambTick();draw();
   if(!shownOnce){shownOnce=true;nativeReady();}
   if(state==='play'&&!paused&&dt>0&&dt<200){_pt+=dt;_pw+=performance.now()-_w0;
-   if(++_pn>=120){const gap=_pt/_pn,work=_pw/_pn;_pn=0;_pt=0;_pw=0;
+   if(++_pn>=120||(LOW&&!LOW2&&_pn>=30)){const gap=_pt/_pn,work=_pw/_pn;_pn=0;_pt=0;_pw=0;
     if(!LOW&&gap>21){setLow(true);say('DETAIL LOWERED FOR THIS PHONE');}
-    else if(LOW&&work<4&&gap<17.5&&_ups<2){_ups++;setLow(false);say('FULL DETAIL');}}}
+    else if(LOW&&!LOW2&&gap>45){setLow2(true);say('LOWEST DETAIL FOR THIS PHONE');}   // 30-frame window: at 5 fps, 120 frames is 24 s of misery
+    else if(LOW2&&work<6&&gap<22&&_ups<2){_ups++;setLow2(false);say('LOW DETAIL');}
+    else if(LOW&&!LOW2&&work<4&&gap<17.5&&_ups<2){_ups++;setLow(false);say('FULL DETAIL');}}}
  }catch(e){
   _errN++;
   if(!FRAMEERR){FRAMEERR=((e&&e.message)||String(e))+' | '+((e&&e.stack||'').split('\n')[1]||'').trim();
