@@ -11,11 +11,13 @@ src=open(spec.origin).read().split('if os.environ.get("REKEY"):')[0]; ns={"__fil
 gen,key_white,comfy_up,COMFY_DIR,reserve=ns["gen"],ns["key_white"],ns["comfy_up"],ns["COMFY_DIR"],ns["reserve"]
 OUT=os.environ.get("OUT",os.path.join(ROOT,"art","hero_candidates")); os.makedirs(OUT,exist_ok=True)
 N=int(os.environ.get("SEEDS","4"))
-PROMPT=("a cute cartoon bumblebee hero, Pixar style 3D render, fluffy round golden and black striped fuzzy body, "
- "big expressive amber eyes with determined furrowed brows, small brave frown, two black antennae, six small black legs, "
- "four large golden translucent wings spread wide out to both sides, laid flat, fully visible with fine veins, "
- "viewed from directly above, top-down view, head pointing toward the TOP of the frame, abdomen and stinger toward the bottom, "
+PROMPT=os.environ.get("PROMPT") or ("extremely detailed photorealistic macro photograph of a honeybee, 8k, razor sharp, "
+ "top-down view from directly above, the bee's HEAD pointing toward the TOP of the frame, abdomen and stinger toward the BOTTOM, "
+ "the bee is perfectly symmetrical like a museum specimen: two long translucent amber wings stretched straight out to the left and right like a T, "
+ "laid flat and fully visible with fine dark veins, six legs spread out to the sides, two antennae pointing up, "
+ "very fuzzy bright golden thorax and head covered in fine golden hair, rich golden and black banded furry abdomen, big dark eyes, wings raised slightly upward from the shoulders, "
  "the whole bee centered and fully visible inside the frame, evenly lit, on a plain pure white background, no shadow, no ground")
+SEED0=int(os.environ.get("SEED0","7100"))
 with reserve('flux-hero',34):
     started=False
     if not comfy_up():
@@ -24,7 +26,7 @@ with reserve('flux-hero',34):
             if comfy_up(): break
             time.sleep(2)
     for k in range(N):
-        seed=7100+k*37
+        seed=SEED0+k*37
         raw=os.path.join(OUT,f"raw_{seed}.png"); dst=os.path.join(OUT,f"hero_{seed}.png")
         t0=time.time(); ok=os.path.exists(raw) or gen(PROMPT,raw,seed,1024)
         print(f"seed {seed}: {'ok' if ok else 'FAILED'} {time.time()-t0:.0f}s",flush=True)
