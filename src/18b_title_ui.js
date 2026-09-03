@@ -8,37 +8,39 @@
 const SBTN={music:{x:150,y:H-224,w:90,h:30},sfx:{x:260,y:H-224,w:90,h:30}};
 const CARD_CONTRACT_Y0=140,CARD_CONTRACT_H=50;
 function contractCardHit(p){for(let i=0;i<CONTRACTS.length;i++){const y=CARD_CONTRACT_Y0+i*CARD_CONTRACT_H;if(p.x>=24&&p.x<=W-24&&p.y>=y&&p.y<=y+CARD_CONTRACT_H-6)return i;}return -1;}
+// white type over a painting needs an edge (Matt 9/2): stroke dark, then fill
+function otext(txt,x,y,w){X.lineJoin='round';X.strokeStyle='rgba(0,0,0,.85)';X.lineWidth=w||3;X.strokeText(txt,x,y);X.fillText(txt,x,y);}
 function hexPath(cx,cy,r){X.beginPath();for(let k=0;k<6;k++){const a=Math.PI/6+k*Math.PI/3;const px=cx+Math.cos(a)*r,py=cy+Math.sin(a)*r;k?X.lineTo(px,py):X.moveTo(px,py);}X.closePath();}
 // glass: a dark tint you can see the painting through, one thin edge, one word
 function titleBtn(b,col,word,hot){
- X.save();X.fillStyle=hot?'rgba(40,90,50,.42)':'rgba(0,0,0,.38)';X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,b.h/2);X.fill();
+ X.save();X.fillStyle=hot?'rgba(40,90,50,.22)':'rgba(0,0,0,.16)';X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,b.h/2);X.fill();
  X.strokeStyle=col;X.globalAlpha=hot?.95:.6;X.lineWidth=1.2;X.stroke();X.globalAlpha=1;
- X.textAlign='center';X.shadowColor='#000';X.shadowBlur=4;X.fillStyle=col;X.font='bold 13px '+FONT;X.fillText(word,b.x+b.w/2,b.y+b.h/2+5);X.restore();}
+ X.textAlign='center';X.shadowColor='#000';X.shadowBlur=4;X.fillStyle=col;X.font='bold 13px '+FONT;otext(word,b.x+b.w/2,b.y+b.h/2+5,3);X.restore();}
 function drawTitleUI(sp){
  // the painting stays whole. only a soft shade at the very bottom so the words read over the flowers.
- {const g=X.createLinearGradient(0,470,0,H);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.62)');X.fillStyle=g;X.fillRect(0,470,W,H-470);}
+ {const g=X.createLinearGradient(0,470,0,H);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.45)');X.fillStyle=g;X.fillRect(0,470,W,H-470);}
  X.save();X.textAlign='center';X.shadowColor='#000';X.shadowBlur=6;
  // the picked world, in big letters, and its one-line hook
  {const th=THEMES[startStage-1],bs=bestFor(startStage);
-  X.fillStyle='#ffd23f';X.font='bold 22px '+FONT;X.fillText(th.name.replace('THE ',''),W/2,498);
-  X.fillStyle='rgba(255,255,255,.85)';X.font='11px '+FONT;X.fillText(bs>0?'best '+bs:th.sub,W/2,516);}
+  X.fillStyle='#ffd23f';X.font='bold 22px '+FONT;otext(th.name.replace('THE ',''),W/2,498,4);
+  X.fillStyle='#fff';X.font='bold 11px '+FONT;otext(bs>0?'best '+bs:th.sub,W/2,516,2.5);}
  // sixteen comb cells, each a picture of its world. the picked one glows, the locked ones are dark.
  {const sheet=ART.worlds;
   for(let i=0;i<16;i++){const c=WCHIP(i),sel=startStage===i+1,th=THEMES[i],lock=(i+1)>unlocked,r=sel?26:24;
-   X.save();X.shadowBlur=sel?14:0;X.shadowColor='#ffd23f';X.fillStyle='rgba(0,0,0,.5)';hexPath(c.cx,c.cy,r);X.fill();X.shadowBlur=0;
+   X.save();X.shadowBlur=sel?14:0;X.shadowColor='#ffd23f';X.fillStyle='rgba(0,0,0,.18)';hexPath(c.cx,c.cy,r);X.fill();X.shadowBlur=0;
    hexPath(c.cx,c.cy,r);X.clip();
-   if(sheet&&sheet.width){X.drawImage(sheet,(i%8)*96,Math.floor(i/8)*110,96,110,c.cx-r*.92,c.cy-r*1.05,r*1.84,r*2.1);}
+   if(sheet&&sheet.width){X.globalAlpha=sel?.85:.6;X.drawImage(sheet,(i%8)*96,Math.floor(i/8)*110,96,110,c.cx-r*.92,c.cy-r*1.05,r*1.84,r*2.1);X.globalAlpha=1;}
    else{const sg=X.createLinearGradient(0,c.cy-r,0,c.cy+r);sg.addColorStop(0,th.sky[0]);sg.addColorStop(1,th.ground[0]);X.fillStyle=sg;X.fillRect(c.cx-r,c.cy-r,r*2,r*2);}
-   if(lock){X.fillStyle='rgba(0,0,0,.72)';X.fillRect(c.cx-r,c.cy-r,r*2,r*2);}
+   if(lock){X.fillStyle='rgba(0,0,0,.55)';X.fillRect(c.cx-r,c.cy-r,r*2,r*2);}
    X.restore();
    X.strokeStyle=sel?'#ffd23f':lock?'rgba(255,255,255,.18)':'rgba(255,240,200,.6)';X.lineWidth=sel?2.5:1;hexPath(c.cx,c.cy,r);X.stroke();
    X.shadowColor='#000';X.shadowBlur=4;
    if(lock){X.strokeStyle='rgba(255,255,255,.55)';X.lineWidth=2;X.beginPath();X.roundRect(c.cx-6,c.cy-3,12,10,2);X.stroke();X.beginPath();X.arc(c.cx,c.cy-4,4,Math.PI,0);X.stroke();}
-   else{X.fillStyle='#fff';X.font='bold 16px '+FONT;X.fillText(String(i+1),c.cx,c.cy+6);}
-   X.fillStyle=sel?'#ffd23f':lock?'rgba(255,255,255,.35)':'rgba(255,255,255,.9)';X.font='bold 8px '+FONT;X.fillText(th.name.replace('THE ',''),c.cx,c.cy+r+10);X.shadowBlur=0;}}
+   else{X.fillStyle='#fff';X.font='bold 16px '+FONT;otext(String(i+1),c.cx,c.cy+6,3);}
+   X.fillStyle=sel?'#ffd23f':lock?'rgba(255,255,255,.35)':'rgba(255,255,255,.9)';X.font='bold 8px '+FONT;otext(th.name.replace('THE ',''),c.cx,c.cy+r+10,2);X.shadowBlur=0;}}
  // PLAY in the middle, help and the bug-dex either side. hold either side button for its card.
- {const b=CBTN.play,pulse=.5+Math.sin(t*.08)*.5;X.save();X.shadowColor='#ffd23f';X.shadowBlur=10+pulse*10;X.fillStyle='rgba(255,210,63,.92)';X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,19);X.fill();X.restore();
-  X.fillStyle='#1a1400';X.font='bold 18px '+FONT;X.shadowBlur=0;X.fillText('PLAY',b.x+b.w/2,b.y+25);}
+ {const b=CBTN.play,pulse=.5+Math.sin(t*.08)*.5;X.save();X.shadowColor='#ffd23f';X.shadowBlur=10+pulse*10;X.fillStyle='rgba(255,210,63,.55)';X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,19);X.fill();X.restore();X.strokeStyle='rgba(255,230,140,.9)';X.lineWidth=1.2;X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,19);X.stroke();
+  X.fillStyle='#fff';X.font='bold 18px '+FONT;X.shadowColor='#000';X.shadowBlur=4;otext('PLAY',b.x+b.w/2,b.y+25,3.5);}
  titleBtn(CBTN.help,'#ffffff','HELP',false);
  titleBtn(CBTN.dex,'#7fd4ff','BUG-DEX',false);
  X.restore();

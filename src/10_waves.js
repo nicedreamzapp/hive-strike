@@ -32,7 +32,7 @@ function formTwin(kind,n,opt){                       // mirrored pairs, never cr
 }
 const SYMFORMS=[formSym,formArc,formWedge,formTwin];
 function wave(){const lv=LV(),pr=stageT/lv.len;
- if(stageT>lv.len){for(const e of enemies){if(e.pat!=='fall'){e.pat='fall';e.vy=6;}}return;}
+ if(stageT>lv.len){for(const e of enemies){if(e.pat!=='fall'){e.pat='fall';e.vy=2.8;}}return;}
  const cap=6+Math.floor(((stage-1)%NL)*1.1)+loop*2;
  // count only REAL bugs against the cap. a gnat cloud is 40-plus tiny sprites and it was
  // blowing straight past the cap, so one cloud starved the whole level of actual enemies.

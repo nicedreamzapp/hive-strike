@@ -43,7 +43,7 @@ const FONT='"Avenir Next Condensed","Futura","Arial Narrow","Helvetica Neue",san
 // stamped by tools/assemble.py from the version in package.json and the git commit --
 // never edit by hand. It is how you tell at a glance whether the phone in your hand is
 // running the same build as the one next to it.
-const BUILD='v1.0.0  ·  bc6595d+  ·  Sep 2';
+const BUILD='v1.0.0  ·  757f5c3+  ·  Sep 2';
 // letterbox the play field inside whatever the device actually gives us, safe-area padding
 // already removed by the body. visualViewport is the honest number on iOS.
 function fit(){const cs=getComputedStyle(document.body),
@@ -510,7 +510,7 @@ function bossSprSync(){const want=new Set();
  for(const k in SPR){const m=/^boss(\d+)$/.exec(k);
   if(m&&!want.has(+m[1])){const im=SPR[k];if(im){im._freed=1;im.src='';if(im._mips)im._mips.length=0;}delete SPR[k];}}}
 function missing(path){MISSING.push(path);console.warn('[hive-strike] asset missing:',path);}
-function loadSprites(){const names=Object.keys(ET).concat(['centihead1','centiseg1']);for(const k of names){const im=new Image();im.onload=()=>{SPR[k]=im;};im.onerror=()=>missing('art/sprites/'+k+'.png');im.src='art/sprites/'+k+'.png';}}
+function loadSprites(){const names=Object.keys(ET).concat(['centihead1','centiseg1','hero']);/* hero = the painted player bee */for(const k of names){const im=new Image();im.onload=()=>{SPR[k]=im;};im.onerror=()=>missing('art/sprites/'+k+'.png');im.src='art/sprites/'+k+'.png';}}
 // sprites are ~800px tall and get drawn at 35-80px. drawImage has no mipmaps, so that 12-25x
 // downscale shimmered every frame as the bug moved. halve the source until it is close to the
 // drawn size, cache each step, and the final draw is never worse than a 2x reduction.
@@ -856,7 +856,7 @@ function formTwin(kind,n,opt){                       // mirrored pairs, never cr
 }
 const SYMFORMS=[formSym,formArc,formWedge,formTwin];
 function wave(){const lv=LV(),pr=stageT/lv.len;
- if(stageT>lv.len){for(const e of enemies){if(e.pat!=='fall'){e.pat='fall';e.vy=6;}}return;}
+ if(stageT>lv.len){for(const e of enemies){if(e.pat!=='fall'){e.pat='fall';e.vy=2.8;}}return;}
  const cap=6+Math.floor(((stage-1)%NL)*1.1)+loop*2;
  // count only REAL bugs against the cap. a gnat cloud is 40-plus tiny sprites and it was
  // blowing straight past the cap, so one cloud starved the whole level of actual enemies.
@@ -1218,7 +1218,7 @@ function updateInner(){t++;juiceTick();if(collapse>0){collapse--;if(collapse%9==
   else if(bossWarn>0){bossWarn--;if(bossWarn%45===0){swell(70,.5,'sine',.07,.08);rumble(.5,.04);}if(bossWarn===0)spawnBoss();}
   else{stageT++;wave();
    if(LV().name==='THE ROOFTOPS'&&blackoutStage!==stage&&stageT>LV().len*.42){blackoutStage=stage;blackout=250;say('BLACKOUT');noise(.7,.06,260,.6,70,'lowpass');buzz('warn');flash=.4;}
-   if(stageT>LV().len){for(const e of enemies){if(e.pat!=='fall'){e.pat='fall';e.vy=6;}}bossWarn=210;ebullets=[];shake=10;music('boss');drop(clamp(P.x-50,40,W-40),P.y-260,randWeapon());drop(clamp(P.x+50,40,W-40),P.y-280,'nectar');if(P.bombs<2)drop(P.x,P.y-300,'bomb');}}}
+   if(stageT>LV().len){for(const e of enemies){if(e.pat!=='fall'){e.pat='fall';e.vy=2.8;}}bossWarn=210;ebullets=[];shake=10;music('boss');drop(clamp(P.x-50,40,W-40),P.y-260,randWeapon());drop(clamp(P.x+50,40,W-40),P.y-280,'nectar');if(P.bombs<2)drop(P.x,P.y-300,'bomb');}}}
  else if(boss&&boss.dying>0){boss.dying--;boss.fl=2;boss.x+=R(-3,3);if(boss.dying%7===0){boom(boss.x+R(-40,40),boss.y+R(-40,40),['#fff','#ffd166',boss.col][RI(0,2)],18,6);shake=8;rumble(.35,.06);noise(.12,.03,900,.7,250,'lowpass');click(R(1500,3000),.02);}if(boss.dying%20===0)hiss(.3,.03,R(2000,5000),800);if(boss.dying===0){boss.hp=0;}}
  else if(boss){updBoss(boss);if(boss.hp<=0&&boss.dying==null){boss.dying=90;ebullets=[];say(boss.name+' IS GOING DOWN!');announce('BOSS DOWN!');stop(8);slowmo=56;buzz('heavy');ring(boss.x,boss.y,boss.col,440);ring(boss.x,boss.y,'#fff',300);for(let k=0;k<16;k++)parts.push({x:boss.x+R(-30,30),y:boss.y+R(-30,30),vx:R(-5,5),vy:R(-7,2),l:R(45,90),c:k%3?boss.col:'#2a1a08',r:R(3,7),gib:1,rx:R(1,2.4),a:R(0,7),va:R(-.2,.2)});STAT.bdex[LV().boss]=(STAT.bdex[LV().boss]||0)+1;statSave();rumble(1.5,.07);swell(80,1.4,'triangle',.05,.3,30);return;}if(boss.hp<=0){addScore(5000*(stage+loop));boom(boss.x,boss.y,boss.col,80,9);boom(boss.x,boss.y,'#fff',40,5);sparks(boss.x,boss.y,'#fff',40,12);flash=.6;shake=22;rumble(1.8,.1);swell(60,1.8,'sine',.07,.2,30);noise(.6,.05,700,.6,120,'lowpass');jingle([660,880,1108,1318,1760],'sine',.03,.09);
   for(let i=0;i<3;i++)drop(clamp(boss.x-80+i*80,50,W-50),boss.y+i*10,i===0?'nectar':i===1?randWeapon():['nectar','bomb','bomb',(stage%2===0?'life':'bomb')][RI(0,3)]);
@@ -1331,9 +1331,25 @@ function fuzz(cx,cy,rx,ry,col,n=26,seed=0){X.save();X.strokeStyle=col;X.lineWidt
 function legs(r,col,len=1,wig=1){X.strokeStyle=col;X.lineWidth=Math.max(1.2,r*.09);X.lineCap='round';X.beginPath();for(let i=0;i<3;i++){const yy=-r*.5+i*r*.35,w=Math.sin(t*.5+i*2.1)*r*.08*wig;for(const sgn of[-1,1]){X.moveTo(sgn*r*.4,yy);X.quadraticCurveTo(sgn*r*.8,yy-r*.15+w,sgn*r*.95*len,yy+r*.25+w);X.lineTo(sgn*r*1.05*len,yy+r*.5+w);}}X.stroke();}
 function eye(x,y,rx,ry,col='#111'){X.fillStyle=rg(x,y,rx,col==='#111'?'#3a3a3a':col,'#000');ell(x,y,rx,ry);X.fill();X.fillStyle='rgba(255,255,255,.85)';ell(x-rx*.3,y-ry*.35,rx*.32,ry*.3);X.fill();X.fillStyle='rgba(255,255,255,.35)';ell(x+rx*.25,y+ry*.3,rx*.18,ry*.15);X.fill();}
 function antennae(r,col='#222',len=1){const sw=Math.sin(t*.12)*r*.08;X.strokeStyle=col;X.lineWidth=Math.max(1.5,r*.1);X.lineCap='round';X.beginPath();X.moveTo(-r*.15,-r*1.4);X.quadraticCurveTo(-r*.5+sw,-r*1.9*len,-r*.75+sw,-r*1.75*len);X.moveTo(r*.15,-r*1.4);X.quadraticCurveTo(r*.5+sw,-r*1.9*len,r*.75+sw,-r*1.75*len);X.stroke();X.fillStyle=col;ell(-r*.75+sw,-r*1.75*len,r*.07,r*.07);X.fill();ell(r*.75+sw,-r*1.75*len,r*.07,r*.07);X.fill();}
+// the hero's wings, seen from ABOVE: big, golden, laid over the back, not pale blue slips hiding
+// under the belly (Matt 9/2: "the wings are too small and see-through, I want it from the top").
+// Two wings a side (fore and hind) pivot at the thorax; a faint ghost copy is the beat blur.
+function heroWing(sgn,r,D,a,alpha){X.save();X.translate(sgn*r*.22,-r*.5);X.rotate(sgn*a);X.globalAlpha=alpha;
+ const wing=(cx,cy,rx,ry,rot)=>{const g=X.createLinearGradient(0,0,sgn*rx*2,cy);g.addColorStop(0,'rgba(255,240,190,.92)');g.addColorStop(.6,'rgba(255,222,140,.80)');g.addColorStop(1,'rgba(255,200,90,.62)');X.fillStyle=g;ell(cx,cy,rx,ry,rot);X.fill();
+  X.strokeStyle='rgba(130,80,15,.85)';X.lineWidth=Math.max(1,r*.05);ell(cx,cy,rx,ry,rot);X.stroke();};
+ wing(sgn*r*1.05,-r*.45,r*1.1,r*.46,sgn*-.42);      // forewing: up and out
+ wing(sgn*r*.85,r*.15,r*.78,r*.34,sgn*-.08);         // hindwing: out and a little back
+ if(D){X.strokeStyle='rgba(140,90,20,.6)';X.lineWidth=Math.max(.8,r*.03);X.beginPath();
+  X.moveTo(0,-r*.1);X.quadraticCurveTo(sgn*r*.9,-r*1.0,sgn*r*2.05,-r*.95);
+  X.moveTo(0,0);X.quadraticCurveTo(sgn*r*1.0,-r*.55,sgn*r*2.1,-r*.55);
+  X.moveTo(0,r*.1);X.quadraticCurveTo(sgn*r*.9,-r*.15,sgn*r*1.9,-r*.15);
+  X.moveTo(0,r*.2);X.quadraticCurveTo(sgn*r*.8,r*.2,sgn*r*1.6,r*.35);
+  for(let k=1;k<=4;k++){const x=sgn*r*(.4+k*.38);X.moveTo(x,-r*(.95-k*.06));X.lineTo(x*.97,r*(.05+k*.05));}
+  X.stroke();X.globalAlpha=alpha*.45;X.fillStyle='#fff';ell(sgn*r*.7,-r*.55,r*.45,r*.14,sgn*-.45);X.fill();}
+ X.restore();}
+function heroWings(r,D){const a=Math.sin(t*1.7)*.16;for(const sgn of[-1,1]){if(D)heroWing(sgn,r,false,a*-1.4,.18);heroWing(sgn,r,D,a,.86);}}
 // the HERO bee (only the player uses this). Full detail when r>=10 (the HUD lives use a plain small version).
 function bee(x,y,r,col,stripe,_w,ang=0){X.save();X.translate(x,y);X.rotate(ang);const bob=Math.sin(t*.25)*r*.03;X.translate(0,bob);const D=r>=10;
- wings(r,.7);
  // legs: jointed, hairy, with pollen baskets on the back pair
  X.strokeStyle='#2a1a05';X.lineWidth=Math.max(1.2,r*.09);X.lineCap='round';X.beginPath();for(let i=0;i<3;i++){const yy=-r*.5+i*r*.35,w=Math.sin(t*.5+i*2.1)*r*.08;for(const sgn of[-1,1]){X.moveTo(sgn*r*.4,yy);X.quadraticCurveTo(sgn*r*.8,yy-r*.15+w,sgn*r*.95,yy+r*.25+w);X.lineTo(sgn*r*1.05,yy+r*.5+w);}}X.stroke();
  if(D){X.strokeStyle='rgba(60,40,10,.7)';X.lineWidth=1;X.beginPath();for(let i=0;i<3;i++){const yy=-r*.5+i*r*.35;for(const sgn of[-1,1])for(let k=0;k<3;k++){const px=sgn*(r*.55+k*r*.15),py=yy+k*r*.08;X.moveTo(px,py);X.lineTo(px+sgn*r*.05,py+r*.09);}}X.stroke();
@@ -1360,6 +1376,7 @@ function bee(x,y,r,col,stripe,_w,ang=0){X.save();X.translate(x,y);X.rotate(ang);
  else{X.fillStyle='#222';ell(0,-r*.78,r*.1,r*.06);X.fill();}
  // antennae, jointed
  const sw=Math.sin(t*.12)*r*.08;X.strokeStyle='#222';X.lineWidth=Math.max(1.5,r*.1);X.lineCap='round';X.beginPath();X.moveTo(-r*.15,-r*1.4);X.lineTo(-r*.42+sw,-r*1.7);X.lineTo(-r*.75+sw,-r*1.75);X.moveTo(r*.15,-r*1.4);X.lineTo(r*.42+sw,-r*1.7);X.lineTo(r*.75+sw,-r*1.75);X.stroke();X.fillStyle='#222';ell(-r*.75+sw,-r*1.75,r*.08,r*.08);X.fill();ell(r*.75+sw,-r*1.75,r*.08,r*.08);X.fill();if(D){ell(-r*.42+sw,-r*1.7,r*.06,r*.06);X.fill();ell(r*.42+sw,-r*1.7,r*.06,r*.06);X.fill();}
+ heroWings(r,D);
  X.restore();}
 // a WASP: slim waist, long legs dangling, pointed abdomen — not the hero
 function waspBody(r,col='#ffcc33',dark='#1a1a1a',mand=true){X.save();X.rotate(Math.PI);
@@ -2106,7 +2123,9 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
    if(L>=5){X.strokeStyle='rgba(255,255,255,'+(.35+pu*.3)+')';X.lineWidth=1.5;ell(P.x,P.y,31*d,22*d);X.stroke();X.strokeStyle=hexA(wc,.5);X.lineWidth=3;ell(P.x,P.y,31*d,22*d);X.stroke();}
    X.restore();}
    const body=lerpC('#ffd23f','#fff3b0',(L-1)/4*.6),stripe=L>=3?lerpC('#1a1a1a',wc,.35+.1*(L-3)):'#1a1a1a';
-   emboss(P.x,P.y,120*d,()=>bee(0,0,16*d,body,stripe,'#fff'),{alt:1.2});}
+   // the painted hero (9/2): wings on top, seen from above, banks into a sideways move. The drawn bee is the fallback.
+   const hs=SPR.hero;if(hs&&hs.width){const tilt=clamp((P.x-P.px)*.035,-.35,.35);emboss(P.x,P.y,120*d,()=>drawSprite(hs,60*d,tilt),{alt:1.2});}
+   else emboss(P.x,P.y,120*d,()=>bee(0,0,16*d,body,stripe,'#fff'),{alt:1.2});}
   if(P.webbed>0){X.save();X.translate(P.x,P.y);X.globalAlpha=Math.min(1,P.webbed/30);X.strokeStyle='rgba(255,255,255,.9)';X.lineWidth=1.5;X.shadowColor='#000';X.shadowBlur=3;X.beginPath();for(let k=0;k<8;k++){const a=k*Math.PI/4;X.moveTo(0,0);X.lineTo(Math.cos(a)*34,Math.sin(a)*34);}for(let ring=1;ring<=3;ring++){for(let k=0;k<=8;k++){const a=k*Math.PI/4,rr=11*ring;if(k===0)X.moveTo(Math.cos(a)*rr,Math.sin(a)*rr);else X.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);}}X.stroke();X.restore();}
   if(P.wpn==='lash'){X.save();X.globalCompositeOperation='lighter';const tx=lashT&&t-lashT.t<4?lashT.x:P.x+Math.sin(t*.1)*10,ty=lashT&&t-lashT.t<4?lashT.y:P.y-260,cx=(P.x+tx)/2+Math.sin(t*.35)*40,cy=(P.y-14+ty)/2;for(const [w,c] of [[14,'rgba(255,247,176,.22)'],[6,'rgba(255,247,176,.7)'],[2.2,'#fff']]){X.strokeStyle=c;X.lineWidth=w;X.lineCap='round';X.beginPath();X.moveTo(P.x,P.y-14);X.quadraticCurveTo(cx,cy,tx,ty);X.stroke();}if(lashT&&t-lashT.t<4){X.fillStyle=rg(tx,ty,18,'rgba(255,255,255,.9)','rgba(255,220,120,0)');ell(tx,ty,18,18);X.fill();}X.restore();}
   if(keys.ShiftLeft||keys.ShiftRight){X.strokeStyle='#fff';X.lineWidth=1.5;ell(P.x,P.y,5,5);X.stroke();X.fillStyle='#f33';ell(P.x,P.y,2,2);X.fill();}}
@@ -2184,7 +2203,7 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
   if(!sp)emboss(W/2,265,150,()=>bee(0,0,26,'#ffd23f','#1a1a1a','#fff'),{alt:0});
   X.fillStyle='#fff';X.font='14px '+FONT;
   X.shadowColor='#000';X.shadowBlur=6;if(state==='won'){X.font='bold 30px '+FONT;X.fillStyle='#8dff9a';X.fillText('THE HIVE IS SAFE!',W/2,sp?158:320);X.font='14px '+FONT;X.fillStyle='#fff';X.fillText('all sixteen worlds cleared   ·   SCORE '+score+'   HI '+hi,W/2,sp?182:348);X.font='12px '+FONT;X.fillStyle='#cfe8ff';X.fillText('best chain x'+Math.min(8,1+Math.floor(chainBest/6))+'  ('+chainBest+' kills)   ·   '+grazed+' grazes',W/2,sp?204:368);}else if(state==='over'){X.font='bold 26px '+FONT;X.fillStyle='#ff4d6d';X.fillText('THE HIVE HAS FALLEN',W/2,sp?306:320);X.font='14px '+FONT;X.fillStyle='#fff';X.fillText('SCORE '+score+'   HI '+hi+'   LEVEL '+stage,W/2,sp?332:348);X.font='12px '+FONT;X.fillStyle='#cfe8ff';X.fillText('best chain x'+Math.min(8,1+Math.floor(chainBest/6))+'  ('+chainBest+' kills)   ·   '+grazed+' grazes',W/2,sp?352:368);}
-  else{X.font='bold 16px '+FONT;X.fillText('sixteen worlds. sixteen bosses. forty-eight bugs. one bee.',W/2,sp?94:335);}
+  else{X.font='bold 16px '+FONT;X.lineJoin='round';X.strokeStyle='rgba(0,0,0,.85)';X.lineWidth=3.5;X.strokeText('sixteen worlds. sixteen bosses. forty-eight bugs. one bee.',W/2,sp?94:335);X.fillText('sixteen worlds. sixteen bosses. forty-eight bugs. one bee.',W/2,sp?94:335);}
   drawTitleUI(sp);
   X.shadowBlur=0;}
  if(dexOpen&&state!=='play')drawDex();
@@ -2203,37 +2222,39 @@ buildDecor(0);
 const SBTN={music:{x:150,y:H-224,w:90,h:30},sfx:{x:260,y:H-224,w:90,h:30}};
 const CARD_CONTRACT_Y0=140,CARD_CONTRACT_H=50;
 function contractCardHit(p){for(let i=0;i<CONTRACTS.length;i++){const y=CARD_CONTRACT_Y0+i*CARD_CONTRACT_H;if(p.x>=24&&p.x<=W-24&&p.y>=y&&p.y<=y+CARD_CONTRACT_H-6)return i;}return -1;}
+// white type over a painting needs an edge (Matt 9/2): stroke dark, then fill
+function otext(txt,x,y,w){X.lineJoin='round';X.strokeStyle='rgba(0,0,0,.85)';X.lineWidth=w||3;X.strokeText(txt,x,y);X.fillText(txt,x,y);}
 function hexPath(cx,cy,r){X.beginPath();for(let k=0;k<6;k++){const a=Math.PI/6+k*Math.PI/3;const px=cx+Math.cos(a)*r,py=cy+Math.sin(a)*r;k?X.lineTo(px,py):X.moveTo(px,py);}X.closePath();}
 // glass: a dark tint you can see the painting through, one thin edge, one word
 function titleBtn(b,col,word,hot){
- X.save();X.fillStyle=hot?'rgba(40,90,50,.42)':'rgba(0,0,0,.38)';X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,b.h/2);X.fill();
+ X.save();X.fillStyle=hot?'rgba(40,90,50,.22)':'rgba(0,0,0,.16)';X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,b.h/2);X.fill();
  X.strokeStyle=col;X.globalAlpha=hot?.95:.6;X.lineWidth=1.2;X.stroke();X.globalAlpha=1;
- X.textAlign='center';X.shadowColor='#000';X.shadowBlur=4;X.fillStyle=col;X.font='bold 13px '+FONT;X.fillText(word,b.x+b.w/2,b.y+b.h/2+5);X.restore();}
+ X.textAlign='center';X.shadowColor='#000';X.shadowBlur=4;X.fillStyle=col;X.font='bold 13px '+FONT;otext(word,b.x+b.w/2,b.y+b.h/2+5,3);X.restore();}
 function drawTitleUI(sp){
  // the painting stays whole. only a soft shade at the very bottom so the words read over the flowers.
- {const g=X.createLinearGradient(0,470,0,H);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.62)');X.fillStyle=g;X.fillRect(0,470,W,H-470);}
+ {const g=X.createLinearGradient(0,470,0,H);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.45)');X.fillStyle=g;X.fillRect(0,470,W,H-470);}
  X.save();X.textAlign='center';X.shadowColor='#000';X.shadowBlur=6;
  // the picked world, in big letters, and its one-line hook
  {const th=THEMES[startStage-1],bs=bestFor(startStage);
-  X.fillStyle='#ffd23f';X.font='bold 22px '+FONT;X.fillText(th.name.replace('THE ',''),W/2,498);
-  X.fillStyle='rgba(255,255,255,.85)';X.font='11px '+FONT;X.fillText(bs>0?'best '+bs:th.sub,W/2,516);}
+  X.fillStyle='#ffd23f';X.font='bold 22px '+FONT;otext(th.name.replace('THE ',''),W/2,498,4);
+  X.fillStyle='#fff';X.font='bold 11px '+FONT;otext(bs>0?'best '+bs:th.sub,W/2,516,2.5);}
  // sixteen comb cells, each a picture of its world. the picked one glows, the locked ones are dark.
  {const sheet=ART.worlds;
   for(let i=0;i<16;i++){const c=WCHIP(i),sel=startStage===i+1,th=THEMES[i],lock=(i+1)>unlocked,r=sel?26:24;
-   X.save();X.shadowBlur=sel?14:0;X.shadowColor='#ffd23f';X.fillStyle='rgba(0,0,0,.5)';hexPath(c.cx,c.cy,r);X.fill();X.shadowBlur=0;
+   X.save();X.shadowBlur=sel?14:0;X.shadowColor='#ffd23f';X.fillStyle='rgba(0,0,0,.18)';hexPath(c.cx,c.cy,r);X.fill();X.shadowBlur=0;
    hexPath(c.cx,c.cy,r);X.clip();
-   if(sheet&&sheet.width){X.drawImage(sheet,(i%8)*96,Math.floor(i/8)*110,96,110,c.cx-r*.92,c.cy-r*1.05,r*1.84,r*2.1);}
+   if(sheet&&sheet.width){X.globalAlpha=sel?.85:.6;X.drawImage(sheet,(i%8)*96,Math.floor(i/8)*110,96,110,c.cx-r*.92,c.cy-r*1.05,r*1.84,r*2.1);X.globalAlpha=1;}
    else{const sg=X.createLinearGradient(0,c.cy-r,0,c.cy+r);sg.addColorStop(0,th.sky[0]);sg.addColorStop(1,th.ground[0]);X.fillStyle=sg;X.fillRect(c.cx-r,c.cy-r,r*2,r*2);}
-   if(lock){X.fillStyle='rgba(0,0,0,.72)';X.fillRect(c.cx-r,c.cy-r,r*2,r*2);}
+   if(lock){X.fillStyle='rgba(0,0,0,.55)';X.fillRect(c.cx-r,c.cy-r,r*2,r*2);}
    X.restore();
    X.strokeStyle=sel?'#ffd23f':lock?'rgba(255,255,255,.18)':'rgba(255,240,200,.6)';X.lineWidth=sel?2.5:1;hexPath(c.cx,c.cy,r);X.stroke();
    X.shadowColor='#000';X.shadowBlur=4;
    if(lock){X.strokeStyle='rgba(255,255,255,.55)';X.lineWidth=2;X.beginPath();X.roundRect(c.cx-6,c.cy-3,12,10,2);X.stroke();X.beginPath();X.arc(c.cx,c.cy-4,4,Math.PI,0);X.stroke();}
-   else{X.fillStyle='#fff';X.font='bold 16px '+FONT;X.fillText(String(i+1),c.cx,c.cy+6);}
-   X.fillStyle=sel?'#ffd23f':lock?'rgba(255,255,255,.35)':'rgba(255,255,255,.9)';X.font='bold 8px '+FONT;X.fillText(th.name.replace('THE ',''),c.cx,c.cy+r+10);X.shadowBlur=0;}}
+   else{X.fillStyle='#fff';X.font='bold 16px '+FONT;otext(String(i+1),c.cx,c.cy+6,3);}
+   X.fillStyle=sel?'#ffd23f':lock?'rgba(255,255,255,.35)':'rgba(255,255,255,.9)';X.font='bold 8px '+FONT;otext(th.name.replace('THE ',''),c.cx,c.cy+r+10,2);X.shadowBlur=0;}}
  // PLAY in the middle, help and the bug-dex either side. hold either side button for its card.
- {const b=CBTN.play,pulse=.5+Math.sin(t*.08)*.5;X.save();X.shadowColor='#ffd23f';X.shadowBlur=10+pulse*10;X.fillStyle='rgba(255,210,63,.92)';X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,19);X.fill();X.restore();
-  X.fillStyle='#1a1400';X.font='bold 18px '+FONT;X.shadowBlur=0;X.fillText('PLAY',b.x+b.w/2,b.y+25);}
+ {const b=CBTN.play,pulse=.5+Math.sin(t*.08)*.5;X.save();X.shadowColor='#ffd23f';X.shadowBlur=10+pulse*10;X.fillStyle='rgba(255,210,63,.55)';X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,19);X.fill();X.restore();X.strokeStyle='rgba(255,230,140,.9)';X.lineWidth=1.2;X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,19);X.stroke();
+  X.fillStyle='#fff';X.font='bold 18px '+FONT;X.shadowColor='#000';X.shadowBlur=4;otext('PLAY',b.x+b.w/2,b.y+25,3.5);}
  titleBtn(CBTN.help,'#ffffff','HELP',false);
  titleBtn(CBTN.dex,'#7fd4ff','BUG-DEX',false);
  X.restore();

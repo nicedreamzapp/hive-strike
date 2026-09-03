@@ -37,7 +37,7 @@ function bossSprSync(){const want=new Set();
  for(const k in SPR){const m=/^boss(\d+)$/.exec(k);
   if(m&&!want.has(+m[1])){const im=SPR[k];if(im){im._freed=1;im.src='';if(im._mips)im._mips.length=0;}delete SPR[k];}}}
 function missing(path){MISSING.push(path);console.warn('[hive-strike] asset missing:',path);}
-function loadSprites(){const names=Object.keys(ET).concat(['centihead1','centiseg1']);for(const k of names){const im=new Image();im.onload=()=>{SPR[k]=im;};im.onerror=()=>missing('art/sprites/'+k+'.png');im.src='art/sprites/'+k+'.png';}}
+function loadSprites(){const names=Object.keys(ET).concat(['centihead1','centiseg1','hero']);/* hero = the painted player bee */for(const k of names){const im=new Image();im.onload=()=>{SPR[k]=im;};im.onerror=()=>missing('art/sprites/'+k+'.png');im.src='art/sprites/'+k+'.png';}}
 // sprites are ~800px tall and get drawn at 35-80px. drawImage has no mipmaps, so that 12-25x
 // downscale shimmered every frame as the bug moved. halve the source until it is close to the
 // drawn size, cache each step, and the final draw is never worse than a 2x reduction.

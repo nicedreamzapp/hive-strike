@@ -59,9 +59,25 @@ function fuzz(cx,cy,rx,ry,col,n=26,seed=0){X.save();X.strokeStyle=col;X.lineWidt
 function legs(r,col,len=1,wig=1){X.strokeStyle=col;X.lineWidth=Math.max(1.2,r*.09);X.lineCap='round';X.beginPath();for(let i=0;i<3;i++){const yy=-r*.5+i*r*.35,w=Math.sin(t*.5+i*2.1)*r*.08*wig;for(const sgn of[-1,1]){X.moveTo(sgn*r*.4,yy);X.quadraticCurveTo(sgn*r*.8,yy-r*.15+w,sgn*r*.95*len,yy+r*.25+w);X.lineTo(sgn*r*1.05*len,yy+r*.5+w);}}X.stroke();}
 function eye(x,y,rx,ry,col='#111'){X.fillStyle=rg(x,y,rx,col==='#111'?'#3a3a3a':col,'#000');ell(x,y,rx,ry);X.fill();X.fillStyle='rgba(255,255,255,.85)';ell(x-rx*.3,y-ry*.35,rx*.32,ry*.3);X.fill();X.fillStyle='rgba(255,255,255,.35)';ell(x+rx*.25,y+ry*.3,rx*.18,ry*.15);X.fill();}
 function antennae(r,col='#222',len=1){const sw=Math.sin(t*.12)*r*.08;X.strokeStyle=col;X.lineWidth=Math.max(1.5,r*.1);X.lineCap='round';X.beginPath();X.moveTo(-r*.15,-r*1.4);X.quadraticCurveTo(-r*.5+sw,-r*1.9*len,-r*.75+sw,-r*1.75*len);X.moveTo(r*.15,-r*1.4);X.quadraticCurveTo(r*.5+sw,-r*1.9*len,r*.75+sw,-r*1.75*len);X.stroke();X.fillStyle=col;ell(-r*.75+sw,-r*1.75*len,r*.07,r*.07);X.fill();ell(r*.75+sw,-r*1.75*len,r*.07,r*.07);X.fill();}
+// the hero's wings, seen from ABOVE: big, golden, laid over the back, not pale blue slips hiding
+// under the belly (Matt 9/2: "the wings are too small and see-through, I want it from the top").
+// Two wings a side (fore and hind) pivot at the thorax; a faint ghost copy is the beat blur.
+function heroWing(sgn,r,D,a,alpha){X.save();X.translate(sgn*r*.22,-r*.5);X.rotate(sgn*a);X.globalAlpha=alpha;
+ const wing=(cx,cy,rx,ry,rot)=>{const g=X.createLinearGradient(0,0,sgn*rx*2,cy);g.addColorStop(0,'rgba(255,240,190,.92)');g.addColorStop(.6,'rgba(255,222,140,.80)');g.addColorStop(1,'rgba(255,200,90,.62)');X.fillStyle=g;ell(cx,cy,rx,ry,rot);X.fill();
+  X.strokeStyle='rgba(130,80,15,.85)';X.lineWidth=Math.max(1,r*.05);ell(cx,cy,rx,ry,rot);X.stroke();};
+ wing(sgn*r*1.05,-r*.45,r*1.1,r*.46,sgn*-.42);      // forewing: up and out
+ wing(sgn*r*.85,r*.15,r*.78,r*.34,sgn*-.08);         // hindwing: out and a little back
+ if(D){X.strokeStyle='rgba(140,90,20,.6)';X.lineWidth=Math.max(.8,r*.03);X.beginPath();
+  X.moveTo(0,-r*.1);X.quadraticCurveTo(sgn*r*.9,-r*1.0,sgn*r*2.05,-r*.95);
+  X.moveTo(0,0);X.quadraticCurveTo(sgn*r*1.0,-r*.55,sgn*r*2.1,-r*.55);
+  X.moveTo(0,r*.1);X.quadraticCurveTo(sgn*r*.9,-r*.15,sgn*r*1.9,-r*.15);
+  X.moveTo(0,r*.2);X.quadraticCurveTo(sgn*r*.8,r*.2,sgn*r*1.6,r*.35);
+  for(let k=1;k<=4;k++){const x=sgn*r*(.4+k*.38);X.moveTo(x,-r*(.95-k*.06));X.lineTo(x*.97,r*(.05+k*.05));}
+  X.stroke();X.globalAlpha=alpha*.45;X.fillStyle='#fff';ell(sgn*r*.7,-r*.55,r*.45,r*.14,sgn*-.45);X.fill();}
+ X.restore();}
+function heroWings(r,D){const a=Math.sin(t*1.7)*.16;for(const sgn of[-1,1]){if(D)heroWing(sgn,r,false,a*-1.4,.18);heroWing(sgn,r,D,a,.86);}}
 // the HERO bee (only the player uses this). Full detail when r>=10 (the HUD lives use a plain small version).
 function bee(x,y,r,col,stripe,_w,ang=0){X.save();X.translate(x,y);X.rotate(ang);const bob=Math.sin(t*.25)*r*.03;X.translate(0,bob);const D=r>=10;
- wings(r,.7);
  // legs: jointed, hairy, with pollen baskets on the back pair
  X.strokeStyle='#2a1a05';X.lineWidth=Math.max(1.2,r*.09);X.lineCap='round';X.beginPath();for(let i=0;i<3;i++){const yy=-r*.5+i*r*.35,w=Math.sin(t*.5+i*2.1)*r*.08;for(const sgn of[-1,1]){X.moveTo(sgn*r*.4,yy);X.quadraticCurveTo(sgn*r*.8,yy-r*.15+w,sgn*r*.95,yy+r*.25+w);X.lineTo(sgn*r*1.05,yy+r*.5+w);}}X.stroke();
  if(D){X.strokeStyle='rgba(60,40,10,.7)';X.lineWidth=1;X.beginPath();for(let i=0;i<3;i++){const yy=-r*.5+i*r*.35;for(const sgn of[-1,1])for(let k=0;k<3;k++){const px=sgn*(r*.55+k*r*.15),py=yy+k*r*.08;X.moveTo(px,py);X.lineTo(px+sgn*r*.05,py+r*.09);}}X.stroke();
@@ -88,6 +104,7 @@ function bee(x,y,r,col,stripe,_w,ang=0){X.save();X.translate(x,y);X.rotate(ang);
  else{X.fillStyle='#222';ell(0,-r*.78,r*.1,r*.06);X.fill();}
  // antennae, jointed
  const sw=Math.sin(t*.12)*r*.08;X.strokeStyle='#222';X.lineWidth=Math.max(1.5,r*.1);X.lineCap='round';X.beginPath();X.moveTo(-r*.15,-r*1.4);X.lineTo(-r*.42+sw,-r*1.7);X.lineTo(-r*.75+sw,-r*1.75);X.moveTo(r*.15,-r*1.4);X.lineTo(r*.42+sw,-r*1.7);X.lineTo(r*.75+sw,-r*1.75);X.stroke();X.fillStyle='#222';ell(-r*.75+sw,-r*1.75,r*.08,r*.08);X.fill();ell(r*.75+sw,-r*1.75,r*.08,r*.08);X.fill();if(D){ell(-r*.42+sw,-r*1.7,r*.06,r*.06);X.fill();ell(r*.42+sw,-r*1.7,r*.06,r*.06);X.fill();}
+ heroWings(r,D);
  X.restore();}
 // a WASP: slim waist, long legs dangling, pointed abdomen — not the hero
 function waspBody(r,col='#ffcc33',dark='#1a1a1a',mand=true){X.save();X.rotate(Math.PI);

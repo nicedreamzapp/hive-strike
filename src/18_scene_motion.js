@@ -417,7 +417,9 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
    if(L>=5){X.strokeStyle='rgba(255,255,255,'+(.35+pu*.3)+')';X.lineWidth=1.5;ell(P.x,P.y,31*d,22*d);X.stroke();X.strokeStyle=hexA(wc,.5);X.lineWidth=3;ell(P.x,P.y,31*d,22*d);X.stroke();}
    X.restore();}
    const body=lerpC('#ffd23f','#fff3b0',(L-1)/4*.6),stripe=L>=3?lerpC('#1a1a1a',wc,.35+.1*(L-3)):'#1a1a1a';
-   emboss(P.x,P.y,120*d,()=>bee(0,0,16*d,body,stripe,'#fff'),{alt:1.2});}
+   // the painted hero (9/2): wings on top, seen from above, banks into a sideways move. The drawn bee is the fallback.
+   const hs=SPR.hero;if(hs&&hs.width){const tilt=clamp((P.x-P.px)*.035,-.35,.35);emboss(P.x,P.y,120*d,()=>drawSprite(hs,60*d,tilt),{alt:1.2});}
+   else emboss(P.x,P.y,120*d,()=>bee(0,0,16*d,body,stripe,'#fff'),{alt:1.2});}
   if(P.webbed>0){X.save();X.translate(P.x,P.y);X.globalAlpha=Math.min(1,P.webbed/30);X.strokeStyle='rgba(255,255,255,.9)';X.lineWidth=1.5;X.shadowColor='#000';X.shadowBlur=3;X.beginPath();for(let k=0;k<8;k++){const a=k*Math.PI/4;X.moveTo(0,0);X.lineTo(Math.cos(a)*34,Math.sin(a)*34);}for(let ring=1;ring<=3;ring++){for(let k=0;k<=8;k++){const a=k*Math.PI/4,rr=11*ring;if(k===0)X.moveTo(Math.cos(a)*rr,Math.sin(a)*rr);else X.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);}}X.stroke();X.restore();}
   if(P.wpn==='lash'){X.save();X.globalCompositeOperation='lighter';const tx=lashT&&t-lashT.t<4?lashT.x:P.x+Math.sin(t*.1)*10,ty=lashT&&t-lashT.t<4?lashT.y:P.y-260,cx=(P.x+tx)/2+Math.sin(t*.35)*40,cy=(P.y-14+ty)/2;for(const [w,c] of [[14,'rgba(255,247,176,.22)'],[6,'rgba(255,247,176,.7)'],[2.2,'#fff']]){X.strokeStyle=c;X.lineWidth=w;X.lineCap='round';X.beginPath();X.moveTo(P.x,P.y-14);X.quadraticCurveTo(cx,cy,tx,ty);X.stroke();}if(lashT&&t-lashT.t<4){X.fillStyle=rg(tx,ty,18,'rgba(255,255,255,.9)','rgba(255,220,120,0)');ell(tx,ty,18,18);X.fill();}X.restore();}
   if(keys.ShiftLeft||keys.ShiftRight){X.strokeStyle='#fff';X.lineWidth=1.5;ell(P.x,P.y,5,5);X.stroke();X.fillStyle='#f33';ell(P.x,P.y,2,2);X.fill();}}
@@ -495,7 +497,7 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
   if(!sp)emboss(W/2,265,150,()=>bee(0,0,26,'#ffd23f','#1a1a1a','#fff'),{alt:0});
   X.fillStyle='#fff';X.font='14px '+FONT;
   X.shadowColor='#000';X.shadowBlur=6;if(state==='won'){X.font='bold 30px '+FONT;X.fillStyle='#8dff9a';X.fillText('THE HIVE IS SAFE!',W/2,sp?158:320);X.font='14px '+FONT;X.fillStyle='#fff';X.fillText('all sixteen worlds cleared   ·   SCORE '+score+'   HI '+hi,W/2,sp?182:348);X.font='12px '+FONT;X.fillStyle='#cfe8ff';X.fillText('best chain x'+Math.min(8,1+Math.floor(chainBest/6))+'  ('+chainBest+' kills)   ·   '+grazed+' grazes',W/2,sp?204:368);}else if(state==='over'){X.font='bold 26px '+FONT;X.fillStyle='#ff4d6d';X.fillText('THE HIVE HAS FALLEN',W/2,sp?306:320);X.font='14px '+FONT;X.fillStyle='#fff';X.fillText('SCORE '+score+'   HI '+hi+'   LEVEL '+stage,W/2,sp?332:348);X.font='12px '+FONT;X.fillStyle='#cfe8ff';X.fillText('best chain x'+Math.min(8,1+Math.floor(chainBest/6))+'  ('+chainBest+' kills)   ·   '+grazed+' grazes',W/2,sp?352:368);}
-  else{X.font='bold 16px '+FONT;X.fillText('sixteen worlds. sixteen bosses. forty-eight bugs. one bee.',W/2,sp?94:335);}
+  else{X.font='bold 16px '+FONT;X.lineJoin='round';X.strokeStyle='rgba(0,0,0,.85)';X.lineWidth=3.5;X.strokeText('sixteen worlds. sixteen bosses. forty-eight bugs. one bee.',W/2,sp?94:335);X.fillText('sixteen worlds. sixteen bosses. forty-eight bugs. one bee.',W/2,sp?94:335);}
   drawTitleUI(sp);
   X.shadowBlur=0;}
  if(dexOpen&&state!=='play')drawDex();
