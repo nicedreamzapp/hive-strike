@@ -45,6 +45,12 @@ SCENES = {
  "level6": "inside a giant beehive seen from above, amber honeycomb wax cells, dripping golden honey, "
            "dark centipede tunnels bored through the comb, warm gold and brown palette",
 }
+# 9/3 Matt: "make the splash a real photo" -- the hero in play is a photoreal honeybee now, the poster should match
+PHOTO_SPLASH = ("extremely detailed photorealistic macro photograph, 8k, razor sharp, a fluffy golden honeybee flying straight toward the camera, "
+                "head-on, big dark eyes, wings a translucent blur of motion, fine golden hair catching the light, "
+                "dramatic golden-hour backlight over a wildflower meadow, warm bokeh of daisies and poppies below, "
+                "far behind it, out of focus, the dark looming silhouettes of giant insects: a hornet, a praying mantis, a stag beetle, a spider, "
+                "cinematic depth of field, rich contrast, empty soft sky space in the top third for a title, no text, no letters, portrait orientation")
 SPLASH = ("epic video game title splash art, bold cel-shaded storybook illustration, rich saturated colors, "
           "a calm serious heroic cartoon honeybee hero flying toward the viewer, steady focused eyes, closed mouth, "
           "composed and brave like a quiet guardian, no anger, no snarl, no grin, upright confident posture, wings blurred with speed, "
@@ -83,8 +89,10 @@ with reserve("flux-hive-art", 34):
         for name, scene in SCENES.items():
             gen(STYLE + scene, os.path.join(ART, name + "_real.png"), seed); seed += 1
     elif os.environ.get("ONLY_SPLASH"):
-        for i, sd in enumerate([9_001, 9_002, 9_003]):
-            gen(SPLASH, os.path.join(ART, f"splash_hd_{'abc'[i]}.png"), sd)
+        prompt = PHOTO_SPLASH if os.environ.get("PHOTO") else SPLASH
+        base = int(os.environ.get("SEED", "9001"))
+        for i in range(int(os.environ.get("N", "3"))):
+            gen(prompt, os.path.join(ART, f"splash_{'photo' if os.environ.get('PHOTO') else 'hd'}_{i}.png"), base + i)
     else:
         for name, scene in SCENES.items():
             gen(STYLE + scene, os.path.join(ART, name + ".png"), seed); seed += 1

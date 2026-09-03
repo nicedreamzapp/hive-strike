@@ -51,9 +51,11 @@ function worldOverlay(){
   if(volc.t>=90){X.globalCompositeOperation='lighter';X.fillStyle=`rgba(255,200,80,${.10+Math.sin(volc.t*.4)*.05})`;X.fillRect(x0+volc.w*.3,0,volc.w*.4,H);}
   X.restore();return;}
  if(name!=='THE CAVE')return;
- const r=150+Math.sin(t*.03)*10;
+ // 9/3: the cave painting is pitch dark now, so the lamp is wider and the far dark is lighter than
+ // when the picture underneath was a daylit arch -- you must still be able to see what is coming
+ const r=200+Math.sin(t*.03)*10;
  X.save();X.globalCompositeOperation='source-over';
- const g=X.createRadialGradient(P.x,P.y,r*.35,P.x,P.y,r*1.9);
- g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(.55,'rgba(0,4,10,.55)');g.addColorStop(1,'rgba(0,3,8,.88)');
+ const g=X.createRadialGradient(P.x,P.y,r*.4,P.x,P.y,r*2.0);
+ g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(.55,'rgba(0,4,10,.38)');g.addColorStop(1,'rgba(0,3,8,.70)');
  X.fillStyle=g;X.fillRect(0,0,W,H);X.restore();
 }
