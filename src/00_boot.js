@@ -62,7 +62,8 @@ function ptr(e){const r=C.getBoundingClientRect();const isT=e.pointerType==='tou
 // on-screen controls, only drawn once a finger has actually been used
 const TBTN={bomb:{x:W-64,y:H-124,w:54,h:54},pause:{x:W-40,y:4,w:34,h:22}};
 // title-screen level sliders: Matt tunes the mix himself instead of waiting on a rebuild
-const BARS={mus:{x:112,y:H-196,w:96,h:13},sfx:{x:286,y:H-196,w:96,h:13}};
+// they live in the settings sheet now (gear button, bottom right of the title screen)
+const BARS={mus:{x:150,y:H-168,w:200,h:14},sfx:{x:150,y:H-122,w:200,h:14}};
 // One place that knows where every HUD box is, so the pause button can never be
 // parked on top of the bomb count again. tools/hud_overlap.mjs asserts they are disjoint.
 const pauseGap=()=>(touchMode&&state==='play')?TBTN.pause.w+10:0;
@@ -77,10 +78,13 @@ const barHit=(p,b)=>p.x>=b.x-8&&p.x<=b.x+b.w+8&&p.y>=b.y-9&&p.y<=b.y+b.h+9;
 const barVal=(p,b)=>Math.max(0,Math.min(1,(p.x-b.x)/b.w));
 C.addEventListener('pointermove',e=>{target=ptr(e);lastMove=t;});
 const BTN={music:{x:W/2-46,y:4,w:40,h:22},sfx:{x:W/2+6,y:4,w:40,h:22}};const inBtn=(p,b)=>p.x>=b.x&&p.x<=b.x+b.w&&p.y>=b.y&&p.y<=b.y+b.h;
-// daily hive + queen's contract chips, title screen only
-const CBTN={daily:{x:8,y:30,w:W/2-14,h:30},contract:{x:W/2+6,y:30,w:W/2-14,h:30}};
-// the Bug-Dex chip sits between the world tiles and the score line
-const DBTN={x:W/2-104,y:H-58,w:208,h:24};
+// title screen, redone 2026-09-02 (Matt: chips covered the title, nothing readable, art buried):
+// art up top, a 4x4 world grid in the middle, ONE row of four big buttons under it, a gear.
+// Tap a button = do it. HOLD a button = a full-screen card in big letters saying what it is.
+const CBTN={daily:{x:20,y:600,w:104,h:50},contract:{x:132,y:600,w:104,h:50},help:{x:244,y:600,w:104,h:50},dex:{x:356,y:600,w:104,h:50},gear:{x:W-46,y:668,w:36,h:36}};
+const DBTN=CBTN.dex;
+let holdBtn=null,holdT=0,cardOpen=null,settingsOpen=false;const HOLD_FRAMES=22;
+function firstHelp(){try{if(localStorage.hs_seen_help)return false;localStorage.hs_seen_help='1';}catch(e){return false;}cardOpen='help';return true;}
 C.addEventListener('pointerdown',e=>{const isT=e.pointerType==='touch',p=ptr(e),raw={x:p.x,y:p.y+(isT?TOUCH_LIFT:0)};
  audioWake();
  if(inBtn(raw,BTN.music)){musicToggle();return;}
@@ -90,19 +94,32 @@ C.addEventListener('pointerdown',e=>{const isT=e.pointerType==='touch',p=ptr(e),
   if(inBtn(raw,TBTN.bomb)){wantBomb=1;return;}
   if(paused||resumeCountdown>0){resumeCountdown=0;paused=false;return;}
  }
- if(state!=='play'){
+ if(state!=='play'&&settingsOpen&&!dexOpen){
   if(barHit(raw,BARS.mus)){setMusLv(barVal(raw,BARS.mus));say('MUSIC '+Math.round(MUSLV*100)+'%');return;}
   if(barHit(raw,BARS.sfx)){setSfxLv(barVal(raw,BARS.sfx));click(1400,.02);say('EFFECTS '+Math.round(SFXLV*100)+'%');return;}
+  if(inBtn(raw,SBTN.music)){musicToggle();return;}
+  if(inBtn(raw,SBTN.sfx)){sfxToggle();return;}
+  settingsOpen=false;click(900,.02);return;   // tap anywhere else closes the sheet
  }
  target=p;lastMove=t;
  if(dexOpen){dexTap(raw);return;}
  if(state!=='play'){
-  if(inBtn(raw,DBTN)){dexOpen=true;click(1200,.02);return;}
-  if(inBtn(raw,CBTN.daily)){if(!armed)arm();wantDaily=true;start();return;}
-  if(inBtn(raw,CBTN.contract)){contractIx=(contractIx+1)%CONTRACTS.length;localStorage.hs_contract=contractIx;const c=CONTRACTS[contractIx];say(c.label+'  ·  '+c.terms+(c.mult!==1?'  ·  SCORE x'+c.mult:''));click(1200,.02);return;}
-  for(let i=0;i<16;i++){if(inBtn(raw,TILE(i))){pickStage(i+1);if(!armed)arm();return;}}if(state==='won')continueGame();else if(!armed)arm();else start();return;}
+  if(cardOpen){const was=cardOpen;cardOpen=null;holdBtn=null;if(was==='contract'){const k=contractCardHit(raw);if(k>=0){contractIx=k;localStorage.hs_contract=k;click(1200,.02);}}else click(900,.02);return;}
+  if(inBtn(raw,CBTN.gear)){settingsOpen=true;click(1200,.02);return;}
+  for(const k of ['daily','contract','help','dex']){if(inBtn(raw,CBTN[k])){holdBtn=k;holdT=t;return;}}
+  if(!armed)arm();
+  for(let i=0;i<16;i++){if(inBtn(raw,TILE(i))){if(i+1>unlocked){pickStage(i+1);return;}pickStage(i+1);if(firstHelp())return;start();return;}}
+  if(state==='won'){continueGame();return;}
+  if(firstHelp())return;start();return;}
  // a finger landing is how you MOVE on a phone -- only a mouse click means "bomb"
  if(!isT)wantBomb=1;});
+// quick tap = do the button's thing; a held press already opened its card (see frame()), so do nothing
+C.addEventListener('pointerup',e=>{if(!holdBtn)return;const k=holdBtn;holdBtn=null;if(cardOpen||state==='play')return;
+ if(k==='daily'){if(!armed)arm();if(firstHelp())return;wantDaily=true;start();}
+ else if(k==='contract'){contractIx=(contractIx+1)%CONTRACTS.length;localStorage.hs_contract=contractIx;const c=CONTRACTS[contractIx];say(c.label+'  \u00b7  '+c.terms+(c.mult!==1?'  \u00b7  SCORE x'+c.mult:''));click(1200,.02);}
+ else if(k==='help'){cardOpen='help';click(1200,.02);}
+ else if(k==='dex'){dexOpen=true;click(1200,.02);}});
+C.addEventListener('pointercancel',()=>{holdBtn=null;});
 addEventListener('contextmenu',e=>e.preventDefault());
 addEventListener('gesturestart',e=>e.preventDefault());
 document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});

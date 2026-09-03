@@ -10,7 +10,8 @@ const STAT={runs:+localStorage.hs_runs||0,bosses:+localStorage.hs_bosses||0,deep
 try{STAT.dex=JSON.parse(localStorage.hs_dex||'{}')||{};STAT.bdex=JSON.parse(localStorage.hs_bdex||'{}')||{};}catch(e){}
 function statSave(){localStorage.hs_runs=STAT.runs;localStorage.hs_bosses=STAT.bosses;localStorage.hs_deepest=STAT.deepest;try{localStorage.hs_dex=JSON.stringify(STAT.dex);localStorage.hs_bdex=JSON.stringify(STAT.bdex);}catch(e){}}
 function pickStage(n){n=clamp(n,1,16);if(n>unlocked){say('LEVEL '+n+' LOCKED  \u2014  REACH IT TO PLAY IT');noise(.12,.025,300,1.2,140,'lowpass');return;}startStage=n;localStorage.hs_start=startStage;click(1200,.02);}
-const TILE=(i)=>({x:26+(i%8)*54,y:H-150+Math.floor(i/8)*44,w:48,h:38});
+// 4x4 world grid in the middle of the title screen (was 8x2 at the bottom, 48px tiles nobody could read)
+const TILE=(i)=>({x:20+(i%4)*112,y:300+Math.floor(i/4)*72,w:104,h:64});
 function arm(){armed=true;ctx();music('title');}
 function continueGame(){state='play';stage++;stageT=0;loop++;levelIntro=200;nextWave=0;rushDone=false;bossAlive=false;boss=null;enemies=[];ebullets=[];pickups=[];buildDecor((stage-1)%NL);SFX.levelStart();music('main');}let state='title',paused=false,t=0,score=0,hi=+localStorage.hs_hi||0,stage=1,stageT=0,bossAlive=false,shake=0,wantBomb=0,msg='',msgT=0,loop=0;
 const PLABEL={nectar:'POWER UP',bomb:'BOMB +1',life:'1 UP',honey:'HONEY · WIDE SPREAD',stinger:'STINGER · PIERCE',pollen:'POLLEN · HOMING',water:'NECTAR · SPLASH STREAM',wax:'WAX · STICKY SLOW',thorn:'PROPOLIS · SHOTGUN',petal:'HONEYCOMB · SHIELD + DARTS',lance:'LANCE · PIERCING SPEAR',drones:'GUARD BEES · HUNTERS',static:'STATIC · CHAIN ZAP',saw:'SEED SAW · BOOMERANG',lash:'LIGHT LASH · BENDING BEAM',rain:'NECTAR RAIN · FROM ABOVE',lure:'LURE · PULLS THEN BURSTS',grenade:'COMB GRENADE · SHARDS',wall:'PROPOLIS WALL · SHIELD'};

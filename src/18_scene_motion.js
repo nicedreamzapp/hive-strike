@@ -316,6 +316,27 @@ function drawPickup(p){emboss(p.x,p.y,70,()=>{const pulse=1.35+Math.sin(p.t*.15)
   else{X.fillStyle=rg(0,0,13,'#fff4c8','#e08a10');ell(0,0,13,13);X.fill();X.fillStyle='#7a4a00';for(let k=0;k<6;k++){const a=k*Math.PI/3;X.save();X.translate(Math.cos(a)*6.5,Math.sin(a)*6.5);X.beginPath();for(let j=0;j<6;j++){const aa=j*Math.PI/3;X.lineTo(Math.cos(aa)*3.4,Math.sin(aa)*3.4);}X.closePath();X.fill();X.restore();}X.fillStyle='#fff';ell(0,0,3,3);X.fill();}},{alt:.8});
  X.save();X.strokeStyle='rgba(90,255,130,.95)';X.lineWidth=2.5;X.setLineDash([6,5]);X.lineDashOffset=-p.t*.6;ell(p.x,p.y,22,22);X.stroke();X.setLineDash([]);
  X.fillStyle=WEAPONS[p.k]?WEAPONS[p.k].col:'#c8ffd4';X.font='bold 11px '+FONT;X.textAlign='center';X.shadowColor='#000';X.shadowBlur=4;X.fillText(PLABEL[p.k],p.x,p.y+37);if(WEAPONS[p.k]){X.fillStyle='#fff';X.font='bold 9px '+FONT;X.fillText(P.wpn===p.k?'= LEVEL UP':'= SWITCH GUN (−1 Lv)',p.x,p.y+49);}X.restore();}
+// one small picture per weapon, drawn in its own colour -- what the shot LOOKS like, not what it is called
+function weaponGlyph(k,x,y,r,col){X.save();X.translate(x,y);X.fillStyle=col;X.strokeStyle=col;X.lineCap='round';X.lineWidth=2.2;X.shadowColor='#000';X.shadowBlur=3;
+ switch(k){
+  case 'honey':for(const a of[-.55,-.18,.18,.55]){ell(Math.sin(a)*r*.8,-Math.cos(a)*r*.6+r*.3,r*.22,r*.22);X.fill();}ell(0,r*.55,r*.3,r*.3);X.fill();break;                 // a fan of drops
+  case 'stinger':X.lineWidth=3;X.beginPath();X.moveTo(0,r);X.lineTo(0,-r);X.stroke();X.globalAlpha=.4;X.lineWidth=7;X.stroke();break;                                        // one beam
+  case 'pollen':for(let i=0;i<3;i++){const a=-1.2+i*1.2;ell(Math.cos(a)*r*.55,Math.sin(a)*r*.55,r*.26,r*.26);X.fill();}X.lineWidth=1.5;X.beginPath();X.arc(0,0,r*.55,-1.5,1.6);X.stroke();break;   // seekers curving in
+  case 'water':X.beginPath();X.moveTo(0,-r);X.quadraticCurveTo(r*.9,r*.2,0,r*.9);X.quadraticCurveTo(-r*.9,r*.2,0,-r);X.fill();break;                                          // a drop
+  case 'wax':ell(0,0,r*.85,r*.7);X.fill();ell(r*.35,r*.75,r*.3,r*.4);X.fill();break;                                                                                          // a glob
+  case 'thorn':X.lineWidth=2.5;for(const a of[-.5,-.25,0,.25,.5]){X.beginPath();X.moveTo(0,r*.9);X.lineTo(Math.sin(a)*r,r*.9-Math.cos(a)*r*1.8);X.stroke();}break;              // shotgun spray
+  case 'petal':X.lineWidth=2;X.beginPath();X.arc(0,0,r*.75,0,7);X.stroke();for(let i=0;i<6;i++){const a=i*Math.PI/3;ell(Math.cos(a)*r*.75,Math.sin(a)*r*.75,r*.2,r*.2);X.fill();}break;   // orbit
+  case 'lance':X.lineWidth=3;X.beginPath();X.moveTo(0,r);X.lineTo(0,-r*.2);X.stroke();X.beginPath();X.moveTo(0,-r);X.lineTo(-r*.35,-r*.2);X.lineTo(r*.35,-r*.2);X.closePath();X.fill();break;   // spear
+  case 'drones':for(const dx of[-r*.55,r*.55]){ell(dx,0,r*.32,r*.26);X.fill();X.globalAlpha=.5;ell(dx-r*.25,-r*.3,r*.22,r*.12,-.5);X.fill();ell(dx+r*.25,-r*.3,r*.22,r*.12,.5);X.fill();X.globalAlpha=1;}break;   // two bees
+  case 'static':X.lineWidth=2.4;X.beginPath();X.moveTo(-r*.2,-r);X.lineTo(r*.35,-r*.15);X.lineTo(-r*.3,r*.1);X.lineTo(r*.2,r);X.stroke();break;                                // zigzag
+  case 'saw':X.beginPath();for(let i=0;i<16;i++){const a=i*Math.PI/8,rr=i%2?r:r*.62;X.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);}X.closePath();X.fill();X.fillStyle='rgba(0,0,0,.6)';ell(0,0,r*.22,r*.22);X.fill();break;   // blade
+  case 'lash':X.lineWidth=2.4;X.beginPath();X.moveTo(-r*.8,r*.8);X.quadraticCurveTo(-r*.2,-r*.6,r*.1,r*.1);X.quadraticCurveTo(r*.4,r*.7,r*.9,-r*.9);X.stroke();break;            // whip
+  case 'rain':for(const [dx,dy] of[[-r*.6,-r*.5],[0,r*.1],[r*.6,-r*.6],[-r*.2,r*.7],[r*.5,r*.6]]){X.beginPath();X.moveTo(dx,dy-r*.35);X.quadraticCurveTo(dx+r*.28,dy,dx,dy+r*.3);X.quadraticCurveTo(dx-r*.28,dy,dx,dy-r*.35);X.fill();}break;   // many drops
+  case 'lure':X.lineWidth=1.6;for(const rr of[r*.35,r*.65,r*.95]){X.globalAlpha=1.2-rr/r;X.beginPath();X.arc(0,0,rr,0,7);X.stroke();}X.globalAlpha=1;ell(0,0,r*.2,r*.2);X.fill();break;   // rings
+  case 'grenade':X.beginPath();for(let i=0;i<6;i++){const a=i*Math.PI/3;X.lineTo(Math.cos(a)*r*.85,Math.sin(a)*r*.85);}X.closePath();X.fill();X.fillStyle='rgba(0,0,0,.45)';for(let i=0;i<6;i++){const a=i*Math.PI/3;ell(Math.cos(a)*r*.42,Math.sin(a)*r*.42,r*.12,r*.12);X.fill();}break;   // comb
+  case 'wall':X.beginPath();X.roundRect(-r,-r*.28,r*2,r*.56,3);X.fill();X.globalAlpha=.35;X.beginPath();X.roundRect(-r*.7,-r*.7,r*1.4,r*.25,2);X.fill();X.beginPath();X.roundRect(-r*.7,r*.45,r*1.4,r*.25,2);X.fill();break;   // a bar
+  default:ell(0,0,r*.6,r*.6);X.fill();}
+ X.restore();}
 function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shake)*.4);
  if(collapse>0){const f=1-collapse/170;X.translate(0,-f*f*f*H*1.1);}   // you fall: the comb rushes UP past you
  drawWorld();
@@ -413,8 +434,16 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
   X.font='7px '+FONT;X.fillStyle='rgba(255,255,255,.5)';X.fillText('MULT',8,H-40);
   X.font='bold 10px '+FONT;X.fillStyle='rgba(255,255,255,.75)';X.fillText(chain+' KILLS IN A ROW',30,H-28);
   X.globalAlpha=1;}
- X.textAlign='center';X.fillStyle=WEAPONS[P.wpn].col;X.fillText(WEAPONS[P.wpn].name+' Lv'+P.lvl+'   ·   '+WEAPONS[P.wpn].tag,W/2,H-12);
- for(let i=0;i<5;i++){X.fillStyle=i<P.lvl?WEAPONS[P.wpn].col:'rgba(255,255,255,.25)';X.fillRect(W/2-40+i*16,H-34,12,4);}
+ // firepower badge (Matt 9/2: the weapon line was too small to read, too many words):
+ // a glyph of the weapon itself, the name in one readable line, five fat level pips. The
+ // tag ("WIDE SPREAD") only shows for three seconds after a pickup, as a toast.
+ {const wp=WEAPONS[P.wpn],col=wp.col,cx=W/2,by=H-24;
+  X.save();X.fillStyle='rgba(0,0,0,.45)';X.beginPath();X.roundRect(cx-92,by-19,184,38,10);X.fill();
+  weaponGlyph(P.wpn,cx-72,by,12,col);
+  X.textAlign='left';X.fillStyle=col;X.font='bold 14px '+FONT;X.shadowColor='#000';X.shadowBlur=4;X.fillText(wp.name,cx-54,by-2);
+  for(let i=0;i<5;i++){X.fillStyle=i<P.lvl?col:'rgba(255,255,255,.22)';X.beginPath();X.roundRect(cx-54+i*17,by+5,14,6,3);X.fill();}
+  X.fillStyle='rgba(255,255,255,.55)';X.font='bold 9px '+FONT;X.fillText('LV '+P.lvl,cx+34,by+11);
+  X.restore();}
  X.shadowBlur=0;
  // cap the bee row at five and count the rest -- eleven lives used to run into the
  // music button. HUDR below is the single source of truth for where this lands.
@@ -461,71 +490,13 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
   X.save();X.beginPath();X.roundRect(14,68,W-28,70,9);X.clip();X.translate(60,103);X.scale(.42,.42);X.translate(-60,-103);drawBoss({...bd,x:60,y:103,t:t,fl:0,hp:1,max:1,rage:0,seg:[]},true);X.restore();
   X.textAlign='left';X.shadowColor='#000';X.shadowBlur=6;X.fillStyle=pulse>.5?'#fff':'#ffb0b0';X.font='bold 20px '+FONT;X.fillText('WARNING',118,92);X.fillStyle='#ffd23f';X.font='bold 17px '+FONT;X.fillText(bd.name,118,113);X.fillStyle='#ffd0d0';X.font='italic 11px '+FONT;X.fillText(bd.taunt,118,130);X.shadowBlur=0;X.restore();}
  if(state==='play'&&levelClear>0&&!collapse){X.textAlign='center';X.shadowColor='#000';X.shadowBlur=10;X.fillStyle='#fff';X.font='bold 46px '+FONT;X.fillText('LEVEL '+stage+' CLEAR!',W/2,H/2-40);X.font='bold 18px '+FONT;X.fillStyle='#ffd23f';X.fillText(BOSSES[LV().boss].name+' DEFEATED   +'+(5000*(stage+loop)),W/2,H/2);X.font='14px '+FONT;X.fillStyle='#c8ffd4';X.fillText('grab the goodies!',W/2,H/2+28);X.shadowBlur=0;}
- if(state!=='play'){const sp=splashFrame();if(sp){drawArt(sp,1,PXD.splash);X.save();cloudShadows(.2);X.globalCompositeOperation='lighter';X.globalAlpha=.10+(.5+Math.sin(t*.02)*.5)*.08;X.fillStyle=rg(W/2,H*.3,240,'rgba(255,220,140,.9)','rgba(255,220,140,0)');ell(W/2,H*.3,240,240);X.fill();X.restore();const g=X.createLinearGradient(0,H*.5,0,H);g.addColorStop(0,'rgba(0,10,25,0)');g.addColorStop(.35,'rgba(0,10,25,.42)');g.addColorStop(1,'rgba(0,10,25,.58)');X.fillStyle=g;X.fillRect(0,0,W,H);X.fillStyle='rgba(0,10,25,.16)';X.fillRect(0,0,W,150);}else{X.fillStyle='rgba(0,20,40,.45)';X.fillRect(0,0,W,H);}
-  X.textAlign='center';X.shadowColor='#000';X.shadowBlur=14;X.fillStyle='#ffd23f';X.font='bold 64px '+FONT;X.fillText('HIVE STRIKE',W/2,sp?92:200);X.shadowBlur=0;
+ if(state!=='play'){const sp=splashFrame();if(sp){X.save();X.translate(0,-112);drawArt(sp,1,PXD.splash);X.restore();/* lifted 112px so the bee's face sits in the art band above the world grid, not under it */X.save();cloudShadows(.2);X.globalCompositeOperation='lighter';X.globalAlpha=.10+(.5+Math.sin(t*.02)*.5)*.08;X.fillStyle=rg(W/2,H*.3,240,'rgba(255,220,140,.9)','rgba(255,220,140,0)');ell(W/2,H*.3,240,240);X.fill();X.restore();const g=X.createLinearGradient(0,H*.5,0,H);g.addColorStop(0,'rgba(0,10,25,0)');g.addColorStop(.35,'rgba(0,10,25,.42)');g.addColorStop(1,'rgba(0,10,25,.58)');X.fillStyle=g;X.fillRect(0,0,W,H);X.fillStyle='rgba(0,10,25,.16)';X.fillRect(0,0,W,150);}else{X.fillStyle='rgba(0,20,40,.45)';X.fillRect(0,0,W,H);}
+  X.textAlign='center';X.shadowColor='#000';X.shadowBlur=14;X.fillStyle='#ffd23f';X.font='bold 64px '+FONT;X.fillText('HIVE STRIKE',W/2,sp?66:200);X.shadowBlur=0;
   if(!sp)emboss(W/2,265,150,()=>bee(0,0,26,'#ffd23f','#1a1a1a','#fff'),{alt:0});
   X.fillStyle='#fff';X.font='14px '+FONT;
-  X.shadowColor='#000';X.shadowBlur=6;if(state==='won'){X.font='bold 30px '+FONT;X.fillStyle='#8dff9a';X.fillText('THE HIVE IS SAFE!',W/2,sp?306:320);X.font='14px '+FONT;X.fillStyle='#fff';X.fillText('all sixteen worlds cleared   ·   SCORE '+score+'   HI '+hi,W/2,sp?332:348);X.font='12px '+FONT;X.fillStyle='#cfe8ff';X.fillText('best chain x'+Math.min(8,1+Math.floor(chainBest/6))+'  ('+chainBest+' kills)   ·   '+grazed+' grazes',W/2,sp?352:368);}else if(state==='over'){X.font='bold 26px '+FONT;X.fillStyle='#ff4d6d';X.fillText('THE HIVE HAS FALLEN',W/2,sp?306:320);X.font='14px '+FONT;X.fillStyle='#fff';X.fillText('SCORE '+score+'   HI '+hi+'   LEVEL '+stage,W/2,sp?332:348);X.font='12px '+FONT;X.fillStyle='#cfe8ff';X.fillText('best chain x'+Math.min(8,1+Math.floor(chainBest/6))+'  ('+chainBest+' kills)   ·   '+grazed+' grazes',W/2,sp?352:368);}
-  else{X.font='bold 16px '+FONT;X.fillText('sixteen worlds. sixteen bosses. forty-eight bugs. one bee.',W/2,sp?122:335);}
-  // daily hive + queen's contract chips: DAILY runs today's seeded contract from level 1
-  // for a comparable score; CONTRACT cycles the terms for a normal run. tap to use.
-  {const dc=dailyContract(),cc=CONTRACTS[contractIx],db=dailyBest();
-   const chip=(b,hot)=>{X.save();X.fillStyle=hot?'rgba(20,50,24,.78)':'rgba(6,14,28,.78)';X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,8);X.fill();X.strokeStyle=hot?'rgba(141,255,154,.55)':'rgba(255,210,63,.45)';X.lineWidth=1;X.stroke();X.restore();};
-   chip(CBTN.daily,true);chip(CBTN.contract,false);
-   X.textAlign='center';X.shadowColor='#000';X.shadowBlur=3;
-   X.fillStyle='#8dff9a';X.font='bold 11px '+FONT;X.fillText('DAILY HIVE  ·  '+dc.label+'  x'+dc.mult,CBTN.daily.x+CBTN.daily.w/2,CBTN.daily.y+13);
-   X.fillStyle='#cfe8ff';X.font='9px '+FONT;X.fillText(db?'best today  '+db:'not flown today  ·  tap to fly',CBTN.daily.x+CBTN.daily.w/2,CBTN.daily.y+24);
-   X.fillStyle='#ffd23f';X.font='bold 11px '+FONT;X.fillText('CONTRACT · '+cc.label+(cc.mult!==1?'  x'+cc.mult:''),CBTN.contract.x+CBTN.contract.w/2,CBTN.contract.y+13);
-   X.fillStyle='#cfe8ff';X.font='9px '+FONT;X.fillText(cc.terms+'  ·  tap to change',CBTN.contract.x+CBTN.contract.w/2,CBTN.contract.y+24);
-   X.shadowBlur=0;}
-  // instructions as a laid-out table instead of six centred lines running together
-  {const ty=sp?392:372,colL=W*.06,colR=W*.53,colW=W*.41;
-   X.save();X.fillStyle='rgba(6,14,28,.20)';X.beginPath();X.roundRect(colL-10,ty-20,W-2*(colL-10),150,10);X.fill();
-   X.strokeStyle='rgba(255,210,63,.22)';X.lineWidth=1;X.beginPath();X.roundRect(colL-10,ty-20,W-2*(colL-10),150,10);X.stroke();
-   // the panel stays see-through so the bee reads through it; the text earns its
-   // contrast from a shadow instead of from a slab painted over the art
-   X.shadowColor='rgba(0,0,0,.95)';X.shadowBlur=4;X.shadowOffsetY=1;
-   const head=(txt,x)=>{X.textAlign='left';X.font='bold 10px '+FONT;X.fillStyle='#ffd23f';X.fillText(txt,x,ty);
-     X.strokeStyle='rgba(255,210,63,.30)';X.beginPath();X.moveTo(x,ty+5);X.lineTo(x+colW,ty+5);X.stroke();};
-   const row=(k,v,x,i,off)=>{const y=ty+20+i*15;X.textAlign='left';X.font='bold 10px '+FONT;X.fillStyle='#ffffff';X.fillText(k,x,y);
-     X.font='10px '+FONT;X.fillStyle='#dceaf7';X.fillText(v,x+off,y);};
-   head('CONTROLS',colL);head('PICK UPS',colR);
-   (touchMode
-     ? [['DRAG','the bee follows your finger'],['BOMB button','bottom right'],['II button','pause'],['♪ / FX','tap to mute']]
-     : [['ARROWS / WASD','move'],['SHIFT','focus, slow and precise'],['X or B','bomb'],['M / N','mute FX / music']]
-   ).forEach((r,i)=>row(r[0],r[1],colL,i,84));
-   [['NECTAR','power up, Lv1 to Lv5'],['S','bomb'],['HEART','extra life'],['GUN DROPS','label says what it does']].forEach((r,i)=>row(r[0],r[1],colR,i,66));
-   X.textAlign='center';X.font='11px '+FONT;X.fillStyle='#8dff9a';
-   X.fillText('GREEN RING = grab it        RED GLOW = dodge it',W/2,ty+90);X.textAlign='center';
-   X.fillStyle='#a8c4e0';X.font='11px '+FONT;
-   X.font='9px '+FONT;
-   X.fillText('CHAIN  \u00b7  six fast kills = x2 score, up to x8   \u2014   it resets if you stop or get hit',W/2,ty+104);
-   X.fillText('fill the top bar to reach the boss   \u00b7   webs tangle you   \u00b7   gnat clouds slow you',W/2,ty+115);
-   X.fillText(touchMode?'the bee rides above your finger   \u00b7   bombs fire themselves when you are about to be hit':'the bee follows your cursor   \u00b7   bombs fire themselves when you are about to be hit',W/2,ty+126);X.font='11px '+FONT;
-   X.restore();}
-  X.textAlign='center';
-  // two level sliders -- tap anywhere along one to set it
-  {const bar=(b,lab,v,col)=>{
-    X.textAlign='right';X.font='bold 9px '+FONT;X.fillStyle='rgba(255,255,255,.7)';X.fillText(lab,b.x-10,b.y+11);
-    X.fillStyle='rgba(0,0,0,.45)';X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,4);X.fill();
-    X.fillStyle=col;X.beginPath();X.roundRect(b.x,b.y,Math.max(3,b.w*v),b.h,4);X.fill();
-    X.strokeStyle='rgba(255,255,255,.22)';X.lineWidth=1;X.beginPath();X.roundRect(b.x+.5,b.y+.5,b.w-1,b.h-1,4);X.stroke();
-    for(let i=1;i<5;i++){X.fillStyle='rgba(0,0,0,.30)';X.fillRect(b.x+b.w*i/5,b.y+2,1,b.h-4);}
-    X.textAlign='left';X.font='9px '+FONT;X.fillStyle='rgba(255,255,255,.55)';X.fillText(Math.round(v*100)+'%',b.x+b.w+7,b.y+11);};
-   bar(BARS.mus,'MUSIC',MUSLV,'#7fd4ff'); bar(BARS.sfx,'FX',SFXLV,'#ffd23f');}
-  // build stamp: centred at the very bottom, between the left and right HUD text,
-  // small and dim enough to disappear unless you go looking for it
-  {X.save();X.textAlign='center';X.font='8px '+FONT;X.fillStyle='rgba(255,255,255,.30)';
-   X.shadowColor='rgba(0,0,0,.8)';X.shadowBlur=3;X.fillText(BUILD,W/2,H-9);X.restore();}
-  X.textAlign='center';X.fillStyle='#ffd23f';X.font='bold 12px '+FONT;X.fillText(touchMode?'CHOOSE YOUR WORLD   ·   tap a world you have reached':'CHOOSE YOUR WORLD   ←  →   (1 – 8 keys pick the first row)',W/2,H-160);
-  for(let i=0;i<16;i++){const tl=TILE(i),sel=startStage===i+1,th=THEMES[i],lock=(i+1)>unlocked,bs=bestFor(i+1);panel(tl.x,tl.y,tl.w,tl.h,6);
-   if(lock){X.fillStyle='rgba(0,0,0,.45)';X.beginPath();X.roundRect(tl.x,tl.y,tl.w,tl.h,6);X.fill();}
-   if(sel&&!lock){X.strokeStyle='#ffd23f';X.lineWidth=2.5;X.beginPath();X.roundRect(tl.x,tl.y,tl.w,tl.h,6);X.stroke();}
-   X.fillStyle=lock?'rgba(255,255,255,.35)':sel?'#ffd23f':'#cfe8ff';X.font='bold 14px '+FONT;X.fillText(lock?'\uD83D\uDD12':String(i+1),tl.x+tl.w/2,tl.y+17);
-   X.font='7px '+FONT;X.fillStyle=lock?'rgba(255,255,255,.3)':sel?'#fff':'rgba(255,255,255,.7)';X.fillText(th.name.replace('THE ',''),tl.x+tl.w/2,tl.y+30);
-   if(!lock&&bs>0){X.font='6px '+FONT;X.fillStyle='rgba(255,210,63,.85)';X.fillText(bs>=1000?(bs/1000).toFixed(bs>=10000?0:1)+'k':String(bs),tl.x+tl.w/2,tl.y+37);}}
-  // Bug-Dex chip
-  {const n=dexSeen();X.save();X.fillStyle='rgba(6,14,28,.78)';X.beginPath();X.roundRect(DBTN.x,DBTN.y,DBTN.w,DBTN.h,8);X.fill();X.strokeStyle='rgba(127,212,255,.5)';X.lineWidth=1;X.stroke();X.textAlign='center';X.shadowColor='#000';X.shadowBlur=3;X.fillStyle='#7fd4ff';X.font='bold 11px '+FONT;X.fillText('BUG-DEX  '+n+' / '+DEX.length+'   \u00b7   '+(touchMode?'tap to open':'D to open'),W/2,DBTN.y+16);X.restore();}
+  X.shadowColor='#000';X.shadowBlur=6;if(state==='won'){X.font='bold 30px '+FONT;X.fillStyle='#8dff9a';X.fillText('THE HIVE IS SAFE!',W/2,sp?158:320);X.font='14px '+FONT;X.fillStyle='#fff';X.fillText('all sixteen worlds cleared   ·   SCORE '+score+'   HI '+hi,W/2,sp?182:348);X.font='12px '+FONT;X.fillStyle='#cfe8ff';X.fillText('best chain x'+Math.min(8,1+Math.floor(chainBest/6))+'  ('+chainBest+' kills)   ·   '+grazed+' grazes',W/2,sp?204:368);}else if(state==='over'){X.font='bold 26px '+FONT;X.fillStyle='#ff4d6d';X.fillText('THE HIVE HAS FALLEN',W/2,sp?306:320);X.font='14px '+FONT;X.fillStyle='#fff';X.fillText('SCORE '+score+'   HI '+hi+'   LEVEL '+stage,W/2,sp?332:348);X.font='12px '+FONT;X.fillStyle='#cfe8ff';X.fillText('best chain x'+Math.min(8,1+Math.floor(chainBest/6))+'  ('+chainBest+' kills)   ·   '+grazed+' grazes',W/2,sp?352:368);}
+  else{X.font='bold 16px '+FONT;X.fillText('sixteen worlds. sixteen bosses. forty-eight bugs. one bee.',W/2,sp?94:335);}
+  drawTitleUI(sp);
   X.shadowBlur=0;}
  if(dexOpen&&state!=='play')drawDex();
  if(resumeCountdown>0){X.fillStyle='#0008';X.fillRect(0,0,W,H);X.textAlign='center';X.fillStyle='#fff';X.font='bold 22px '+FONT;X.fillText('GET READY',W/2,H/2-40);X.fillStyle='#ffd23f';X.font='bold 64px '+FONT;X.fillText(String(Math.ceil(resumeCountdown/60)),W/2,H/2+30);}

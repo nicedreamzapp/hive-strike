@@ -43,7 +43,7 @@ const FONT='"Avenir Next Condensed","Futura","Arial Narrow","Helvetica Neue",san
 // stamped by tools/assemble.py from the version in package.json and the git commit --
 // never edit by hand. It is how you tell at a glance whether the phone in your hand is
 // running the same build as the one next to it.
-const BUILD='v1.0.0  ·  e53c0aa+  ·  Sep 2';
+const BUILD='v1.0.0  ·  85da648+  ·  Sep 2';
 // letterbox the play field inside whatever the device actually gives us, safe-area padding
 // already removed by the body. visualViewport is the honest number on iOS.
 function fit(){const cs=getComputedStyle(document.body),
@@ -77,7 +77,8 @@ function ptr(e){const r=C.getBoundingClientRect();const isT=e.pointerType==='tou
 // on-screen controls, only drawn once a finger has actually been used
 const TBTN={bomb:{x:W-64,y:H-124,w:54,h:54},pause:{x:W-40,y:4,w:34,h:22}};
 // title-screen level sliders: Matt tunes the mix himself instead of waiting on a rebuild
-const BARS={mus:{x:112,y:H-196,w:96,h:13},sfx:{x:286,y:H-196,w:96,h:13}};
+// they live in the settings sheet now (gear button, bottom right of the title screen)
+const BARS={mus:{x:150,y:H-168,w:200,h:14},sfx:{x:150,y:H-122,w:200,h:14}};
 // One place that knows where every HUD box is, so the pause button can never be
 // parked on top of the bomb count again. tools/hud_overlap.mjs asserts they are disjoint.
 const pauseGap=()=>(touchMode&&state==='play')?TBTN.pause.w+10:0;
@@ -92,10 +93,13 @@ const barHit=(p,b)=>p.x>=b.x-8&&p.x<=b.x+b.w+8&&p.y>=b.y-9&&p.y<=b.y+b.h+9;
 const barVal=(p,b)=>Math.max(0,Math.min(1,(p.x-b.x)/b.w));
 C.addEventListener('pointermove',e=>{target=ptr(e);lastMove=t;});
 const BTN={music:{x:W/2-46,y:4,w:40,h:22},sfx:{x:W/2+6,y:4,w:40,h:22}};const inBtn=(p,b)=>p.x>=b.x&&p.x<=b.x+b.w&&p.y>=b.y&&p.y<=b.y+b.h;
-// daily hive + queen's contract chips, title screen only
-const CBTN={daily:{x:8,y:30,w:W/2-14,h:30},contract:{x:W/2+6,y:30,w:W/2-14,h:30}};
-// the Bug-Dex chip sits between the world tiles and the score line
-const DBTN={x:W/2-104,y:H-58,w:208,h:24};
+// title screen, redone 2026-09-02 (Matt: chips covered the title, nothing readable, art buried):
+// art up top, a 4x4 world grid in the middle, ONE row of four big buttons under it, a gear.
+// Tap a button = do it. HOLD a button = a full-screen card in big letters saying what it is.
+const CBTN={daily:{x:20,y:600,w:104,h:50},contract:{x:132,y:600,w:104,h:50},help:{x:244,y:600,w:104,h:50},dex:{x:356,y:600,w:104,h:50},gear:{x:W-46,y:668,w:36,h:36}};
+const DBTN=CBTN.dex;
+let holdBtn=null,holdT=0,cardOpen=null,settingsOpen=false;const HOLD_FRAMES=22;
+function firstHelp(){try{if(localStorage.hs_seen_help)return false;localStorage.hs_seen_help='1';}catch(e){return false;}cardOpen='help';return true;}
 C.addEventListener('pointerdown',e=>{const isT=e.pointerType==='touch',p=ptr(e),raw={x:p.x,y:p.y+(isT?TOUCH_LIFT:0)};
  audioWake();
  if(inBtn(raw,BTN.music)){musicToggle();return;}
@@ -105,19 +109,32 @@ C.addEventListener('pointerdown',e=>{const isT=e.pointerType==='touch',p=ptr(e),
   if(inBtn(raw,TBTN.bomb)){wantBomb=1;return;}
   if(paused||resumeCountdown>0){resumeCountdown=0;paused=false;return;}
  }
- if(state!=='play'){
+ if(state!=='play'&&settingsOpen&&!dexOpen){
   if(barHit(raw,BARS.mus)){setMusLv(barVal(raw,BARS.mus));say('MUSIC '+Math.round(MUSLV*100)+'%');return;}
   if(barHit(raw,BARS.sfx)){setSfxLv(barVal(raw,BARS.sfx));click(1400,.02);say('EFFECTS '+Math.round(SFXLV*100)+'%');return;}
+  if(inBtn(raw,SBTN.music)){musicToggle();return;}
+  if(inBtn(raw,SBTN.sfx)){sfxToggle();return;}
+  settingsOpen=false;click(900,.02);return;   // tap anywhere else closes the sheet
  }
  target=p;lastMove=t;
  if(dexOpen){dexTap(raw);return;}
  if(state!=='play'){
-  if(inBtn(raw,DBTN)){dexOpen=true;click(1200,.02);return;}
-  if(inBtn(raw,CBTN.daily)){if(!armed)arm();wantDaily=true;start();return;}
-  if(inBtn(raw,CBTN.contract)){contractIx=(contractIx+1)%CONTRACTS.length;localStorage.hs_contract=contractIx;const c=CONTRACTS[contractIx];say(c.label+'  ·  '+c.terms+(c.mult!==1?'  ·  SCORE x'+c.mult:''));click(1200,.02);return;}
-  for(let i=0;i<16;i++){if(inBtn(raw,TILE(i))){pickStage(i+1);if(!armed)arm();return;}}if(state==='won')continueGame();else if(!armed)arm();else start();return;}
+  if(cardOpen){const was=cardOpen;cardOpen=null;holdBtn=null;if(was==='contract'){const k=contractCardHit(raw);if(k>=0){contractIx=k;localStorage.hs_contract=k;click(1200,.02);}}else click(900,.02);return;}
+  if(inBtn(raw,CBTN.gear)){settingsOpen=true;click(1200,.02);return;}
+  for(const k of ['daily','contract','help','dex']){if(inBtn(raw,CBTN[k])){holdBtn=k;holdT=t;return;}}
+  if(!armed)arm();
+  for(let i=0;i<16;i++){if(inBtn(raw,TILE(i))){if(i+1>unlocked){pickStage(i+1);return;}pickStage(i+1);if(firstHelp())return;start();return;}}
+  if(state==='won'){continueGame();return;}
+  if(firstHelp())return;start();return;}
  // a finger landing is how you MOVE on a phone -- only a mouse click means "bomb"
  if(!isT)wantBomb=1;});
+// quick tap = do the button's thing; a held press already opened its card (see frame()), so do nothing
+C.addEventListener('pointerup',e=>{if(!holdBtn)return;const k=holdBtn;holdBtn=null;if(cardOpen||state==='play')return;
+ if(k==='daily'){if(!armed)arm();if(firstHelp())return;wantDaily=true;start();}
+ else if(k==='contract'){contractIx=(contractIx+1)%CONTRACTS.length;localStorage.hs_contract=contractIx;const c=CONTRACTS[contractIx];say(c.label+'  \u00b7  '+c.terms+(c.mult!==1?'  \u00b7  SCORE x'+c.mult:''));click(1200,.02);}
+ else if(k==='help'){cardOpen='help';click(1200,.02);}
+ else if(k==='dex'){dexOpen=true;click(1200,.02);}});
+C.addEventListener('pointercancel',()=>{holdBtn=null;});
 addEventListener('contextmenu',e=>e.preventDefault());
 addEventListener('gesturestart',e=>e.preventDefault());
 document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
@@ -530,7 +547,8 @@ const STAT={runs:+localStorage.hs_runs||0,bosses:+localStorage.hs_bosses||0,deep
 try{STAT.dex=JSON.parse(localStorage.hs_dex||'{}')||{};STAT.bdex=JSON.parse(localStorage.hs_bdex||'{}')||{};}catch(e){}
 function statSave(){localStorage.hs_runs=STAT.runs;localStorage.hs_bosses=STAT.bosses;localStorage.hs_deepest=STAT.deepest;try{localStorage.hs_dex=JSON.stringify(STAT.dex);localStorage.hs_bdex=JSON.stringify(STAT.bdex);}catch(e){}}
 function pickStage(n){n=clamp(n,1,16);if(n>unlocked){say('LEVEL '+n+' LOCKED  \u2014  REACH IT TO PLAY IT');noise(.12,.025,300,1.2,140,'lowpass');return;}startStage=n;localStorage.hs_start=startStage;click(1200,.02);}
-const TILE=(i)=>({x:26+(i%8)*54,y:H-150+Math.floor(i/8)*44,w:48,h:38});
+// 4x4 world grid in the middle of the title screen (was 8x2 at the bottom, 48px tiles nobody could read)
+const TILE=(i)=>({x:20+(i%4)*112,y:300+Math.floor(i/4)*72,w:104,h:64});
 function arm(){armed=true;ctx();music('title');}
 function continueGame(){state='play';stage++;stageT=0;loop++;levelIntro=200;nextWave=0;rushDone=false;bossAlive=false;boss=null;enemies=[];ebullets=[];pickups=[];buildDecor((stage-1)%NL);SFX.levelStart();music('main');}let state='title',paused=false,t=0,score=0,hi=+localStorage.hs_hi||0,stage=1,stageT=0,bossAlive=false,shake=0,wantBomb=0,msg='',msgT=0,loop=0;
 const PLABEL={nectar:'POWER UP',bomb:'BOMB +1',life:'1 UP',honey:'HONEY · WIDE SPREAD',stinger:'STINGER · PIERCE',pollen:'POLLEN · HOMING',water:'NECTAR · SPLASH STREAM',wax:'WAX · STICKY SLOW',thorn:'PROPOLIS · SHOTGUN',petal:'HONEYCOMB · SHIELD + DARTS',lance:'LANCE · PIERCING SPEAR',drones:'GUARD BEES · HUNTERS',static:'STATIC · CHAIN ZAP',saw:'SEED SAW · BOOMERANG',lash:'LIGHT LASH · BENDING BEAM',rain:'NECTAR RAIN · FROM ABOVE',lure:'LURE · PULLS THEN BURSTS',grenade:'COMB GRENADE · SHARDS',wall:'PROPOLIS WALL · SHIELD'};
@@ -628,7 +646,7 @@ function fireInner(L,x,y){
  else if(P.wpn==='petal'){const want=2+Math.floor(L/2),have=bullets.filter(b=>b.orbit).length;if(have<want){for(let i=have;i<want;i++)bullets.push({x:P.x,y:P.y,vx:0,vy:0,d:.14+L*.03,r:7,k:'petal',orbit:1,pierce:1,a:i/want*Math.PI*2});FIRE.petal();}const n=L>=4?2:1;for(let i=0;i<n;i++)bullets.push({x:x+(i-(n-1)/2)*12,y,vx:0,vy:-11,d:.85+L*.18,r:5,k:'petal',a:-Math.PI/2});P.fireT=14;FIRE.petalDart();}
 }
 function bomb(){if(P.bombs<=0||P.dead)return;P.bombs--;shake=25;flash=1;stop(4);buzz('heavy');rumble(1,.08);swell(140,1,'sawtooth',.05,.15);noise(.5,.05,600,.7,120,'lowpass');say('SWARM CALL!');
- ebullets=[];for(const e of enemies){e.hp-=40;boom(e.x,e.y,'#ffd166',6);}if(boss){boss.hp-=60;boss.bombDmg=(boss.bombDmg||0)+60;}
+ ebullets=[];for(const e of enemies){e.hp-=40;boom(e.x,e.y,'#ffd166',6);}if(boss){boss.hp-=30;boss.bombDmg=(boss.bombDmg||0)+30;}   // was 60: with auto-bombs firing whenever you are about to be hit, bosses were dying too fast (Matt 9/2)
  for(let i=0;i<60;i++)parts.push({x:R(0,W),y:R(0,H),vx:R(-3,3),vy:R(-6,-1),l:R(30,70),c:'#ffd166',r:R(2,5),bee:1});}
 
 // ---------- LEVELS / THEMES ----------
@@ -1986,6 +2004,27 @@ function drawPickup(p){emboss(p.x,p.y,70,()=>{const pulse=1.35+Math.sin(p.t*.15)
   else{X.fillStyle=rg(0,0,13,'#fff4c8','#e08a10');ell(0,0,13,13);X.fill();X.fillStyle='#7a4a00';for(let k=0;k<6;k++){const a=k*Math.PI/3;X.save();X.translate(Math.cos(a)*6.5,Math.sin(a)*6.5);X.beginPath();for(let j=0;j<6;j++){const aa=j*Math.PI/3;X.lineTo(Math.cos(aa)*3.4,Math.sin(aa)*3.4);}X.closePath();X.fill();X.restore();}X.fillStyle='#fff';ell(0,0,3,3);X.fill();}},{alt:.8});
  X.save();X.strokeStyle='rgba(90,255,130,.95)';X.lineWidth=2.5;X.setLineDash([6,5]);X.lineDashOffset=-p.t*.6;ell(p.x,p.y,22,22);X.stroke();X.setLineDash([]);
  X.fillStyle=WEAPONS[p.k]?WEAPONS[p.k].col:'#c8ffd4';X.font='bold 11px '+FONT;X.textAlign='center';X.shadowColor='#000';X.shadowBlur=4;X.fillText(PLABEL[p.k],p.x,p.y+37);if(WEAPONS[p.k]){X.fillStyle='#fff';X.font='bold 9px '+FONT;X.fillText(P.wpn===p.k?'= LEVEL UP':'= SWITCH GUN (−1 Lv)',p.x,p.y+49);}X.restore();}
+// one small picture per weapon, drawn in its own colour -- what the shot LOOKS like, not what it is called
+function weaponGlyph(k,x,y,r,col){X.save();X.translate(x,y);X.fillStyle=col;X.strokeStyle=col;X.lineCap='round';X.lineWidth=2.2;X.shadowColor='#000';X.shadowBlur=3;
+ switch(k){
+  case 'honey':for(const a of[-.55,-.18,.18,.55]){ell(Math.sin(a)*r*.8,-Math.cos(a)*r*.6+r*.3,r*.22,r*.22);X.fill();}ell(0,r*.55,r*.3,r*.3);X.fill();break;                 // a fan of drops
+  case 'stinger':X.lineWidth=3;X.beginPath();X.moveTo(0,r);X.lineTo(0,-r);X.stroke();X.globalAlpha=.4;X.lineWidth=7;X.stroke();break;                                        // one beam
+  case 'pollen':for(let i=0;i<3;i++){const a=-1.2+i*1.2;ell(Math.cos(a)*r*.55,Math.sin(a)*r*.55,r*.26,r*.26);X.fill();}X.lineWidth=1.5;X.beginPath();X.arc(0,0,r*.55,-1.5,1.6);X.stroke();break;   // seekers curving in
+  case 'water':X.beginPath();X.moveTo(0,-r);X.quadraticCurveTo(r*.9,r*.2,0,r*.9);X.quadraticCurveTo(-r*.9,r*.2,0,-r);X.fill();break;                                          // a drop
+  case 'wax':ell(0,0,r*.85,r*.7);X.fill();ell(r*.35,r*.75,r*.3,r*.4);X.fill();break;                                                                                          // a glob
+  case 'thorn':X.lineWidth=2.5;for(const a of[-.5,-.25,0,.25,.5]){X.beginPath();X.moveTo(0,r*.9);X.lineTo(Math.sin(a)*r,r*.9-Math.cos(a)*r*1.8);X.stroke();}break;              // shotgun spray
+  case 'petal':X.lineWidth=2;X.beginPath();X.arc(0,0,r*.75,0,7);X.stroke();for(let i=0;i<6;i++){const a=i*Math.PI/3;ell(Math.cos(a)*r*.75,Math.sin(a)*r*.75,r*.2,r*.2);X.fill();}break;   // orbit
+  case 'lance':X.lineWidth=3;X.beginPath();X.moveTo(0,r);X.lineTo(0,-r*.2);X.stroke();X.beginPath();X.moveTo(0,-r);X.lineTo(-r*.35,-r*.2);X.lineTo(r*.35,-r*.2);X.closePath();X.fill();break;   // spear
+  case 'drones':for(const dx of[-r*.55,r*.55]){ell(dx,0,r*.32,r*.26);X.fill();X.globalAlpha=.5;ell(dx-r*.25,-r*.3,r*.22,r*.12,-.5);X.fill();ell(dx+r*.25,-r*.3,r*.22,r*.12,.5);X.fill();X.globalAlpha=1;}break;   // two bees
+  case 'static':X.lineWidth=2.4;X.beginPath();X.moveTo(-r*.2,-r);X.lineTo(r*.35,-r*.15);X.lineTo(-r*.3,r*.1);X.lineTo(r*.2,r);X.stroke();break;                                // zigzag
+  case 'saw':X.beginPath();for(let i=0;i<16;i++){const a=i*Math.PI/8,rr=i%2?r:r*.62;X.lineTo(Math.cos(a)*rr,Math.sin(a)*rr);}X.closePath();X.fill();X.fillStyle='rgba(0,0,0,.6)';ell(0,0,r*.22,r*.22);X.fill();break;   // blade
+  case 'lash':X.lineWidth=2.4;X.beginPath();X.moveTo(-r*.8,r*.8);X.quadraticCurveTo(-r*.2,-r*.6,r*.1,r*.1);X.quadraticCurveTo(r*.4,r*.7,r*.9,-r*.9);X.stroke();break;            // whip
+  case 'rain':for(const [dx,dy] of[[-r*.6,-r*.5],[0,r*.1],[r*.6,-r*.6],[-r*.2,r*.7],[r*.5,r*.6]]){X.beginPath();X.moveTo(dx,dy-r*.35);X.quadraticCurveTo(dx+r*.28,dy,dx,dy+r*.3);X.quadraticCurveTo(dx-r*.28,dy,dx,dy-r*.35);X.fill();}break;   // many drops
+  case 'lure':X.lineWidth=1.6;for(const rr of[r*.35,r*.65,r*.95]){X.globalAlpha=1.2-rr/r;X.beginPath();X.arc(0,0,rr,0,7);X.stroke();}X.globalAlpha=1;ell(0,0,r*.2,r*.2);X.fill();break;   // rings
+  case 'grenade':X.beginPath();for(let i=0;i<6;i++){const a=i*Math.PI/3;X.lineTo(Math.cos(a)*r*.85,Math.sin(a)*r*.85);}X.closePath();X.fill();X.fillStyle='rgba(0,0,0,.45)';for(let i=0;i<6;i++){const a=i*Math.PI/3;ell(Math.cos(a)*r*.42,Math.sin(a)*r*.42,r*.12,r*.12);X.fill();}break;   // comb
+  case 'wall':X.beginPath();X.roundRect(-r,-r*.28,r*2,r*.56,3);X.fill();X.globalAlpha=.35;X.beginPath();X.roundRect(-r*.7,-r*.7,r*1.4,r*.25,2);X.fill();X.beginPath();X.roundRect(-r*.7,r*.45,r*1.4,r*.25,2);X.fill();break;   // a bar
+  default:ell(0,0,r*.6,r*.6);X.fill();}
+ X.restore();}
 function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shake)*.4);
  if(collapse>0){const f=1-collapse/170;X.translate(0,-f*f*f*H*1.1);}   // you fall: the comb rushes UP past you
  drawWorld();
@@ -2083,8 +2122,16 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
   X.font='7px '+FONT;X.fillStyle='rgba(255,255,255,.5)';X.fillText('MULT',8,H-40);
   X.font='bold 10px '+FONT;X.fillStyle='rgba(255,255,255,.75)';X.fillText(chain+' KILLS IN A ROW',30,H-28);
   X.globalAlpha=1;}
- X.textAlign='center';X.fillStyle=WEAPONS[P.wpn].col;X.fillText(WEAPONS[P.wpn].name+' Lv'+P.lvl+'   ·   '+WEAPONS[P.wpn].tag,W/2,H-12);
- for(let i=0;i<5;i++){X.fillStyle=i<P.lvl?WEAPONS[P.wpn].col:'rgba(255,255,255,.25)';X.fillRect(W/2-40+i*16,H-34,12,4);}
+ // firepower badge (Matt 9/2: the weapon line was too small to read, too many words):
+ // a glyph of the weapon itself, the name in one readable line, five fat level pips. The
+ // tag ("WIDE SPREAD") only shows for three seconds after a pickup, as a toast.
+ {const wp=WEAPONS[P.wpn],col=wp.col,cx=W/2,by=H-24;
+  X.save();X.fillStyle='rgba(0,0,0,.45)';X.beginPath();X.roundRect(cx-92,by-19,184,38,10);X.fill();
+  weaponGlyph(P.wpn,cx-72,by,12,col);
+  X.textAlign='left';X.fillStyle=col;X.font='bold 14px '+FONT;X.shadowColor='#000';X.shadowBlur=4;X.fillText(wp.name,cx-54,by-2);
+  for(let i=0;i<5;i++){X.fillStyle=i<P.lvl?col:'rgba(255,255,255,.22)';X.beginPath();X.roundRect(cx-54+i*17,by+5,14,6,3);X.fill();}
+  X.fillStyle='rgba(255,255,255,.55)';X.font='bold 9px '+FONT;X.fillText('LV '+P.lvl,cx+34,by+11);
+  X.restore();}
  X.shadowBlur=0;
  // cap the bee row at five and count the rest -- eleven lives used to run into the
  // music button. HUDR below is the single source of truth for where this lands.
@@ -2131,71 +2178,13 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
   X.save();X.beginPath();X.roundRect(14,68,W-28,70,9);X.clip();X.translate(60,103);X.scale(.42,.42);X.translate(-60,-103);drawBoss({...bd,x:60,y:103,t:t,fl:0,hp:1,max:1,rage:0,seg:[]},true);X.restore();
   X.textAlign='left';X.shadowColor='#000';X.shadowBlur=6;X.fillStyle=pulse>.5?'#fff':'#ffb0b0';X.font='bold 20px '+FONT;X.fillText('WARNING',118,92);X.fillStyle='#ffd23f';X.font='bold 17px '+FONT;X.fillText(bd.name,118,113);X.fillStyle='#ffd0d0';X.font='italic 11px '+FONT;X.fillText(bd.taunt,118,130);X.shadowBlur=0;X.restore();}
  if(state==='play'&&levelClear>0&&!collapse){X.textAlign='center';X.shadowColor='#000';X.shadowBlur=10;X.fillStyle='#fff';X.font='bold 46px '+FONT;X.fillText('LEVEL '+stage+' CLEAR!',W/2,H/2-40);X.font='bold 18px '+FONT;X.fillStyle='#ffd23f';X.fillText(BOSSES[LV().boss].name+' DEFEATED   +'+(5000*(stage+loop)),W/2,H/2);X.font='14px '+FONT;X.fillStyle='#c8ffd4';X.fillText('grab the goodies!',W/2,H/2+28);X.shadowBlur=0;}
- if(state!=='play'){const sp=splashFrame();if(sp){drawArt(sp,1,PXD.splash);X.save();cloudShadows(.2);X.globalCompositeOperation='lighter';X.globalAlpha=.10+(.5+Math.sin(t*.02)*.5)*.08;X.fillStyle=rg(W/2,H*.3,240,'rgba(255,220,140,.9)','rgba(255,220,140,0)');ell(W/2,H*.3,240,240);X.fill();X.restore();const g=X.createLinearGradient(0,H*.5,0,H);g.addColorStop(0,'rgba(0,10,25,0)');g.addColorStop(.35,'rgba(0,10,25,.42)');g.addColorStop(1,'rgba(0,10,25,.58)');X.fillStyle=g;X.fillRect(0,0,W,H);X.fillStyle='rgba(0,10,25,.16)';X.fillRect(0,0,W,150);}else{X.fillStyle='rgba(0,20,40,.45)';X.fillRect(0,0,W,H);}
-  X.textAlign='center';X.shadowColor='#000';X.shadowBlur=14;X.fillStyle='#ffd23f';X.font='bold 64px '+FONT;X.fillText('HIVE STRIKE',W/2,sp?92:200);X.shadowBlur=0;
+ if(state!=='play'){const sp=splashFrame();if(sp){X.save();X.translate(0,-112);drawArt(sp,1,PXD.splash);X.restore();/* lifted 112px so the bee's face sits in the art band above the world grid, not under it */X.save();cloudShadows(.2);X.globalCompositeOperation='lighter';X.globalAlpha=.10+(.5+Math.sin(t*.02)*.5)*.08;X.fillStyle=rg(W/2,H*.3,240,'rgba(255,220,140,.9)','rgba(255,220,140,0)');ell(W/2,H*.3,240,240);X.fill();X.restore();const g=X.createLinearGradient(0,H*.5,0,H);g.addColorStop(0,'rgba(0,10,25,0)');g.addColorStop(.35,'rgba(0,10,25,.42)');g.addColorStop(1,'rgba(0,10,25,.58)');X.fillStyle=g;X.fillRect(0,0,W,H);X.fillStyle='rgba(0,10,25,.16)';X.fillRect(0,0,W,150);}else{X.fillStyle='rgba(0,20,40,.45)';X.fillRect(0,0,W,H);}
+  X.textAlign='center';X.shadowColor='#000';X.shadowBlur=14;X.fillStyle='#ffd23f';X.font='bold 64px '+FONT;X.fillText('HIVE STRIKE',W/2,sp?66:200);X.shadowBlur=0;
   if(!sp)emboss(W/2,265,150,()=>bee(0,0,26,'#ffd23f','#1a1a1a','#fff'),{alt:0});
   X.fillStyle='#fff';X.font='14px '+FONT;
-  X.shadowColor='#000';X.shadowBlur=6;if(state==='won'){X.font='bold 30px '+FONT;X.fillStyle='#8dff9a';X.fillText('THE HIVE IS SAFE!',W/2,sp?306:320);X.font='14px '+FONT;X.fillStyle='#fff';X.fillText('all sixteen worlds cleared   ·   SCORE '+score+'   HI '+hi,W/2,sp?332:348);X.font='12px '+FONT;X.fillStyle='#cfe8ff';X.fillText('best chain x'+Math.min(8,1+Math.floor(chainBest/6))+'  ('+chainBest+' kills)   ·   '+grazed+' grazes',W/2,sp?352:368);}else if(state==='over'){X.font='bold 26px '+FONT;X.fillStyle='#ff4d6d';X.fillText('THE HIVE HAS FALLEN',W/2,sp?306:320);X.font='14px '+FONT;X.fillStyle='#fff';X.fillText('SCORE '+score+'   HI '+hi+'   LEVEL '+stage,W/2,sp?332:348);X.font='12px '+FONT;X.fillStyle='#cfe8ff';X.fillText('best chain x'+Math.min(8,1+Math.floor(chainBest/6))+'  ('+chainBest+' kills)   ·   '+grazed+' grazes',W/2,sp?352:368);}
-  else{X.font='bold 16px '+FONT;X.fillText('sixteen worlds. sixteen bosses. forty-eight bugs. one bee.',W/2,sp?122:335);}
-  // daily hive + queen's contract chips: DAILY runs today's seeded contract from level 1
-  // for a comparable score; CONTRACT cycles the terms for a normal run. tap to use.
-  {const dc=dailyContract(),cc=CONTRACTS[contractIx],db=dailyBest();
-   const chip=(b,hot)=>{X.save();X.fillStyle=hot?'rgba(20,50,24,.78)':'rgba(6,14,28,.78)';X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,8);X.fill();X.strokeStyle=hot?'rgba(141,255,154,.55)':'rgba(255,210,63,.45)';X.lineWidth=1;X.stroke();X.restore();};
-   chip(CBTN.daily,true);chip(CBTN.contract,false);
-   X.textAlign='center';X.shadowColor='#000';X.shadowBlur=3;
-   X.fillStyle='#8dff9a';X.font='bold 11px '+FONT;X.fillText('DAILY HIVE  ·  '+dc.label+'  x'+dc.mult,CBTN.daily.x+CBTN.daily.w/2,CBTN.daily.y+13);
-   X.fillStyle='#cfe8ff';X.font='9px '+FONT;X.fillText(db?'best today  '+db:'not flown today  ·  tap to fly',CBTN.daily.x+CBTN.daily.w/2,CBTN.daily.y+24);
-   X.fillStyle='#ffd23f';X.font='bold 11px '+FONT;X.fillText('CONTRACT · '+cc.label+(cc.mult!==1?'  x'+cc.mult:''),CBTN.contract.x+CBTN.contract.w/2,CBTN.contract.y+13);
-   X.fillStyle='#cfe8ff';X.font='9px '+FONT;X.fillText(cc.terms+'  ·  tap to change',CBTN.contract.x+CBTN.contract.w/2,CBTN.contract.y+24);
-   X.shadowBlur=0;}
-  // instructions as a laid-out table instead of six centred lines running together
-  {const ty=sp?392:372,colL=W*.06,colR=W*.53,colW=W*.41;
-   X.save();X.fillStyle='rgba(6,14,28,.20)';X.beginPath();X.roundRect(colL-10,ty-20,W-2*(colL-10),150,10);X.fill();
-   X.strokeStyle='rgba(255,210,63,.22)';X.lineWidth=1;X.beginPath();X.roundRect(colL-10,ty-20,W-2*(colL-10),150,10);X.stroke();
-   // the panel stays see-through so the bee reads through it; the text earns its
-   // contrast from a shadow instead of from a slab painted over the art
-   X.shadowColor='rgba(0,0,0,.95)';X.shadowBlur=4;X.shadowOffsetY=1;
-   const head=(txt,x)=>{X.textAlign='left';X.font='bold 10px '+FONT;X.fillStyle='#ffd23f';X.fillText(txt,x,ty);
-     X.strokeStyle='rgba(255,210,63,.30)';X.beginPath();X.moveTo(x,ty+5);X.lineTo(x+colW,ty+5);X.stroke();};
-   const row=(k,v,x,i,off)=>{const y=ty+20+i*15;X.textAlign='left';X.font='bold 10px '+FONT;X.fillStyle='#ffffff';X.fillText(k,x,y);
-     X.font='10px '+FONT;X.fillStyle='#dceaf7';X.fillText(v,x+off,y);};
-   head('CONTROLS',colL);head('PICK UPS',colR);
-   (touchMode
-     ? [['DRAG','the bee follows your finger'],['BOMB button','bottom right'],['II button','pause'],['♪ / FX','tap to mute']]
-     : [['ARROWS / WASD','move'],['SHIFT','focus, slow and precise'],['X or B','bomb'],['M / N','mute FX / music']]
-   ).forEach((r,i)=>row(r[0],r[1],colL,i,84));
-   [['NECTAR','power up, Lv1 to Lv5'],['S','bomb'],['HEART','extra life'],['GUN DROPS','label says what it does']].forEach((r,i)=>row(r[0],r[1],colR,i,66));
-   X.textAlign='center';X.font='11px '+FONT;X.fillStyle='#8dff9a';
-   X.fillText('GREEN RING = grab it        RED GLOW = dodge it',W/2,ty+90);X.textAlign='center';
-   X.fillStyle='#a8c4e0';X.font='11px '+FONT;
-   X.font='9px '+FONT;
-   X.fillText('CHAIN  \u00b7  six fast kills = x2 score, up to x8   \u2014   it resets if you stop or get hit',W/2,ty+104);
-   X.fillText('fill the top bar to reach the boss   \u00b7   webs tangle you   \u00b7   gnat clouds slow you',W/2,ty+115);
-   X.fillText(touchMode?'the bee rides above your finger   \u00b7   bombs fire themselves when you are about to be hit':'the bee follows your cursor   \u00b7   bombs fire themselves when you are about to be hit',W/2,ty+126);X.font='11px '+FONT;
-   X.restore();}
-  X.textAlign='center';
-  // two level sliders -- tap anywhere along one to set it
-  {const bar=(b,lab,v,col)=>{
-    X.textAlign='right';X.font='bold 9px '+FONT;X.fillStyle='rgba(255,255,255,.7)';X.fillText(lab,b.x-10,b.y+11);
-    X.fillStyle='rgba(0,0,0,.45)';X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,4);X.fill();
-    X.fillStyle=col;X.beginPath();X.roundRect(b.x,b.y,Math.max(3,b.w*v),b.h,4);X.fill();
-    X.strokeStyle='rgba(255,255,255,.22)';X.lineWidth=1;X.beginPath();X.roundRect(b.x+.5,b.y+.5,b.w-1,b.h-1,4);X.stroke();
-    for(let i=1;i<5;i++){X.fillStyle='rgba(0,0,0,.30)';X.fillRect(b.x+b.w*i/5,b.y+2,1,b.h-4);}
-    X.textAlign='left';X.font='9px '+FONT;X.fillStyle='rgba(255,255,255,.55)';X.fillText(Math.round(v*100)+'%',b.x+b.w+7,b.y+11);};
-   bar(BARS.mus,'MUSIC',MUSLV,'#7fd4ff'); bar(BARS.sfx,'FX',SFXLV,'#ffd23f');}
-  // build stamp: centred at the very bottom, between the left and right HUD text,
-  // small and dim enough to disappear unless you go looking for it
-  {X.save();X.textAlign='center';X.font='8px '+FONT;X.fillStyle='rgba(255,255,255,.30)';
-   X.shadowColor='rgba(0,0,0,.8)';X.shadowBlur=3;X.fillText(BUILD,W/2,H-9);X.restore();}
-  X.textAlign='center';X.fillStyle='#ffd23f';X.font='bold 12px '+FONT;X.fillText(touchMode?'CHOOSE YOUR WORLD   ·   tap a world you have reached':'CHOOSE YOUR WORLD   ←  →   (1 – 8 keys pick the first row)',W/2,H-160);
-  for(let i=0;i<16;i++){const tl=TILE(i),sel=startStage===i+1,th=THEMES[i],lock=(i+1)>unlocked,bs=bestFor(i+1);panel(tl.x,tl.y,tl.w,tl.h,6);
-   if(lock){X.fillStyle='rgba(0,0,0,.45)';X.beginPath();X.roundRect(tl.x,tl.y,tl.w,tl.h,6);X.fill();}
-   if(sel&&!lock){X.strokeStyle='#ffd23f';X.lineWidth=2.5;X.beginPath();X.roundRect(tl.x,tl.y,tl.w,tl.h,6);X.stroke();}
-   X.fillStyle=lock?'rgba(255,255,255,.35)':sel?'#ffd23f':'#cfe8ff';X.font='bold 14px '+FONT;X.fillText(lock?'\uD83D\uDD12':String(i+1),tl.x+tl.w/2,tl.y+17);
-   X.font='7px '+FONT;X.fillStyle=lock?'rgba(255,255,255,.3)':sel?'#fff':'rgba(255,255,255,.7)';X.fillText(th.name.replace('THE ',''),tl.x+tl.w/2,tl.y+30);
-   if(!lock&&bs>0){X.font='6px '+FONT;X.fillStyle='rgba(255,210,63,.85)';X.fillText(bs>=1000?(bs/1000).toFixed(bs>=10000?0:1)+'k':String(bs),tl.x+tl.w/2,tl.y+37);}}
-  // Bug-Dex chip
-  {const n=dexSeen();X.save();X.fillStyle='rgba(6,14,28,.78)';X.beginPath();X.roundRect(DBTN.x,DBTN.y,DBTN.w,DBTN.h,8);X.fill();X.strokeStyle='rgba(127,212,255,.5)';X.lineWidth=1;X.stroke();X.textAlign='center';X.shadowColor='#000';X.shadowBlur=3;X.fillStyle='#7fd4ff';X.font='bold 11px '+FONT;X.fillText('BUG-DEX  '+n+' / '+DEX.length+'   \u00b7   '+(touchMode?'tap to open':'D to open'),W/2,DBTN.y+16);X.restore();}
+  X.shadowColor='#000';X.shadowBlur=6;if(state==='won'){X.font='bold 30px '+FONT;X.fillStyle='#8dff9a';X.fillText('THE HIVE IS SAFE!',W/2,sp?158:320);X.font='14px '+FONT;X.fillStyle='#fff';X.fillText('all sixteen worlds cleared   ·   SCORE '+score+'   HI '+hi,W/2,sp?182:348);X.font='12px '+FONT;X.fillStyle='#cfe8ff';X.fillText('best chain x'+Math.min(8,1+Math.floor(chainBest/6))+'  ('+chainBest+' kills)   ·   '+grazed+' grazes',W/2,sp?204:368);}else if(state==='over'){X.font='bold 26px '+FONT;X.fillStyle='#ff4d6d';X.fillText('THE HIVE HAS FALLEN',W/2,sp?306:320);X.font='14px '+FONT;X.fillStyle='#fff';X.fillText('SCORE '+score+'   HI '+hi+'   LEVEL '+stage,W/2,sp?332:348);X.font='12px '+FONT;X.fillStyle='#cfe8ff';X.fillText('best chain x'+Math.min(8,1+Math.floor(chainBest/6))+'  ('+chainBest+' kills)   ·   '+grazed+' grazes',W/2,sp?352:368);}
+  else{X.font='bold 16px '+FONT;X.fillText('sixteen worlds. sixteen bosses. forty-eight bugs. one bee.',W/2,sp?94:335);}
+  drawTitleUI(sp);
   X.shadowBlur=0;}
  if(dexOpen&&state!=='play')drawDex();
  if(resumeCountdown>0){X.fillStyle='#0008';X.fillRect(0,0,W,H);X.textAlign='center';X.fillStyle='#fff';X.font='bold 22px '+FONT;X.fillText('GET READY',W/2,H/2-40);X.fillStyle='#ffd23f';X.font='bold 64px '+FONT;X.fillText(String(Math.ceil(resumeCountdown/60)),W/2,H/2+30);}
@@ -2203,6 +2192,99 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
 }
 buildDecor(0);
 
+// ---------- title screen UI (2026-09-02 redo) ----------
+// Matt: "the buttons are covering the title, everything is too small to read, the art is
+// buried, the whole front page looks bad." So: the art keeps the top third to itself, a 4x4
+// grid of worlds you can actually read sits in the middle, ONE row of four big buttons under
+// it, and a gear for the sliders. Tap a button to use it; HOLD it and a full-screen card in
+// big letters says what it is. Controls and pick-ups moved into the HOW TO PLAY card, which
+// also opens by itself the first time anyone starts a run.
+const SBTN={music:{x:150,y:H-224,w:90,h:30},sfx:{x:260,y:H-224,w:90,h:30}};
+const CARD_CONTRACT_Y0=140,CARD_CONTRACT_H=50;
+function contractCardHit(p){for(let i=0;i<CONTRACTS.length;i++){const y=CARD_CONTRACT_Y0+i*CARD_CONTRACT_H;if(p.x>=24&&p.x<=W-24&&p.y>=y&&p.y<=y+CARD_CONTRACT_H-6)return i;}return -1;}
+function titleBtn(b,col,big,small,hot){
+ X.save();X.fillStyle=hot?'rgba(30,60,34,.96)':'rgba(10,20,36,.96)';X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,10);X.fill();
+ X.strokeStyle=col;X.globalAlpha=hot?.9:.55;X.lineWidth=hot?2:1.2;X.stroke();X.globalAlpha=1;
+ X.textAlign='center';X.shadowColor='#000';X.shadowBlur=3;
+ X.fillStyle=col;X.font='bold 14px '+FONT;X.fillText(big,b.x+b.w/2,b.y+21);
+ X.fillStyle='rgba(220,235,255,.85)';X.font='9px '+FONT;X.fillText(small,b.x+b.w/2,b.y+38);X.restore();}
+function drawTitleUI(sp){
+ // the lower two thirds become a clean dark sheet; the art fades out into it
+ {const g=X.createLinearGradient(0,236,0,300);g.addColorStop(0,'rgba(6,14,28,0)');g.addColorStop(1,'rgba(6,14,28,.94)');X.fillStyle=g;X.fillRect(0,236,W,64);X.fillStyle='rgba(6,14,28,.94)';X.fillRect(0,300,W,H-300);}
+ X.textAlign='center';X.shadowColor='#000';X.shadowBlur=4;
+ X.fillStyle='#ffd23f';X.font='bold 13px '+FONT;X.fillText('CHOOSE YOUR WORLD',W/2,288);
+ for(let i=0;i<16;i++){const tl=TILE(i),sel=startStage===i+1,th=THEMES[i],lock=(i+1)>unlocked,bs=bestFor(i+1);
+  X.save();X.fillStyle=lock?'rgba(255,255,255,.04)':sel?'rgba(255,210,63,.16)':'rgba(255,255,255,.08)';X.beginPath();X.roundRect(tl.x,tl.y,tl.w,tl.h,9);X.fill();
+  X.strokeStyle=lock?'rgba(255,255,255,.10)':sel?'#ffd23f':'rgba(255,255,255,.28)';X.lineWidth=sel?2.5:1;X.stroke();
+  // a strip of the world's own sky and ground colours, so the tile is a picture of the place, not a number
+  if(!lock){const sg=X.createLinearGradient(0,tl.y+4,0,tl.y+30);sg.addColorStop(0,th.sky[0]);sg.addColorStop(1,th.ground[0]);X.fillStyle=sg;X.globalAlpha=.85;X.beginPath();X.roundRect(tl.x+4,tl.y+4,tl.w-8,26,6);X.fill();X.globalAlpha=1;}
+  X.textAlign='left';X.shadowColor='#000';X.shadowBlur=4;
+  X.fillStyle=lock?'rgba(255,255,255,.35)':'#fff';X.font='bold 15px '+FONT;X.fillText(lock?'🔒':String(i+1),tl.x+9,tl.y+23);
+  X.textAlign='center';X.fillStyle=lock?'rgba(255,255,255,.35)':sel?'#ffd23f':'#e8f2ff';X.font='bold 11px '+FONT;X.fillText(th.name.replace('THE ',''),tl.x+tl.w/2,tl.y+46);
+  X.font='8px '+FONT;X.fillStyle=lock?'rgba(255,255,255,.28)':'rgba(255,210,63,.85)';
+  X.fillText(lock?'reach it to play it':(bs>0?'best '+(bs>=1000?(bs/1000).toFixed(bs>=10000?0:1)+'k':String(bs)):th.sub),tl.x+tl.w/2,tl.y+58);
+  X.restore();}
+ // the four buttons
+ {const dc=dailyContract(),cc=CONTRACTS[contractIx],db=dailyBest(),n=dexSeen();
+  titleBtn(CBTN.daily,'#8dff9a','DAILY',db?'best today '+db:dc.label+'  x'+dc.mult,true);
+  titleBtn(CBTN.contract,'#ffd23f','CONTRACT',cc.label+(cc.mult!==1?'  x'+cc.mult:''),false);
+  titleBtn(CBTN.help,'#ffffff','HOW TO PLAY','controls & pick-ups',false);
+  titleBtn(CBTN.dex,'#7fd4ff','BUG-DEX',n+' / '+DEX.length+' found',false);}
+ X.textAlign='left';X.font='9px '+FONT;X.fillStyle='rgba(220,235,255,.55)';X.shadowBlur=2;X.fillText('hold a button to see what it does',20,688);
+ // gear
+ {const b=CBTN.gear;X.save();X.fillStyle='rgba(10,20,36,.96)';X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,10);X.fill();X.strokeStyle='rgba(255,255,255,.4)';X.lineWidth=1.2;X.stroke();
+  X.translate(b.x+b.w/2,b.y+b.h/2);X.strokeStyle='#dceaf7';X.lineWidth=3;for(let k=0;k<8;k++){const a=k*Math.PI/4;X.beginPath();X.moveTo(Math.cos(a)*6,Math.sin(a)*6);X.lineTo(Math.cos(a)*10,Math.sin(a)*10);X.stroke();}
+  X.beginPath();X.arc(0,0,6,0,7);X.stroke();X.fillStyle='rgba(10,20,36,1)';X.beginPath();X.arc(0,0,2.5,0,7);X.fill();X.restore();}
+ X.shadowBlur=0;
+ if(settingsOpen)drawSettingsSheet();
+ if(cardOpen)drawCard(cardOpen);}
+function drawSettingsSheet(){
+ X.save();X.fillStyle='rgba(0,0,0,.55)';X.fillRect(0,0,W,H);
+ X.fillStyle='rgba(10,20,36,.98)';X.beginPath();X.roundRect(40,H-262,W-80,190,14);X.fill();X.strokeStyle='rgba(255,255,255,.3)';X.lineWidth=1;X.stroke();
+ X.textAlign='center';X.fillStyle='#fff';X.font='bold 18px '+FONT;X.fillText('SOUND',W/2,H-236);
+ const tog=(b,lab,on,col)=>{X.fillStyle=on?col:'rgba(255,255,255,.12)';X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,8);X.fill();X.fillStyle=on?'#0b1a0c':'rgba(255,255,255,.7)';X.font='bold 12px '+FONT;X.fillText(lab+(on?' ON':' OFF'),b.x+b.w/2,b.y+20);};
+ tog(SBTN.music,'MUSIC',MUSIC.on,'#7fd4ff');tog(SBTN.sfx,'FX',SFX_ON,'#ffd23f');
+ const bar=(b,lab,v,col)=>{X.textAlign='right';X.font='bold 11px '+FONT;X.fillStyle='rgba(255,255,255,.8)';X.fillText(lab,b.x-12,b.y+11);
+  X.fillStyle='rgba(0,0,0,.5)';X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,5);X.fill();X.fillStyle=col;X.beginPath();X.roundRect(b.x,b.y,Math.max(4,b.w*v),b.h,5);X.fill();
+  X.textAlign='left';X.font='11px '+FONT;X.fillStyle='rgba(255,255,255,.7)';X.fillText(Math.round(v*100)+'%',b.x+b.w+10,b.y+11);};
+ bar(BARS.mus,'MUSIC',MUSLV,'#7fd4ff');bar(BARS.sfx,'FX',SFXLV,'#ffd23f');
+ X.textAlign='center';X.font='10px '+FONT;X.fillStyle='rgba(220,235,255,.6)';X.fillText('tap outside to close',W/2,H-86);X.restore();}
+// one full-screen card, big type, few words. closes on the next tap.
+function drawCard(kind){
+ X.save();X.fillStyle='rgba(4,10,20,.94)';X.fillRect(0,0,W,H);X.textAlign='center';X.shadowColor='#000';X.shadowBlur=6;
+ const title=(txt,col)=>{X.fillStyle=col;X.font='bold 34px '+FONT;X.fillText(txt,W/2,86);};
+ const line=(txt,y,size=17,col='#fff')=>{X.fillStyle=col;X.font=(size>=17?'bold ':'')+size+'px '+FONT;X.fillText(txt,W/2,y);};
+ if(kind==='daily'){const dc=dailyContract(),db=dailyBest();title('DAILY HIVE','#8dff9a');
+  line('One challenge run a day.',150);line('The same run for everyone, everywhere.',176,15,'#cfe8ff');
+  line("TODAY'S RULE",240,13,'#8dff9a');line(dc.label,272,26,'#ffd23f');line(dc.terms,300,15,'#cfe8ff');line('score counts  x'+dc.mult,330,20);
+  line('Starts at world 1.',400,15,'#cfe8ff');line(db?'Your best today:  '+db:'You have not flown today.',428,15,'#cfe8ff');
+  line('TAP DAILY TO FLY IT',520,16,'#8dff9a');}
+ else if(kind==='contract'){title("QUEEN'S CONTRACT",'#ffd23f');line('A deal for your normal runs. Tap one.',118,13,'#cfe8ff');
+  for(let i=0;i<CONTRACTS.length;i++){const c=CONTRACTS[i],y=CARD_CONTRACT_Y0+i*CARD_CONTRACT_H,on=i===contractIx;
+   X.fillStyle=on?'rgba(255,210,63,.18)':'rgba(255,255,255,.06)';X.beginPath();X.roundRect(24,y,W-48,CARD_CONTRACT_H-6,9);X.fill();
+   if(on){X.strokeStyle='#ffd23f';X.lineWidth=2;X.stroke();}
+   X.textAlign='left';X.fillStyle=on?'#ffd23f':'#fff';X.font='bold 15px '+FONT;X.fillText(c.label,38,y+20);
+   X.font='11px '+FONT;X.fillStyle='#cfe8ff';X.fillText(c.terms,38,y+36);
+   X.textAlign='right';X.font='bold 16px '+FONT;X.fillStyle=c.mult>1?'#8dff9a':c.mult<1?'#ff9a9a':'#fff';X.fillText('x'+c.mult,W-38,y+28);}
+  X.textAlign='center';line('bigger number = harder run, bigger score',CARD_CONTRACT_Y0+CONTRACTS.length*CARD_CONTRACT_H+22,12,'#cfe8ff');}
+ else if(kind==='help'){title('HOW TO PLAY','#fff');
+  const rows=touchMode
+   ?[['MOVE','drag anywhere, the bee rides above your finger'],['BOMB','the button bottom right, or it fires itself when you are about to be hit'],['PAUSE','the II button top right']]
+   :[['MOVE','arrows or WASD, the bee follows the mouse'],['FOCUS','hold SHIFT to go slow and precise'],['BOMB','X or B, or it fires itself when you are about to be hit'],['PAUSE','P']];
+  let y=136;for(const r of rows){X.textAlign='left';X.fillStyle='#ffd23f';X.font='bold 15px '+FONT;X.fillText(r[0],36,y);X.fillStyle='#fff';X.font='13px '+FONT;X.fillText(r[1],110,y);y+=30;}
+  y+=6;X.textAlign='center';
+  // the two colours you must know, drawn as the things themselves, not described
+  X.strokeStyle='#8dff9a';X.lineWidth=3;ell(110,y+10,14,14);X.stroke();X.fillStyle='#fff';X.font='bold 15px '+FONT;X.fillText('GRAB IT',110,y+44);
+  X.fillStyle=rg(W-110,y+10,22,'rgba(255,60,220,.9)','rgba(255,40,200,0)');ell(W-110,y+10,22,22);X.fill();X.strokeStyle='#ff3bd4';X.lineWidth=2;ell(W-110,y+10,14,14);X.stroke();X.fillStyle='#fff';X.fillText('DODGE IT',W-110,y+44);
+  y+=84;const pick=[['NECTAR','power up, Lv1 to Lv5'],['S','a bomb'],['HEART','an extra life'],['GUN','the label says what it does']];
+  for(const r of pick){X.textAlign='left';X.fillStyle='#8dff9a';X.font='bold 14px '+FONT;X.fillText(r[0],36,y);X.fillStyle='#fff';X.font='13px '+FONT;X.fillText(r[1],110,y);y+=26;}
+  y+=10;X.textAlign='center';line('CHAIN: six fast kills = x2 score, up to x8.',y,13,'#cfe8ff');line('Fill the bar at the top to reach the boss.',y+20,13,'#cfe8ff');
+  line('TAP TO CLOSE',H-40,14,'#ffd23f');}
+ else if(kind==='dex'){const n=dexSeen();title('BUG-DEX','#7fd4ff');
+  line('Every bug you have beaten,',160);line('with a true fact about the real one.',186,15,'#cfe8ff');
+  line(n+' of '+DEX.length+' found',260,26,'#ffd23f');line('TAP BUG-DEX TO OPEN IT',520,16,'#7fd4ff');}
+ if(kind!=='help')line('tap anywhere to close',H-40,12,'rgba(220,235,255,.6)');
+ X.restore();}
 // ---------- gamepad ----------
 // firing is automatic, so a pad only needs: move, bomb, slow, pause, confirm.
 const PAD={x:0,y:0,slow:0,on:false,_bomb:0,_start:0,_ok:0,_lr:0};
@@ -2288,6 +2370,7 @@ function frame(now){const dt=now-last,_w0=performance.now();
    if(slowmo>0&&state==='play'&&!paused){slowmo--;if(slowmo&1)continue;}   // half speed for a beat
    if(resumeCountdown>0){resumeCountdown--;if(resumeCountdown===0)paused=false;t++;}
    else if(state==='play'&&!paused)update();else t++;}
+  if(holdBtn&&!cardOpen&&state!=='play'&&t-holdT>=HOLD_FRAMES){cardOpen=holdBtn;click(900,.02);}   // a held title button opens its card
   musicTick();ambTick();draw();
   if(!shownOnce){shownOnce=true;nativeReady();}
   if(state==='play'&&!paused&&dt>0&&dt<200){_pt+=dt;_pw+=performance.now()-_w0;
