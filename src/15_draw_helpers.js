@@ -59,6 +59,21 @@ function fuzz(cx,cy,rx,ry,col,n=26,seed=0){X.save();X.strokeStyle=col;X.lineWidt
 function legs(r,col,len=1,wig=1){X.strokeStyle=col;X.lineWidth=Math.max(1.2,r*.09);X.lineCap='round';X.beginPath();for(let i=0;i<3;i++){const yy=-r*.5+i*r*.35,w=Math.sin(t*.5+i*2.1)*r*.08*wig;for(const sgn of[-1,1]){X.moveTo(sgn*r*.4,yy);X.quadraticCurveTo(sgn*r*.8,yy-r*.15+w,sgn*r*.95*len,yy+r*.25+w);X.lineTo(sgn*r*1.05*len,yy+r*.5+w);}}X.stroke();}
 function eye(x,y,rx,ry,col='#111'){X.fillStyle=rg(x,y,rx,col==='#111'?'#3a3a3a':col,'#000');ell(x,y,rx,ry);X.fill();X.fillStyle='rgba(255,255,255,.85)';ell(x-rx*.3,y-ry*.35,rx*.32,ry*.3);X.fill();X.fillStyle='rgba(255,255,255,.35)';ell(x+rx*.25,y+ry*.3,rx*.18,ry*.15);X.fill();}
 function antennae(r,col='#222',len=1){const sw=Math.sin(t*.12)*r*.08;X.strokeStyle=col;X.lineWidth=Math.max(1.5,r*.1);X.lineCap='round';X.beginPath();X.moveTo(-r*.15,-r*1.4);X.quadraticCurveTo(-r*.5+sw,-r*1.9*len,-r*.75+sw,-r*1.75*len);X.moveTo(r*.15,-r*1.4);X.quadraticCurveTo(r*.5+sw,-r*1.9*len,r*.75+sw,-r*1.75*len);X.stroke();X.fillStyle=col;ell(-r*.75+sw,-r*1.75*len,r*.07,r*.07);X.fill();ell(r*.75+sw,-r*1.75*len,r*.07,r*.07);X.fill();}
+// the painted hero with flapping wings (Matt 9/2: flap for my character, not the lives). The photo
+// is one image, so the wings are cut out as two side boxes at draw time: each box is rotated a little
+// about the wing root and squashed toward the body, a faint second copy is the beat blur, and the body
+// is drawn last from everything outside the boxes so the roots are covered. Clips only, no pixel work,
+// so it runs on file:// too.
+const HW={x:.42,y0:.27,y1:.52,rootX:.42,rootY:.40};
+function drawHero(im,h,rot=0){const m=mip(im,h),sc=h/m.height,w=m.width*sc,L=-w/2,T=-h/2;X.save();X.rotate(rot);
+ const a=Math.sin(t*1.5)*.14;
+ const wing=(sgn,ang,al)=>{X.save();X.globalAlpha=al;const rx=L+(sgn<0?HW.rootX:1-HW.rootX)*w,ry=T+HW.rootY*h;
+  X.translate(rx,ry);X.rotate(sgn*ang);X.scale(1,1-Math.abs(ang)*1.1);X.translate(-rx,-ry);
+  X.beginPath();X.rect(sgn<0?L:L+(1-HW.x)*w,T+HW.y0*h,HW.x*w,(HW.y1-HW.y0)*h);X.clip();X.drawImage(m,L,T,w,h);X.restore();};
+ if(!LOW){wing(-1,-a*1.7,.22);wing(1,-a*1.7,.22);}
+ wing(-1,a,1);wing(1,a,1);
+ X.beginPath();X.rect(L,T,w,h);X.rect(L,T+HW.y0*h,HW.x*w,(HW.y1-HW.y0)*h);X.rect(L+(1-HW.x)*w,T+HW.y0*h,HW.x*w,(HW.y1-HW.y0)*h);X.clip('evenodd');X.drawImage(m,L,T,w,h);
+ X.restore();}
 // the hero's wings, seen from ABOVE: big, golden, laid over the back, not pale blue slips hiding
 // under the belly (Matt 9/2: "the wings are too small and see-through, I want it from the top").
 // Two wings a side (fore and hind) pivot at the thorax; a faint ghost copy is the beat blur.
