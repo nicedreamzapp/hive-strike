@@ -12,6 +12,13 @@ W, H = 832, 1248   # 2:3 = the 480x720 play field
 STYLE = ("semi-realistic digital matte painting, natural photoreal textures, painterly but believable, warm golden-hour lighting, "
          "soft atmospheric depth, high-angle bird's-eye view looking down at the ground, wide open space in the middle, "
          "no characters, no text, no letters, portrait orientation, ")
+# the night worlds must not get the golden-hour sun (Matt 9/2: "why does the night wood look light?")
+NIGHT_STYLE = ("semi-realistic digital matte painting, natural photoreal textures, painterly but believable, NIGHT, dark, "
+               "cool moonlight, deep shadows, only small glowing light sources, "
+               "soft atmospheric depth, high-angle bird's-eye view looking down at the ground, wide open space in the middle, "
+               "no characters, no text, no letters, portrait orientation, ")
+DARK = {"level5", "level7", "level10", "level15", "level16"}
+def style_for(name): return NIGHT_STYLE if name in DARK else STYLE
 SCENES = {
  "level1": "sunny wildflower meadow seen from above, rolling green hills, a winding dirt path, daisies and poppies, "
            "a big papery hornet nest hanging from an oak branch in one corner with a few angry hornets buzzing around it",
@@ -21,20 +28,20 @@ SCENES = {
            "ripples on the water, a large dragonfly shadow on the surface, cool teal palette",
  "level4": "autumn apple orchard seen from above, rows of trees with red apples, fallen leaves and apples on amber grass, "
            "an old hollow log with a huge stag beetle horn shape carved into the bark",
- "level5": "moonlit night forest seen from above, dark pine trees, glowing blue and purple mushrooms, fireflies, "
+ "level5": "moonlit night forest seen from above at midnight, dark pine trees, glowing blue and purple mushrooms, fireflies, full moon, "
            "a giant dew-covered spider web strung between the trees glistening in moonlight, deep blue palette",
- "level7": "misty swamp seen from above, dark still water, cattails, lily pads, gnarled cypress roots, drifting fog, empty scenery only, no insects, no bugs, no animals, "
+ "level7": "misty swamp at night seen from above, thick fog, dark still water, faint green will-o-wisp glow, cattails, lily pads, gnarled cypress roots, drifting fog, empty scenery only, no insects, no bugs, no animals, "
            "a giant mosquito silhouette looming in the mist, muted green and grey palette",
  "level8": "desert sand dunes at sunset seen from above, rippled sand, a few cactus and scattered rocks, scorpion tracks in the sand, "
            "warm orange and gold light, long shadows",
  "level9": "rainforest canopy seen from above, giant leaves, hanging vines, orchids, shafts of humid light, a huge goliath beetle silhouette on a branch, empty scenery only, no insects, no bugs, no animals, ",
- "level10": "deep cave seen from above, wet stone floor, stalagmites, glowing blue fungus, a trickle of underground water, a giant spider web in the dark",
+ "level10": "deep pitch-dark cave seen from above, no daylight, wet stone floor, stalagmites, glowing blue fungus, a trickle of underground water, a giant spider web in the dark",
  "level11": "alpine mountain meadow seen from above, patches of snow, grey rock, edelweiss and tiny wildflowers, thin cold light",
  "level12": "rocky tide pool at the beach seen from above, clear shallow water, sea anemones, kelp, wet sand, a horseshoe crab shape in the sand",
  "level13": "volcanic ash field seen from above, black cracked ground, glowing orange lava cracks, drifting embers, hot haze",
  "level14": "frozen tundra seen from above, blue ice, snow drifts, frost patterns, pale low sun, a frozen insect in the ice, empty scenery only, no insects, no bugs, no animals, ",
- "level15": "city rooftop at dusk seen from above, tar roof, air vents, a water tower, neon glow from the street below, a giant hornet nest under an eave",
- "level16": "crystal cavern seen from above, glowing purple and teal crystals, still mirror pool, sparkling mineral floor, magical light",
+ "level15": "city rooftop at night after dusk seen from above, dark sky, lit windows, tar roof, air vents, a water tower, neon glow from the street below, a giant hornet nest under an eave",
+ "level16": "underground crystal cavern seen from above, no daylight, glowing purple and teal crystals lighting the dark, still mirror pool, sparkling mineral floor, magical light",
  "level6": "inside a giant beehive seen from above, amber honeycomb wax cells, dripping golden honey, "
            "dark centipede tunnels bored through the comb, warm gold and brown palette",
 }
@@ -70,7 +77,7 @@ with reserve("flux-hive-art", 34):
     seed = 42_000
     if os.environ.get("ONLY_KEYS"):
         for i, name in enumerate(os.environ["ONLY_KEYS"].split(",")):
-            gen(STYLE + SCENES[name], os.path.join(ART, name + ".png"), int(os.environ.get("SEED","61000")) + i)
+            gen(style_for(name) + SCENES[name], os.path.join(ART, name + ".png"), int(os.environ.get("SEED","61000")) + i)
     elif os.environ.get("ONLY_LEVELS"):
         seed = 52_000
         for name, scene in SCENES.items():
