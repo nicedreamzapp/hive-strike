@@ -49,7 +49,7 @@ function fit(){const cs=getComputedStyle(document.body),
 addEventListener('resize',fit);addEventListener('orientationchange',()=>setTimeout(fit,120));
 if(window.visualViewport)visualViewport.addEventListener('resize',fit);
 fit();
-const keys={};addEventListener('keydown',e=>{keys[e.code]=1;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.code==='KeyP')paused=!paused;if(e.code==='KeyL'){setLow(!LOW);say('DETAIL '+(LOW?'LOW':'FULL'));}if(e.code==='Minus'){VOL=Math.max(0,+(VOL-.05).toFixed(2));localStorage.hs_vol=VOL;applyVol();say('VOLUME '+Math.round(VOL*100)+'%');}if(e.code==='Equal'){VOL=Math.min(1,+(VOL+.05).toFixed(2));localStorage.hs_vol=VOL;applyVol();say('VOLUME '+Math.round(VOL*100)+'%');}if(e.code==='KeyN')musicToggle();if(e.code==='KeyM')sfxToggle();if(dexOpen){if(e.code==='Escape'||e.code==='KeyD')dexOpen=false;else if(e.code==='ArrowLeft')dexPage(-1);else if(e.code==='ArrowRight')dexPage(1);else if(e.code==='Enter'||e.code==='Space')dexPick=null;return;}
+const keys={};addEventListener('keydown',e=>{keys[e.code]=1;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.code==='KeyP')paused=!paused;if(e.code==='Escape'&&state==='play'){if(paused)quitToHome();else paused=true;}if(e.code==='KeyL'){setLow(!LOW);say('DETAIL '+(LOW?'LOW':'FULL'));}if(e.code==='Minus'){VOL=Math.max(0,+(VOL-.05).toFixed(2));localStorage.hs_vol=VOL;applyVol();say('VOLUME '+Math.round(VOL*100)+'%');}if(e.code==='Equal'){VOL=Math.min(1,+(VOL+.05).toFixed(2));localStorage.hs_vol=VOL;applyVol();say('VOLUME '+Math.round(VOL*100)+'%');}if(e.code==='KeyN')musicToggle();if(e.code==='KeyM')sfxToggle();if(dexOpen){if(e.code==='Escape'||e.code==='KeyD')dexOpen=false;else if(e.code==='ArrowLeft')dexPage(-1);else if(e.code==='ArrowRight')dexPage(1);else if(e.code==='Enter'||e.code==='Space')dexPick=null;return;}
  if(state!=='play'&&e.code==='KeyD'){dexOpen=true;return;}
  if(state!=='play'){if(e.code==='ArrowLeft')pickStage(startStage-1);if(e.code==='ArrowRight')pickStage(startStage+1);if(/^Digit[1-8]$/.test(e.code))pickStage(+e.code.slice(5));}
 if(state!=='play'&&(e.code==='Enter'||e.code==='Space')){if(state==='won')continueGame();else if(!armed){arm();}else start();}});
@@ -61,6 +61,7 @@ function ptr(e){const r=C.getBoundingClientRect();const isT=e.pointerType==='tou
  return {x:(e.clientX-r.left)*W/r.width,y:(e.clientY-r.top)*H/r.height-(isT?TOUCH_LIFT:0)};}
 // on-screen controls, only drawn once a finger has actually been used
 const TBTN={bomb:{x:W-64,y:H-124,w:54,h:54},pause:{x:W-40,y:4,w:34,h:22}};
+const PBTN={resume:{x:W/2-90,y:H/2+22,w:180,h:40},quit:{x:W/2-90,y:H/2+74,w:180,h:40}};   // the pause menu
 // title-screen level sliders: Matt tunes the mix himself instead of waiting on a rebuild
 // they live in the settings sheet now (gear button, bottom right of the title screen)
 const BARS={mus:{x:150,y:H-168,w:200,h:14},sfx:{x:150,y:H-122,w:200,h:14}};
@@ -89,6 +90,7 @@ C.addEventListener('pointerdown',e=>{const isT=e.pointerType==='touch',p=ptr(e),
  audioWake();
  if(inBtn(raw,BTN.music)){musicToggle();return;}
  if(inBtn(raw,BTN.sfx)){sfxToggle();return;}
+ if(state==='play'&&paused){if(inBtn(raw,PBTN.quit)){quitToHome();click(900,.02);return;}if(inBtn(raw,PBTN.resume)){paused=false;return;}}
  if(isT&&state==='play'){
   if(inBtn(raw,TBTN.pause)){if(resumeCountdown>0){resumeCountdown=0;paused=false;}else paused=!paused;return;}
   if(inBtn(raw,TBTN.bomb)){wantBomb=1;return;}
@@ -109,9 +111,9 @@ C.addEventListener('pointerdown',e=>{const isT=e.pointerType==='touch',p=ptr(e),
   for(const k of ['help','dex']){if(inBtn(raw,CBTN[k])){holdBtn=k;holdT=t;return;}}
   if(!armed)arm();
   for(let i=0;i<16;i++){if(inBtn(raw,WCHIP(i))){const again=startStage===i+1&&i+1<=unlocked;pickStage(i+1);if(again){if(firstHelp())return;start();}return;}}   // tap picks a world, tapping it again flies
-  if(inBtn(raw,CBTN.play)){if(firstHelp())return;start();return;}
+  if(inBtn(raw,CBTN.play)){playOrResume();return;}
   if(state==='won'){continueGame();return;}
-  if(firstHelp())return;start();return;}
+  playOrResume();return;}
  // a finger landing is how you MOVE on a phone -- only a mouse click means "bomb"
  if(!isT)wantBomb=1;});
 // quick tap = do the button's thing; a held press already opened its card (see frame()), so do nothing

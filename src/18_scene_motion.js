@@ -502,7 +502,10 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
   X.shadowBlur=0;}
  if(dexOpen&&state!=='play')drawDex();
  if(resumeCountdown>0){X.fillStyle='#0008';X.fillRect(0,0,W,H);X.textAlign='center';X.fillStyle='#fff';X.font='bold 22px '+FONT;X.fillText('GET READY',W/2,H/2-40);X.fillStyle='#ffd23f';X.font='bold 64px '+FONT;X.fillText(String(Math.ceil(resumeCountdown/60)),W/2,H/2+30);}
- else if(paused){X.fillStyle='#0008';X.fillRect(0,0,W,H);X.fillStyle='#fff';X.font='bold 30px '+FONT;X.textAlign='center';X.fillText('PAUSED',W/2,H/2);X.font='11px '+FONT;X.fillStyle='rgba(255,255,255,.75)';X.fillText('P or START to resume',W/2,H/2+26);}
+ else if(paused){X.fillStyle='#0009';X.fillRect(0,0,W,H);X.fillStyle='#fff';X.font='bold 30px '+FONT;X.textAlign='center';X.shadowColor='#000';X.shadowBlur=6;X.fillText('PAUSED',W/2,H/2-10);
+  const pill=(b,txt,col,fill)=>{X.fillStyle=fill;X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,20);X.fill();X.strokeStyle=col;X.lineWidth=1.5;X.stroke();X.fillStyle=col;X.font='bold 15px '+FONT;X.fillText(txt,b.x+b.w/2,b.y+26);};
+  pill(PBTN.resume,'RESUME','#1a1400','rgba(255,210,63,.9)');pill(PBTN.quit,'QUIT TO HOME','#fff','rgba(0,0,0,.35)');
+  X.font='10px '+FONT;X.fillStyle='rgba(255,255,255,.6)';X.fillText(touchMode?'quit keeps your place: PLAY on the home screen picks it back up':'P resumes  \u00b7  ESC quits and keeps your place',W/2,H/2+140);X.shadowBlur=0;}
 }
 buildDecor(0);
 

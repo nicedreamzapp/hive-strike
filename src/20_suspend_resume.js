@@ -7,7 +7,7 @@ function audioWake(){
  if(AC&&AC.state!=='running')AC.resume().catch(()=>{});}
 for(const ev of ['pointerdown','keydown','touchstart'])addEventListener(ev,audioWake,{passive:true});
 function goDark(){
- wasPaused=paused&&!pausedByBlur;pausedByBlur=false;paused=true;resumeCountdown=0;
+ wasPaused=paused&&!pausedByBlur;pausedByBlur=false;paused=true;resumeCountdown=0;saveCheckpoint();   /* sent to the background mid-run: keep the place so a killed app can RESUME */
  for(const k in MUSIC.tracks){const a=MUSIC.tracks[k];if(!a.paused){a.pause();a.volume=0;}}
  if(AC&&AC.state==='running')AC.suspend().catch(()=>{});
 }

@@ -64,9 +64,9 @@ const dayKey=()=>{const d=new Date();return d.getFullYear()*10000+(d.getMonth()+
 function seededPick(seed,n){let a=seed|0;a=Math.imul(a^a>>>15,1|a);a^=a+Math.imul(a^a>>>7,61|a);return ((a^(a>>>14))>>>0)%n;}
 const dailyContract=()=>CONTRACTS[1+seededPick(dayKey(),CONTRACTS.length-1)];
 const dailyBest=()=>+localStorage['hs_daily'+dayKey()]||0;
-function endRun(){statSave();if(dailyRun&&score>dailyBest())localStorage['hs_daily'+dayKey()]=score;}
+function endRun(){clearCheckpoint();statSave();if(dailyRun&&score>dailyBest())localStorage['hs_daily'+dayKey()]=score;}
 
-function start(){STAT.runs++;statSave();learned.clear();POPS.length=0;ann=null;hitstop=0;slowmo=0;frenzy=0;frenzyKills=0;collapse=0;blackout=0;blackoutStage=0;factT=0;chain=0;chainT=0;chainBest=0;grazed=0;nextExt=0;state='play';score=0;stage=startStage;stageT=0;loop=0;bossAlive=false;boss=null;bullets=[];ebullets=[];enemies=[];pickups=[];parts=[];Object.assign(P,{x:W/2,y:H-100,lives:5,wpn:'honey',lvl:1,bombs:3,inv:120,fireT:0,dead:0,webbed:0});
+function start(){clearCheckpoint();STAT.runs++;statSave();learned.clear();POPS.length=0;ann=null;hitstop=0;slowmo=0;frenzy=0;frenzyKills=0;collapse=0;blackout=0;blackoutStage=0;factT=0;chain=0;chainT=0;chainBest=0;grazed=0;nextExt=0;state='play';score=0;stage=startStage;stageT=0;loop=0;bossAlive=false;boss=null;bullets=[];ebullets=[];enemies=[];pickups=[];parts=[];Object.assign(P,{x:W/2,y:H-100,lives:5,wpn:'honey',lvl:1,bombs:3,inv:120,fireT:0,dead:0,webbed:0});
  dailyRun=wantDaily?dayKey():null;wantDaily=false;
  const c=dailyRun?dailyContract():CONTRACTS[contractIx];MODS=c.mods;cmult=c.mult;
  if(dailyRun)stage=1;                                  // a daily score means nothing unless everyone starts at the door
@@ -74,6 +74,21 @@ function start(){STAT.runs++;statSave();learned.clear();POPS.length=0;ann=null;h
  bossWarn=0;levelClear=0;levelIntro=200;nextWave=0;rushDone=false;nextCloud=500;buildDecor((stage-1)%NL);palA=palB=(stage-1)%NL;palMix=1;SFX.levelStart();music('main');
  if(dailyRun)say('DAILY HIVE  ·  '+c.label+'  ·  x'+c.mult);else if(c.mult!==1)say(c.label+'  ·  SCORE x'+c.mult);}
 function say(s){msg=s;msgT=150;}
+// ---- quit + resume (Matt 9/2: "when I pause I can quit, and then resume on start up") ----
+// A checkpoint is the run at the START of the current world: stage, score, lives, gun, bombs.
+// Written when you quit from the pause menu (and when the app is sent to the background),
+// cleared by any fresh start or by the run ending. The title's PLAY becomes RESUME while one exists.
+const CP_KEY='hs_checkpoint';
+function saveCheckpoint(){if(state!=='play')return;try{localStorage[CP_KEY]=JSON.stringify({stage,loop,score,lives:P.lives,wpn:P.wpn,lvl:P.lvl,bombs:P.bombs,contract:contractIx,daily:dailyRun,chainBest,when:Date.now()});}catch(e){}}
+function loadCheckpoint(){try{const c=JSON.parse(localStorage[CP_KEY]||'null');return c&&c.stage?c:null;}catch(e){return null;}}
+function clearCheckpoint(){try{localStorage.removeItem(CP_KEY);}catch(e){}}
+function quitToHome(){saveCheckpoint();paused=false;resumeCountdown=0;state='title';enemies=[];ebullets=[];bullets=[];pickups=[];parts=[];boss=null;bossAlive=false;bossWarn=0;levelClear=0;music('title');msgT=0;}
+function resumeRun(){const c=loadCheckpoint();if(!c)return false;
+ contractIx=Math.min(CONTRACTS.length-1,c.contract|0);startStage=clamp(c.stage,1,16);wantDaily=false;start();
+ stage=c.stage;loop=c.loop|0;score=c.score|0;chainBest=c.chainBest|0;dailyRun=c.daily||null;
+ Object.assign(P,{lives:c.lives,wpn:c.wpn||'honey',lvl:c.lvl||1,bombs:c.bombs|0});
+ buildDecor((stage-1)%NL);palA=palB=(stage-1)%NL;clearCheckpoint();say('RESUMED  \u00b7  WORLD '+((stage-1)%NL+1));return true;}
+function playOrResume(){if(firstHelp())return;if(!resumeRun())start();}
 function sparks(x,y,c,n=8,sp=9){for(let i=0;i<n;i++){const a=R(0,Math.PI*2),s=R(sp*.5,sp);parts.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,l:R(8,18),c,r:R(1,2),spark:1});}}
 let muzzle=[];function flashMuzzle(x,y,c){muzzle.push({x,y,c,l:4});}
 function gibs(e){const n=RI(4,7);for(let i=0;i<n;i++){const a=R(0,7),v=R(1.5,4.5);parts.push({x:e.x,y:e.y,vx:Math.cos(a)*v,vy:Math.sin(a)*v-2,l:R(30,55),c:e.col,r:R(2,4),gib:1,a:R(0,7),va:R(-.3,.3),rx:R(1.2,2.2)});}for(let i=0;i<2;i++){const a=R(0,7);parts.push({x:e.x,y:e.y,vx:Math.cos(a)*2,vy:-2,l:R(35,60),c:'rgba(230,245,255,.85)',r:R(3,5),gib:1,wing:1,a:R(0,7),va:R(-.2,.2),rx:2.4});}}

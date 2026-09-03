@@ -40,7 +40,7 @@ function drawTitleUI(sp){
    X.fillStyle=sel?'#ffd23f':lock?'rgba(255,255,255,.35)':'rgba(255,255,255,.9)';X.font='bold 8px '+FONT;otext(th.name.replace('THE ',''),c.cx,c.cy+r+10,2);X.shadowBlur=0;}}
  // PLAY in the middle, help and the bug-dex either side. hold either side button for its card.
  {const b=CBTN.play,pulse=.5+Math.sin(t*.08)*.5;X.save();X.shadowColor='#ffd23f';X.shadowBlur=10+pulse*10;X.fillStyle='rgba(255,210,63,.55)';X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,19);X.fill();X.restore();X.strokeStyle='rgba(255,230,140,.9)';X.lineWidth=1.2;X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,19);X.stroke();
-  X.fillStyle='#fff';X.font='bold 18px '+FONT;X.shadowColor='#000';X.shadowBlur=4;otext('PLAY',b.x+b.w/2,b.y+25,3.5);}
+  X.fillStyle='#fff';X.font='bold 18px '+FONT;X.shadowColor='#000';X.shadowBlur=4;const cp=loadCheckpoint();otext(cp?'RESUME  '+((cp.stage-1)%NL+1):'PLAY',b.x+b.w/2,b.y+25,3.5);}
  titleBtn(CBTN.help,'#ffffff','HELP',false);
  titleBtn(CBTN.dex,'#7fd4ff','BUG-DEX',false);
  X.restore();
