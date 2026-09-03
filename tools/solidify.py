@@ -29,7 +29,7 @@ for name in sys.argv[1:]:
     # low-saturation pixels within a few px of the outside are backdrop, not bug.
     mx=rgb.max(2); mn=rgb.min(2)
     dout=ndimage.distance_transform_edt(hard)
-    rim=hard&(mn>float(os.environ.get("RIM_WHITE","200")))&((mx-mn)<30)&(dout<=float(os.environ.get("RIM_PX","12")))
+    rim=hard&(mn>float(os.environ.get("RIM_WHITE","200")))&((mx-mn)<float(os.environ.get("RIM_SAT","30")))&(dout<=float(os.environ.get("RIM_PX","12")))
     hard=hard&~rim; al=np.where(rim,0,al)
     holes=ndimage.binary_fill_holes(hard)&~hard
     lab,n=ndimage.label(holes)

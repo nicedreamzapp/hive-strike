@@ -429,6 +429,8 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
  const hg=X.createLinearGradient(0,H-44,0,H);hg.addColorStop(0,'rgba(0,0,0,0)');hg.addColorStop(1,'rgba(0,0,0,.42)');X.fillStyle=hg;X.fillRect(0,H-44,W,44);
  X.font='bold 13px '+FONT;X.textAlign='left';X.fillStyle='rgba(255,255,255,.92)';X.shadowColor='#000';X.shadowBlur=5;X.fillText('SCORE '+score+(dailyRun?'  ·  DAILY':'')+(cmult!==1?'  ·  x'+cmult:''),8,H-12);
  X.textAlign='right';X.fillStyle='rgba(221,221,221,.9)';X.fillText('HI '+hi,W-8,H-12);
+ // the world you are in, always, even mid-boss (Matt 9/3: it should always tell you the level somewhere)
+ {const th=THEMES[(stage-1)%NL];X.save();X.textAlign='right';X.font='bold 10px '+FONT;X.lineJoin='round';X.strokeStyle='rgba(0,0,0,.8)';X.lineWidth=3;const lab='WORLD '+((stage-1)%NL+1)+'  \u00b7  '+th.name.replace('THE ','');X.strokeText(lab,W-8,H-27);X.fillStyle='#ffd23f';X.fillText(lab,W-8,H-27);X.restore();}
  if(chain>1){const m=chainMult(),a=Math.min(1,chainT/40);
   X.textAlign='left';X.globalAlpha=a;
   X.fillStyle=m>=6?'#ff8adf':m>=4?'#ffd23f':'#8dff9a';X.font='bold 15px '+FONT;
