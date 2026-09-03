@@ -8,7 +8,7 @@
 // out of a game they already downloaded because a network call failed.
 const PAY_ID='com.nicedreamz.hivestrike.unlock';
 const TRIAL_DAYS=30;
-const STORE={ready:false,owned:false,price:'$0.99',busy:false,note:'',native:false};
+const STORE={ready:false,owned:false,price:'$1.99',busy:false,note:'',native:false};
 let payOpen=false;
 
 function native(){try{return !!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());}catch(e){return false;}}

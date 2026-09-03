@@ -17,14 +17,14 @@ Screenshots: `store/screens/` (1290x2796, Apple 6.7") and `store/screens_play/` 
 
 ## Short description — Play, 80 characters
 
-**One bee against sixteen worlds of bugs. Free for a month, then 99c forever.**
+**One bee against sixteen worlds of bugs. Free for a month, then $1.99 forever.**
 
 ---
 
 ## Promotional text — Apple, 170 characters, editable without review
 
 New: photoreal bugs re-cut by hand, wings that beat, and a kill that finally pops.
-Free for thirty days, then one payment of 99c. No subscription, no adverts.
+Free for thirty days, then one payment of $1.99. No subscription, no adverts.
 
 ---
 
@@ -50,7 +50,7 @@ you hide behind, a swarm of drones that hunt for you.
 Forty-eight bugs, and a Bug-Dex that fills in as you beat them, each card carrying one
 true fact about the real animal.
 
-**One payment.** Play the whole game free for thirty days. After that, 99c unlocks it
+**One payment.** Play the whole game free for thirty days. After that, $1.99 unlocks it
 forever, on every device signed in to your account. There is no subscription, nothing
 else to buy, and no adverts anywhere in it.
 
@@ -90,7 +90,7 @@ Play tags: Arcade, Action, Single player, Offline
 | Reference name | Hive Strike Full Unlock |
 | Display name | Unlock Hive Strike |
 | Description | Unlocks the whole game forever. One payment, no subscription. |
-| Price tier | 0.99 USD |
+| Price tier | 1.99 USD |
 
 Review note for Apple, paste into App Review Information:
 
@@ -104,7 +104,7 @@ Review note for Apple, paste into App Review Information:
 ## What's new — first release
 
 First release. Sixteen worlds, sixteen bosses, forty-eight bugs, one bee.
-Free for thirty days, then one payment of 99c, forever.
+Free for thirty days, then one payment of $1.99, forever.
 
 ---
 

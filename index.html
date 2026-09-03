@@ -43,7 +43,7 @@ const FONT='"Avenir Next Condensed","Futura","Arial Narrow","Helvetica Neue",san
 // stamped by tools/assemble.py from the version in package.json and the git commit --
 // never edit by hand. It is how you tell at a glance whether the phone in your hand is
 // running the same build as the one next to it.
-const BUILD='v1.3.0  ·  970e6cd+  ·  Sep 3';
+const BUILD='v1.3.0  ·  2fc14cd+  ·  Sep 3';
 // letterbox the play field inside whatever the device actually gives us, safe-area padding
 // already removed by the body. visualViewport is the honest number on iOS.
 function fit(){const cs=getComputedStyle(document.body),
@@ -2558,7 +2558,7 @@ function drawDex(){X.save();X.setTransform(DPR,0,0,DPR,0,0);
 // out of a game they already downloaded because a network call failed.
 const PAY_ID='com.nicedreamz.hivestrike.unlock';
 const TRIAL_DAYS=30;
-const STORE={ready:false,owned:false,price:'$0.99',busy:false,note:'',native:false};
+const STORE={ready:false,owned:false,price:'$1.99',busy:false,note:'',native:false};
 let payOpen=false;
 
 function native(){try{return !!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());}catch(e){return false;}}
