@@ -26,3 +26,5 @@ art/px_debug/
 art/night_prev/
 art/splash_photo_*.png
 art/hero_candidates/
+
+android/keystore.properties

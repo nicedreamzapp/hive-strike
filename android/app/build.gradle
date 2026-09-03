@@ -1,5 +1,18 @@
 apply plugin: 'com.android.application'
 
+// Release signing. The keystore and its passwords never live in this repo: put them in
+// android/keystore.properties (gitignored) on the machine that builds, or set the same four
+// values as environment variables. Without them a release build still runs, unsigned, so a
+// debug-only machine is not broken by this block.
+def ksFile = rootProject.file("keystore.properties")
+def ks = new Properties()
+if (ksFile.exists()) { ks.load(new FileInputStream(ksFile)) }
+def ksPath  = ks['storeFile']     ?: System.getenv('HS_KEYSTORE')
+def ksPass  = ks['storePassword'] ?: System.getenv('HS_STORE_PASS')
+def ksAlias = ks['keyAlias']      ?: System.getenv('HS_KEY_ALIAS')
+def ksKey   = ks['keyPassword']   ?: System.getenv('HS_KEY_PASS')
+def canSign = ksPath != null && file(ksPath).exists()
+
 android {
     namespace "com.nicedreamz.hivestrike"
     compileSdk rootProject.ext.compileSdkVersion
@@ -16,8 +29,19 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (canSign) {
+                storeFile file(ksPath)
+                storePassword ksPass
+                keyAlias ksAlias
+                keyPassword ksKey
+            }
+        }
+    }
     buildTypes {
         release {
+            if (canSign) { signingConfig signingConfigs.release }
             // Google Play requires a minimum of 25% DEX coverage across optimization,
             // shrinking and obfuscation from February 2027. minifyEnabled false is 0%.
             minifyEnabled true
