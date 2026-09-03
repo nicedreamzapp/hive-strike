@@ -1,4 +1,4 @@
-// ---------- title screen UI (2026-09-02 redo) ----------
+// ---------- title screen UI (2026-09-02, second redo: the painting stays whole) ----------
 // Matt: "the buttons are covering the title, everything is too small to read, the art is
 // buried, the whole front page looks bad." So: the art keeps the top third to itself, a 4x4
 // grid of worlds you can actually read sits in the middle, ONE row of four big buttons under
@@ -8,45 +8,49 @@
 const SBTN={music:{x:150,y:H-224,w:90,h:30},sfx:{x:260,y:H-224,w:90,h:30}};
 const CARD_CONTRACT_Y0=140,CARD_CONTRACT_H=50;
 function contractCardHit(p){for(let i=0;i<CONTRACTS.length;i++){const y=CARD_CONTRACT_Y0+i*CARD_CONTRACT_H;if(p.x>=24&&p.x<=W-24&&p.y>=y&&p.y<=y+CARD_CONTRACT_H-6)return i;}return -1;}
-function titleBtn(b,col,big,small,hot){
- X.save();X.fillStyle=hot?'rgba(30,60,34,.96)':'rgba(10,20,36,.96)';X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,10);X.fill();
- X.strokeStyle=col;X.globalAlpha=hot?.9:.55;X.lineWidth=hot?2:1.2;X.stroke();X.globalAlpha=1;
- X.textAlign='center';X.shadowColor='#000';X.shadowBlur=3;
- X.fillStyle=col;X.font='bold 14px '+FONT;X.fillText(big,b.x+b.w/2,b.y+21);
- X.fillStyle='rgba(220,235,255,.85)';X.font='9px '+FONT;X.fillText(small,b.x+b.w/2,b.y+38);X.restore();}
+function hexPath(cx,cy,r){X.beginPath();for(let k=0;k<6;k++){const a=Math.PI/6+k*Math.PI/3;const px=cx+Math.cos(a)*r,py=cy+Math.sin(a)*r;k?X.lineTo(px,py):X.moveTo(px,py);}X.closePath();}
+// glass: a dark tint you can see the painting through, one thin edge, one word
+function titleBtn(b,col,word,hot){
+ X.save();X.fillStyle=hot?'rgba(40,90,50,.42)':'rgba(0,0,0,.38)';X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,b.h/2);X.fill();
+ X.strokeStyle=col;X.globalAlpha=hot?.95:.6;X.lineWidth=1.2;X.stroke();X.globalAlpha=1;
+ X.textAlign='center';X.shadowColor='#000';X.shadowBlur=4;X.fillStyle=col;X.font='bold 13px '+FONT;X.fillText(word,b.x+b.w/2,b.y+b.h/2+5);X.restore();}
 function drawTitleUI(sp){
- // the lower two thirds become a clean dark sheet; the art fades out into it
- {const g=X.createLinearGradient(0,236,0,300);g.addColorStop(0,'rgba(6,14,28,0)');g.addColorStop(1,'rgba(6,14,28,.94)');X.fillStyle=g;X.fillRect(0,236,W,64);X.fillStyle='rgba(6,14,28,.94)';X.fillRect(0,300,W,H-300);}
- X.textAlign='center';X.shadowColor='#000';X.shadowBlur=4;
- X.fillStyle='#ffd23f';X.font='bold 13px '+FONT;X.fillText('CHOOSE YOUR WORLD',W/2,288);
- for(let i=0;i<16;i++){const tl=TILE(i),sel=startStage===i+1,th=THEMES[i],lock=(i+1)>unlocked,bs=bestFor(i+1);
-  X.save();X.fillStyle=lock?'rgba(255,255,255,.04)':sel?'rgba(255,210,63,.16)':'rgba(255,255,255,.08)';X.beginPath();X.roundRect(tl.x,tl.y,tl.w,tl.h,9);X.fill();
-  X.strokeStyle=lock?'rgba(255,255,255,.10)':sel?'#ffd23f':'rgba(255,255,255,.28)';X.lineWidth=sel?2.5:1;X.stroke();
-  // a strip of the world's own sky and ground colours, so the tile is a picture of the place, not a number
-  if(!lock){const sg=X.createLinearGradient(0,tl.y+4,0,tl.y+30);sg.addColorStop(0,th.sky[0]);sg.addColorStop(1,th.ground[0]);X.fillStyle=sg;X.globalAlpha=.85;X.beginPath();X.roundRect(tl.x+4,tl.y+4,tl.w-8,26,6);X.fill();X.globalAlpha=1;}
-  X.textAlign='left';X.shadowColor='#000';X.shadowBlur=4;
-  X.fillStyle=lock?'rgba(255,255,255,.35)':'#fff';X.font='bold 15px '+FONT;X.fillText(lock?'🔒':String(i+1),tl.x+9,tl.y+23);
-  X.textAlign='center';X.fillStyle=lock?'rgba(255,255,255,.35)':sel?'#ffd23f':'#e8f2ff';X.font='bold 11px '+FONT;X.fillText(th.name.replace('THE ',''),tl.x+tl.w/2,tl.y+46);
-  X.font='8px '+FONT;X.fillStyle=lock?'rgba(255,255,255,.28)':'rgba(255,210,63,.85)';
-  X.fillText(lock?'reach it to play it':(bs>0?'best '+(bs>=1000?(bs/1000).toFixed(bs>=10000?0:1)+'k':String(bs)):th.sub),tl.x+tl.w/2,tl.y+58);
-  X.restore();}
- // the four buttons
- {const dc=dailyContract(),cc=CONTRACTS[contractIx],db=dailyBest(),n=dexSeen();
-  titleBtn(CBTN.daily,'#8dff9a','DAILY',db?'best today '+db:dc.label+'  x'+dc.mult,true);
-  titleBtn(CBTN.contract,'#ffd23f','CONTRACT',cc.label+(cc.mult!==1?'  x'+cc.mult:''),false);
-  titleBtn(CBTN.help,'#ffffff','HOW TO PLAY','controls & pick-ups',false);
-  titleBtn(CBTN.dex,'#7fd4ff','BUG-DEX',n+' / '+DEX.length+' found',false);}
- X.textAlign='left';X.font='9px '+FONT;X.fillStyle='rgba(220,235,255,.55)';X.shadowBlur=2;X.fillText('hold a button to see what it does',20,688);
- // gear
- {const b=CBTN.gear;X.save();X.fillStyle='rgba(10,20,36,.96)';X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,10);X.fill();X.strokeStyle='rgba(255,255,255,.4)';X.lineWidth=1.2;X.stroke();
-  X.translate(b.x+b.w/2,b.y+b.h/2);X.strokeStyle='#dceaf7';X.lineWidth=3;for(let k=0;k<8;k++){const a=k*Math.PI/4;X.beginPath();X.moveTo(Math.cos(a)*6,Math.sin(a)*6);X.lineTo(Math.cos(a)*10,Math.sin(a)*10);X.stroke();}
-  X.beginPath();X.arc(0,0,6,0,7);X.stroke();X.fillStyle='rgba(10,20,36,1)';X.beginPath();X.arc(0,0,2.5,0,7);X.fill();X.restore();}
+ // the painting stays whole. only a soft shade at the very bottom so the words read over the flowers.
+ {const g=X.createLinearGradient(0,470,0,H);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.62)');X.fillStyle=g;X.fillRect(0,470,W,H-470);}
+ X.save();X.textAlign='center';X.shadowColor='#000';X.shadowBlur=6;
+ // the picked world, in big letters, and its one-line hook
+ {const th=THEMES[startStage-1],bs=bestFor(startStage);
+  X.fillStyle='#ffd23f';X.font='bold 22px '+FONT;X.fillText(th.name.replace('THE ',''),W/2,498);
+  X.fillStyle='rgba(255,255,255,.85)';X.font='11px '+FONT;X.fillText(bs>0?'best '+bs:th.sub,W/2,516);}
+ // sixteen comb cells, each a picture of its world. the picked one glows, the locked ones are dark.
+ {const sheet=ART.worlds;
+  for(let i=0;i<16;i++){const c=WCHIP(i),sel=startStage===i+1,th=THEMES[i],lock=(i+1)>unlocked,r=sel?26:24;
+   X.save();X.shadowBlur=sel?14:0;X.shadowColor='#ffd23f';X.fillStyle='rgba(0,0,0,.5)';hexPath(c.cx,c.cy,r);X.fill();X.shadowBlur=0;
+   hexPath(c.cx,c.cy,r);X.clip();
+   if(sheet&&sheet.width){X.drawImage(sheet,(i%8)*96,Math.floor(i/8)*110,96,110,c.cx-r*.92,c.cy-r*1.05,r*1.84,r*2.1);}
+   else{const sg=X.createLinearGradient(0,c.cy-r,0,c.cy+r);sg.addColorStop(0,th.sky[0]);sg.addColorStop(1,th.ground[0]);X.fillStyle=sg;X.fillRect(c.cx-r,c.cy-r,r*2,r*2);}
+   if(lock){X.fillStyle='rgba(0,0,0,.72)';X.fillRect(c.cx-r,c.cy-r,r*2,r*2);}
+   X.restore();
+   X.strokeStyle=sel?'#ffd23f':lock?'rgba(255,255,255,.18)':'rgba(255,240,200,.6)';X.lineWidth=sel?2.5:1;hexPath(c.cx,c.cy,r);X.stroke();
+   X.shadowColor='#000';X.shadowBlur=4;
+   if(lock){X.strokeStyle='rgba(255,255,255,.55)';X.lineWidth=2;X.beginPath();X.roundRect(c.cx-6,c.cy-3,12,10,2);X.stroke();X.beginPath();X.arc(c.cx,c.cy-4,4,Math.PI,0);X.stroke();}
+   else{X.fillStyle='#fff';X.font='bold 16px '+FONT;X.fillText(String(i+1),c.cx,c.cy+6);}
+   X.fillStyle=sel?'#ffd23f':lock?'rgba(255,255,255,.35)':'rgba(255,255,255,.9)';X.font='bold 8px '+FONT;X.fillText(th.name.replace('THE ',''),c.cx,c.cy+r+10);X.shadowBlur=0;}}
+ // PLAY in the middle, help and the bug-dex either side. hold either side button for its card.
+ {const b=CBTN.play,pulse=.5+Math.sin(t*.08)*.5;X.save();X.shadowColor='#ffd23f';X.shadowBlur=10+pulse*10;X.fillStyle='rgba(255,210,63,.92)';X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,19);X.fill();X.restore();
+  X.fillStyle='#1a1400';X.font='bold 18px '+FONT;X.shadowBlur=0;X.fillText('PLAY',b.x+b.w/2,b.y+25);}
+ titleBtn(CBTN.help,'#ffffff','HELP',false);
+ titleBtn(CBTN.dex,'#7fd4ff','BUG-DEX',false);
+ X.restore();
+ // gear, top right, small
+ {const b=CBTN.gear;X.save();X.translate(b.x+b.w/2,b.y+b.h/2);X.shadowColor='#000';X.shadowBlur=4;X.strokeStyle='rgba(255,255,255,.8)';X.lineWidth=2.5;for(let k=0;k<8;k++){const a=k*Math.PI/4;X.beginPath();X.moveTo(Math.cos(a)*5,Math.sin(a)*5);X.lineTo(Math.cos(a)*9,Math.sin(a)*9);X.stroke();}
+  X.beginPath();X.arc(0,0,5,0,7);X.stroke();X.restore();}
  X.shadowBlur=0;
  if(settingsOpen)drawSettingsSheet();
  if(cardOpen)drawCard(cardOpen);}
 function drawSettingsSheet(){
- X.save();X.fillStyle='rgba(0,0,0,.55)';X.fillRect(0,0,W,H);
- X.fillStyle='rgba(10,20,36,.98)';X.beginPath();X.roundRect(40,H-262,W-80,190,14);X.fill();X.strokeStyle='rgba(255,255,255,.3)';X.lineWidth=1;X.stroke();
+ X.save();X.fillStyle='rgba(0,0,0,.35)';X.fillRect(0,0,W,H);
+ X.fillStyle='rgba(10,20,36,.82)';X.beginPath();X.roundRect(40,H-262,W-80,190,14);X.fill();X.strokeStyle='rgba(255,255,255,.3)';X.lineWidth=1;X.stroke();
  X.textAlign='center';X.fillStyle='#fff';X.font='bold 18px '+FONT;X.fillText('SOUND',W/2,H-236);
  const tog=(b,lab,on,col)=>{X.fillStyle=on?col:'rgba(255,255,255,.12)';X.beginPath();X.roundRect(b.x,b.y,b.w,b.h,8);X.fill();X.fillStyle=on?'#0b1a0c':'rgba(255,255,255,.7)';X.font='bold 12px '+FONT;X.fillText(lab+(on?' ON':' OFF'),b.x+b.w/2,b.y+20);};
  tog(SBTN.music,'MUSIC',MUSIC.on,'#7fd4ff');tog(SBTN.sfx,'FX',SFX_ON,'#ffd23f');
@@ -57,7 +61,7 @@ function drawSettingsSheet(){
  X.textAlign='center';X.font='10px '+FONT;X.fillStyle='rgba(220,235,255,.6)';X.fillText('tap outside to close',W/2,H-86);X.restore();}
 // one full-screen card, big type, few words. closes on the next tap.
 function drawCard(kind){
- X.save();X.fillStyle='rgba(4,10,20,.94)';X.fillRect(0,0,W,H);X.textAlign='center';X.shadowColor='#000';X.shadowBlur=6;
+ X.save();X.fillStyle='rgba(4,10,20,.80)';X.fillRect(0,0,W,H);X.textAlign='center';X.shadowColor='#000';X.shadowBlur=6;
  const title=(txt,col)=>{X.fillStyle=col;X.font='bold 34px '+FONT;X.fillText(txt,W/2,86);};
  const line=(txt,y,size=17,col='#fff')=>{X.fillStyle=col;X.font=(size>=17?'bold ':'')+size+'px '+FONT;X.fillText(txt,W/2,y);};
  if(kind==='daily'){const dc=dailyContract(),db=dailyBest();title('DAILY HIVE','#8dff9a');

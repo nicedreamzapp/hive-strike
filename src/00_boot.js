@@ -81,7 +81,7 @@ const BTN={music:{x:W/2-46,y:4,w:40,h:22},sfx:{x:W/2+6,y:4,w:40,h:22}};const inB
 // title screen, redone 2026-09-02 (Matt: chips covered the title, nothing readable, art buried):
 // art up top, a 4x4 world grid in the middle, ONE row of four big buttons under it, a gear.
 // Tap a button = do it. HOLD a button = a full-screen card in big letters saying what it is.
-const CBTN={daily:{x:20,y:600,w:104,h:50},contract:{x:132,y:600,w:104,h:50},help:{x:244,y:600,w:104,h:50},dex:{x:356,y:600,w:104,h:50},gear:{x:W-46,y:668,w:36,h:36}};
+const CBTN={play:{x:160,y:652,w:160,h:38},help:{x:20,y:652,w:110,h:38},dex:{x:350,y:652,w:110,h:38},gear:{x:W-44,y:14,w:32,h:32}};
 const DBTN=CBTN.dex;
 let holdBtn=null,holdT=0,cardOpen=null,settingsOpen=false;const HOLD_FRAMES=22;
 function firstHelp(){try{if(localStorage.hs_seen_help)return false;localStorage.hs_seen_help='1';}catch(e){return false;}cardOpen='help';return true;}
@@ -106,9 +106,10 @@ C.addEventListener('pointerdown',e=>{const isT=e.pointerType==='touch',p=ptr(e),
  if(state!=='play'){
   if(cardOpen){const was=cardOpen;cardOpen=null;holdBtn=null;if(was==='contract'){const k=contractCardHit(raw);if(k>=0){contractIx=k;localStorage.hs_contract=k;click(1200,.02);}}else click(900,.02);return;}
   if(inBtn(raw,CBTN.gear)){settingsOpen=true;click(1200,.02);return;}
-  for(const k of ['daily','contract','help','dex']){if(inBtn(raw,CBTN[k])){holdBtn=k;holdT=t;return;}}
+  for(const k of ['help','dex']){if(inBtn(raw,CBTN[k])){holdBtn=k;holdT=t;return;}}
   if(!armed)arm();
-  for(let i=0;i<16;i++){if(inBtn(raw,TILE(i))){if(i+1>unlocked){pickStage(i+1);return;}pickStage(i+1);if(firstHelp())return;start();return;}}
+  for(let i=0;i<16;i++){if(inBtn(raw,WCHIP(i))){const again=startStage===i+1&&i+1<=unlocked;pickStage(i+1);if(again){if(firstHelp())return;start();}return;}}   // tap picks a world, tapping it again flies
+  if(inBtn(raw,CBTN.play)){if(firstHelp())return;start();return;}
   if(state==='won'){continueGame();return;}
   if(firstHelp())return;start();return;}
  // a finger landing is how you MOVE on a phone -- only a mouse click means "bomb"
