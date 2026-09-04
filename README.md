@@ -102,6 +102,12 @@ still needed before either store will accept it.
 The iOS app builds and runs today. Android is scaffolded and portrait-locked but
 needs Android Studio and a JDK installed to compile.
 
+## Twenty seconds of it
+
+https://github.com/nicedreamzapp/hive-strike/raw/main/media/gameplay.mp4
+
+Level 12, the Tide Pool. Also on the [product page](https://nicedreamzwholesale.com/software/hive-strike/).
+
 ## Status
 
 **Live on Google Play** — [Hive Strike](https://play.google.com/store/apps/details?id=com.nicedreamz.hivestrike).
