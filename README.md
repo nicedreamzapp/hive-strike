@@ -104,5 +104,6 @@ needs Android Studio and a JDK installed to compile.
 
 ## Status
 
-Playable start to finish, on desktop and on a phone. Being prepared for the App
-Store and Google Play.
+**Live on Google Play** — [Hive Strike](https://play.google.com/store/apps/details?id=com.nicedreamz.hivestrike).
+Free for thirty days, then a one-time $1.99 unlock, no subscription and no adverts.
+The iPhone build is with App Review.
