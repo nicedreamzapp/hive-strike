@@ -28,3 +28,4 @@ art/splash_photo_*.png
 art/hero_candidates/
 
 android/keystore.properties
+.env
