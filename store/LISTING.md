@@ -30,9 +30,10 @@ Free for thirty days, then one payment of $1.99. No subscription, no adverts.
 
 ## Full description
 
-You are the last bee out of a burning hive.
+"This meadow is MINE, little bee," says the Hornet Queen. Fifteen more bosses say the same
+about their own ground.
 
-Sixteen worlds stand between you and the queen who took it: a sunlit meadow, a moonlit
+Sixteen hand-painted worlds stand between you and the last of them: a sunlit meadow, a moonlit
 pine wood, the inside of the comb itself, a volcano floor, a rooftop after dusk, a
 crystal cavern lit only by its own stones. Each one is a painting, and each one has a
 bug in it that a camera would recognise.

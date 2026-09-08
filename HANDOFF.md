@@ -71,9 +71,17 @@ the rest are $2. The Apple unlock is on the **1.99** tier (Apple has no 2.00 poi
 constant in `src/22_store.js` and all listing copy say $1.99. The paywall shows whatever price
 the store reports at runtime, so the constant is only a fallback.
 
-**Still says 99c and needs fixing:** the Play store listing (short and full description, and
-the release note) — it is in review with the old price. Edit it in the console or via
-`hs-store/play_listing.py` on the mini and resubmit.
+~~Still says 99c~~ **FIXED 2026-09-03 evening.** The Play release note on both the production and
+internal tracks now reads "$1.99" (the listing descriptions never had a price). Apple's promo text
+said "99c" and was fixed too.
+
+**Play IAP now EXISTS.** `com.nicedreamz.hivestrike.unlock` is **ACTIVE at $1.99** across 173 regions,
+created 2026-09-03 by copying RealTime Space's product. The thirty-day "product not found yet" hole
+is closed. Recipe, because the API is awkward: `POST .../oneTimeProducts:batchUpdate` with
+`allowMissing: true` creates it (a plain `PATCH` on the product URL answers an HTML 404), and it
+lands in **DRAFT** — activate with
+`POST .../oneTimeProducts/<pid>/purchaseOptions:batchUpdateStates` and a body of
+`{"requests":[{"activatePurchaseOptionRequest":{"packageName":..,"productId":..,"purchaseOptionId":"unlock"}}]}`.
 
 ---
 
