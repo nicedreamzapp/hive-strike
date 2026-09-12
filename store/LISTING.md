@@ -33,10 +33,10 @@ Free for thirty days, then one payment of $1.99. No subscription, no adverts.
 "This meadow is MINE, little bee," says the Hornet Queen. Fifteen more bosses say the same
 about their own ground.
 
-Sixteen hand-painted worlds stand between you and the last of them: a sunlit meadow, a moonlit
+Sixteen worlds stand between you and the last of them: a sunlit meadow, a moonlit
 pine wood, the inside of the comb itself, a volcano floor, a rooftop after dusk, a
-crystal cavern lit only by its own stones. Each one is a painting, and each one has a
-bug in it that a camera would recognise.
+crystal cavern lit only by its own stones. Every frame of that art was made on a single Mac in my house, no cloud
+and no stock art, and each world has a bug in it that a camera would recognise.
 
 Fly with one finger. The bee follows your thumb, so both hands stay out of the way of
 the screen. Sixteen bosses change their job halfway through the fight rather than just
@@ -55,7 +55,7 @@ true fact about the real animal.
 forever, on every device signed in to your account. There is no subscription, nothing
 else to buy, and no adverts anywhere in it.
 
-- Sixteen hand-painted worlds and sixteen bosses
+- Sixteen worlds and sixteen bosses, every frame of art generated locally on one Mac
 - Sixteen weapons, five levels each
 - A Bug-Dex of forty-eight real insects
 - Daily runs and eight contracts that change the rules
