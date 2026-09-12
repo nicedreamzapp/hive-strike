@@ -26,8 +26,14 @@ function storeInit(){
  try{
   const {store,ProductType,Platform}=window.CdvPurchase;
   const plats=[];
-  if(window.CdvPurchase.Utils&&/iP(hone|ad|od)/.test(navigator.userAgent)){plats.push(Platform.APPLE_APPSTORE);}
-  else plats.push(Platform.GOOGLE_PLAY);
+  // Ask Capacitor which platform this is. Never sniff the user agent: on iPadOS the
+  // WKWebView reports "Macintosh", so /iP(hone|ad|od)/ is FALSE on every iPad, and the
+  // old test registered GOOGLE_PLAY on an Apple device -> store.get() returns nothing ->
+  // "product not found yet". That is exactly what App Review hit on an iPad Air M3,
+  // 2026-09-12, guideline 2.1(b).
+  let isApple=false;
+  try{isApple=!!(window.Capacitor&&window.Capacitor.getPlatform&&window.Capacitor.getPlatform()==='ios');}catch(e){}
+  plats.push(isApple?Platform.APPLE_APPSTORE:Platform.GOOGLE_PLAY);
   store.register(plats.map(p=>({id:PAY_ID,type:ProductType.NON_CONSUMABLE,platform:p})));
   store.when()
    .productUpdated(p=>{if(p.id===PAY_ID){const o=p.getOffer&&p.getOffer();if(o&&o.pricingPhases&&o.pricingPhases[0]&&o.pricingPhases[0].price)STORE.price=o.pricingPhases[0].price;}})
