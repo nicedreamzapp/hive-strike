@@ -63,9 +63,10 @@ function storeRestore(){                        // Apple requires this button to
 }
 
 // ---- the paywall, drawn in the title's own language: glass over the painting ----
-const PAYB={buy:{x:56,y:492,w:W-112,h:54},restore:{x:56,y:562,w:(W-122)/2,h:40},later:{x:66+(W-122)/2,y:562,w:(W-122)/2,h:40}};
+const PAYB={buy:{x:56,y:492,w:W-112,h:54},restore:{x:56,y:562,w:(W-122)/2,h:40},later:{x:66+(W-122)/2,y:562,w:(W-122)/2,h:40},code:{x:W/2-92,y:610,w:184,h:34}};
 function payHit(p){
  if(inBtn(p,PAYB.buy)){storeBuy();return true;}
+ if(inBtn(p,PAYB.code)){askCode();return true;}
  if(inBtn(p,locked()?{x:W/2-90,y:PAYB.restore.y,w:180,h:PAYB.restore.h}:PAYB.restore)){storeRestore();return true;}
  if(inBtn(p,PAYB.later)){if(!locked()){payOpen=false;}return true;}
  return false;
@@ -93,9 +94,56 @@ function drawPaywall(){
  pill(PAYB.buy,STORE.busy?'ONE MOMENT...':'UNLOCK FOR '+STORE.price,'#1a1400','rgba(255,210,63,.94)','rgba(255,236,160,.95)');
  if(locked())pill({x:W/2-90,y:PAYB.restore.y,w:180,h:PAYB.restore.h},'RESTORE PURCHASE','#fff','rgba(0,0,0,.35)','rgba(255,255,255,.55)');
  else{pill(PAYB.restore,'RESTORE','#fff','rgba(0,0,0,.35)','rgba(255,255,255,.55)');pill(PAYB.later,'NOT YET','#fff','rgba(0,0,0,.35)','rgba(255,255,255,.55)');}
+ pill(PAYB.code,'ENTER A CODE','#cfe8ff','rgba(255,255,255,.07)','rgba(255,255,255,.3)');
  if(STORE.note){X.font='11px '+FONT;X.fillStyle='rgba(220,235,255,.8)';X.strokeStyle='rgba(0,0,0,.8)';X.lineWidth=3;X.strokeText(STORE.note,W/2,662);X.fillText(STORE.note,W/2,662);}
  X.restore();
 }
+// ---- gift codes ----------------------------------------------------------------------
+// Matt's OWN codes, not Apple/Google promo codes. Apple's are unreadable 18-character
+// strings you cannot choose and can only redeem in the App Store app; these are short words
+// he can say out loud or drop in a forum post, and they work on both stores and offline.
+// SHA-256, and the words themselves are deliberately NOT in this repo - a hash is one-way,
+// a comment naming the code is not. To mint one:
+//   echo -n YOURCODE | shasum -a 256
+const CODE_HASHES=[
+ '639587e1a938be5179891c4c367340f2f7063b9bcdbe8553e7d1bc7f725ce04f', // gift code 1
+ 'c8c8f7fe625a1a98824e4fc4887ca38b8caeb22ad91c4f40d500c3378549597e'  // owner
+];
+async function sha256hex(str){
+ const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(str));
+ return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+// Canvas cannot take keyboard input, so the field is a real HTML input laid over the game
+// and removed the moment it is done. Autocapitalised, no autocorrect, Go key submits.
+function askCode(){
+ if(document.getElementById('codewrap'))return;
+ const wrap=document.createElement('div');wrap.id='codewrap';
+ wrap.setAttribute('style','position:fixed;inset:0;z-index:99;display:flex;align-items:center;justify-content:center;background:rgba(2,6,14,.88);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);padding:24px;box-sizing:border-box');
+ wrap.innerHTML='<div style="width:100%;max-width:330px;text-align:center;font-family:system-ui,-apple-system,sans-serif">'
+  +'<div style="color:#ffd23f;font-weight:700;font-size:17px;letter-spacing:.5px;margin-bottom:6px">ENTER YOUR CODE</div>'
+  +'<div id="codemsg" style="color:#cfe8ff;font-size:12px;margin-bottom:14px">Unlocks Hive Strike for good.</div>'
+  +'<input id="codein" autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false" enterkeyhint="go" placeholder="Your code" aria-label="Unlock code" '
+  +'style="width:100%;box-sizing:border-box;height:48px;text-align:center;font-size:19px;font-weight:700;letter-spacing:2px;color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.3);border-radius:12px;outline:none">'
+  +'<div style="display:flex;gap:10px;margin-top:14px">'
+  +'<button id="codecancel" style="flex:1;height:44px;border-radius:12px;border:1px solid rgba(255,255,255,.3);background:rgba(0,0,0,.35);color:#fff;font-size:14px;font-weight:700">CANCEL</button>'
+  +'<button id="codego" style="flex:1;height:44px;border-radius:12px;border:0;background:#ffd23f;color:#1a1400;font-size:14px;font-weight:700">UNLOCK</button>'
+  +'</div></div>';
+ document.body.appendChild(wrap);
+ const input=wrap.querySelector('#codein'),msg=wrap.querySelector('#codemsg');
+ const close=()=>{input.blur();wrap.remove();};
+ const submit=async()=>{
+  const cleaned=(input.value||'').toUpperCase().replace(/[\s-]/g,'');
+  if(!cleaned)return;
+  let h='';try{h=await sha256hex(cleaned);}catch(e){msg.textContent='Could not check that code here.';return;}
+  if(CODE_HASHES.indexOf(h)>=0){ownedSave(true);STORE.note='Code accepted. Unlocked for good.';payOpen=false;close();}
+  else{msg.style.color='#ff9d7a';msg.textContent='That code did not match. Check it and try again.';input.select();}
+ };
+ wrap.querySelector('#codego').addEventListener('click',submit);
+ wrap.querySelector('#codecancel').addEventListener('click',close);
+ input.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();submit();}});
+ setTimeout(()=>input.focus(),40);
+}
+
 // the quiet reminder on the title while the trial is still running
 function drawTrialLine(){
  if(!STORE.native||STORE.owned)return;
