@@ -29,3 +29,6 @@ art/hero_candidates/
 
 android/keystore.properties
 .env
+
+# per-edit safety copies, not history
+*.bak-*

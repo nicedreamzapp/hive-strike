@@ -43,7 +43,7 @@ const FONT='"Avenir Next Condensed","Futura","Arial Narrow","Helvetica Neue",san
 // stamped by tools/assemble.py from the version in package.json and the git commit --
 // never edit by hand. It is how you tell at a glance whether the phone in your hand is
 // running the same build as the one next to it.
-const BUILD='v1.3.0  ·  b69a29a+  ·  Sep 12';
+const BUILD='v1.3.0  ·  bb7c1c4+  ·  Sep 15';
 // letterbox the play field inside whatever the device actually gives us, safe-area padding
 // already removed by the body. visualViewport is the honest number on iOS.
 function fit(){const cs=getComputedStyle(document.body),
@@ -124,6 +124,7 @@ C.addEventListener('pointerdown',e=>{const isT=e.pointerType==='touch',p=ptr(e),
  if(state!=='play'){
   if(cardOpen){const was=cardOpen;cardOpen=null;holdBtn=null;if(was==='contract'){const k=contractCardHit(raw);if(k>=0){contractIx=k;localStorage.hs_contract=k;click(1200,.02);}}else click(900,.02);return;}
   if(inBtn(raw,CBTN.gear)){settingsOpen=true;click(1200,.02);return;}
+  if(trialBtnShown()&&inBtn(raw,TRIALB)){payOpen=true;click(1200,.02);return;}   // the in-app purchase, reachable from launch (see 22_store.js)
   for(const k of ['help','dex']){if(inBtn(raw,CBTN[k])){holdBtn=k;holdT=t;return;}}
   if(!armed)arm();
   for(let i=0;i<16;i++){if(inBtn(raw,WCHIP(i))){const again=startStage===i+1&&i+1<=unlocked;pickStage(i+1);if(again){if(firstHelp())return;start();}return;}}   // tap picks a world, tapping it again flies
@@ -441,11 +442,21 @@ function musicGain(k,a){
  // (music peak 0.00000 while a control oscillator read fine). Android honours a.volume, so
  // skip the graph there too. Only iOS needs the GainNode route.
  if(/Android/i.test(navigator.userAgent)){MUSIC.gains[k]=null;return null;}
- try{const ac=ctx();const src=ac.createMediaElementSource(a);g=ac.createGain();g.gain.value=0;src.connect(g).connect(ac.destination);}
+ try{const ac=ctx();const src=ac.createMediaElementSource(a);g=ac.createGain();g.gain.value=0;src.connect(g).connect(ac.destination);
+  // An element routed into Web Audio STILL attenuates what it feeds the graph by its own
+  // .volume in Chromium, and musicLoad() creates every track at volume 0. So the GainNode
+  // was being handed silence no matter what its gain read. Measured 2026-09-15 over
+  // http://127.0.0.1: element playing, currentTime climbing 0.4s per 400ms, gain 0.393,
+  // and the peak at the gain node exactly 0.00000 while a control oscillator read fine.
+  // file:// and Android never hit it because they skip the graph; iOS never hit it because
+  // it resets .volume to 1 on load, which is the whole reason the graph exists. Desktop
+  // served over http or https is the case nobody had. The graph does the fading now, so
+  // the element itself must run wide open.
+  a.volume=1;}
  catch(e){g=null;}                       // fall back to a.volume if the graph refuses
  MUSIC.gains[k]=g;return g;}
 const mvol=(k,a)=>{const g=MUSIC.gains[k];return g?g.gain.value:a.volume;};
-function msetvol(k,a,v){const g=musicGain(k,a);if(g)g.gain.value=v;else a.volume=v;}
+function msetvol(k,a,v){const g=musicGain(k,a);if(g){g.gain.value=v;if(a.volume!==1)a.volume=1;}else a.volume=v;}
 // Diagnostic readout (2026-09-02, Android burner reported no music): the music button's
 // toast now shows the audio context state and the wanted track's element state so the
 // cause can be read straight off the phone -- no adb needed.
@@ -611,7 +622,7 @@ function start(){clearCheckpoint();STAT.runs++;statSave();learned.clear();POPS.l
  dailyRun=wantDaily?dayKey():null;wantDaily=false;
  const c=dailyRun?dailyContract():CONTRACTS[contractIx];MODS=c.mods;cmult=c.mult;
  if(dailyRun)stage=1;                                  // a daily score means nothing unless everyone starts at the door
- if(MODS.guard)P.bombs=5;if(MODS.nobomb)P.bombs=0;
+ if(MODS.guard)P.bombs=DIFF.bombCap();if(MODS.nobomb)P.bombs=0;
  bossWarn=0;levelClear=0;levelIntro=200;nextWave=0;rushDone=false;nextCloud=500;buildDecor((stage-1)%NL);palA=palB=(stage-1)%NL;palMix=1;SFX.levelStart();music('main');
  if(dailyRun)say('DAILY HIVE  ·  '+c.label+'  ·  x'+c.mult);else if(c.mult!==1)say(c.label+'  ·  SCORE x'+c.mult);}
 function say(s){msg=s;msgT=150;}
@@ -640,23 +651,88 @@ let boom=function(x,y,c,n=12,sp=4){for(let i=0;i<n;i++){const a=R(0,Math.PI*2),s
 // At Lv5 every shot is EVOLVED: same damage, same hitbox, but it wears an aura in its
 // weapon's colour and the big three get a flourish (honey swells, stinger crackles wider,
 // pollen leaves a sparkle wake). The bee already glows at Lv5; now the shots match.
-function fire(){const L=P.lvl,x=P.x,y=P.y-14,n0=bullets.length;P.shots++;gainScale=.3;try{fireInner(L,x,y);}finally{gainScale=1;}if(L>=5)for(let i=n0;i<bullets.length;i++)bullets[i].evo=1;}
+// ---------- GUN BALANCE ----------
+// Matt 2026-09-15: "it seems that when you get one sort of firepower the game becomes really
+// easy, and then if you get stuck with another it becomes hard." He was right, and it was not
+// close. Measured at Lv5 against a boss-range target and against a spread crowd:
+//
+//   PHEROMONE LURE  128 far / 255 crowd      LIGHT LASH      64 / 64
+//   NECTAR RAIN      81 / 277                PROPOLIS SHOT   26 / 107
+//   POLLEN SEEKERS  136 / 150                COMB GRENADE    53 / 93
+//
+// A three-to-one difference in raw output, so the run was decided by which pickup fell, not by
+// how you played. A gun should differ in HOW it kills -- single target, crowd, reach, tracking
+// -- and not in HOW MUCH. WBAL scales each one onto a common power budget while leaving its
+// shape alone: the stinger stays the single-target king, the rain stays the crowd sweeper, they
+// just no longer sit on different rungs. Numbers derived from the measurement above, not guessed;
+// tools/gun_balance.mjs re-derives them.
+// ---------- GUNS HAVE OPINIONS ----------
+// Balancing every gun to the same power budget (WBAL below) made the game fair and made the
+// gun boring: sixteen weapons that all did the same thing by a different sprite. Matt 9/15,
+// on what he wanted instead: "I like thinking being involved."
+//
+// So a gun is not better or worse. It is better or worse AT SOMETHING. Four things a bug can
+// be, and every gun is strong against one and weak against another:
+//
+//   swarm   little fodder and gnat clouds, lots of them, none of them tough
+//   armor   elites and bosses -- one target, a lot of health
+//   runner  chargers, divers, dashers, hoppers: anything that moves faster than it should
+//   gunner  anything that shoots back
+//
+// The worlds already differ in what they are made of, so "wrong gun for this room" becomes a
+// real thought you can have, and being right about it is something you LEARNED rather than
+// something the game handed you. The averages still come out level -- tools/gun_balance.mjs
+// checks the budget, and the per-trait spread is the point, not a bug.
+const FIT_UP=1.40, FIT_DN=0.70;
+const GUNFIT={
+ honey  :{up:'swarm', dn:'runner'},   stinger:{up:'armor', dn:'swarm' },
+ pollen :{up:'runner',dn:'armor' },   water  :{up:'swarm', dn:'armor' },
+ wax    :{up:'runner',dn:'swarm' },   thorn  :{up:'swarm', dn:'armor' },
+ petal  :{up:'gunner',dn:'swarm' },   lance  :{up:'armor', dn:'swarm' },
+ drones :{up:'runner',dn:'swarm' },   static :{up:'swarm', dn:'armor' },
+ saw    :{up:'armor', dn:'gunner'},   lash   :{up:'runner',dn:'swarm' },
+ rain   :{up:'swarm', dn:'armor' },   lure   :{up:'swarm', dn:'runner'},
+ grenade:{up:'gunner',dn:'runner'},   wall   :{up:'gunner',dn:'armor' },
+};
+const FITLABEL={swarm:'SWARMS',armor:'ELITES & BOSSES',runner:'FAST MOVERS',gunner:'SHOOTERS'};
+const RUNPATS={charge:1,dive:1,dash:1,hop:1,zig:1,rise:1,scurry:1};
+// what a given target counts as. a bug can only be one thing: armour first, then speed, then
+// whether it shoots, and everything else is swarm.
+function trait(e){
+ if(!e)return 'swarm';
+ if(e===boss||e.elite)return 'armor';
+ if(e.tiny)return 'swarm';
+ if(RUNPATS[e.pat])return 'runner';
+ if(SHOOTERS.includes(A(e.type))||SHOOTERS.includes(e.type))return 'gunner';
+ return 'swarm';
+}
+// the multiplier a shot from the CURRENT gun does to this target
+function fitMul(e){const g=GUNFIT[P.wpn];if(!g)return 1;const tr=trait(e);
+ return tr===g.up?FIT_UP:tr===g.dn?FIT_DN:1;}
+const WBAL={honey:.83,stinger:.83,pollen:.84,water:1.18,wax:1.12,thorn:1.82,petal:1.28,lance:1.03,
+            drones:1.33,static:1.20,saw:1.05,lash:1.88,rain:.67,lure:.47,grenade:1.64,wall:.92};
+function fire(){const L=P.lvl,x=P.x,y=P.y-14,n0=bullets.length;P.shots++;gainScale=.3;try{fireInner(L,x,y);}finally{gainScale=1;}
+ const w=WBAL[P.wpn]||1;
+ for(let i=n0;i<bullets.length;i++){bullets[i].d*=w;if(L>=5)bullets[i].evo=1;}}
 function fireInner(L,x,y){
  if(P.wpn==='honey'){const n=Math.min(5,L+1),spread=.115-L*.012;for(let i=0;i<n;i++){const a=-Math.PI/2+(i-(n-1)/2)*spread;bullets.push({x:x+(i-(n-1)/2)*4,y,vx:Math.cos(a)*12,vy:Math.sin(a)*12,d:1.3+L*.72,r:5.5,k:'honey'});}P.fireT=12;FIRE.honey();flashMuzzle(x,y,'#ffd166');}
  else if(P.wpn==='stinger'){const w=3+L*1.6;bullets.push({x,y,vx:0,vy:-18,d:.6+L*.22,r:w,k:'stinger',pierce:1});if(L>=4){bullets.push({x:x-16,y,vx:-1.2,vy:-17,d:.15,r:3,k:'stinger',pierce:1});bullets.push({x:x+16,y,vx:1.2,vy:-17,d:.15,r:3,k:'stinger',pierce:1});}P.fireT=5;FIRE.stinger();flashMuzzle(x,y,'#e0b0ff');}
  else if(P.wpn==='pollen'){const n=Math.min(5,2+Math.floor(L/1.5));for(let i=0;i<n;i++){const a=-Math.PI/2+(i-(n-1)/2)*.42;bullets.push({x,y,vx:Math.cos(a)*7.5,vy:Math.sin(a)*7.5,d:2.5+L*.62,r:7,k:'pollen',home:1});}P.fireT=17;FIRE.pollen();flashMuzzle(x,y,'#ffb0d8');}
  else if(P.wpn==='water'){const n=L>=3?2:1;for(let i=0;i<n;i++){bullets.push({x:x+(i-(n-1)/2)*10,y,vx:(i-(n-1)/2)*.5,vy:-16,d:2.1+L*.52,r:4,k:'water'});}P.fireT=8;FIRE.water();flashMuzzle(x,y,'#ffd080');}
  else if(P.wpn==='wax'){const n=L>=3?2:1;for(let i=0;i<n;i++){bullets.push({x:x+(i-(n-1)/2)*16,y,vx:0,vy:-9.5,d:5.4+L*1.5,r:9,k:'wax'});}P.fireT=22;FIRE.wax();flashMuzzle(x,y,'#ffe0a0');}
- else if(P.wpn==='thorn'){for(let i=0;i<5;i++){const a=-Math.PI/2+(i-2)*.075;bullets.push({x,y,vx:Math.cos(a)*13,vy:Math.sin(a)*13,d:1.6+L*.6,r:4,k:'thorn',life:52+L*4});}P.fireT=16;FIRE.thorn();flashMuzzle(x,y,'#ffd890');}
+ else if(P.wpn==='thorn'){for(let i=0;i<5;i++){const a=-Math.PI/2+(i-2)*.075;bullets.push({x,y,vx:Math.cos(a)*13,vy:Math.sin(a)*13,d:1.6+L*.6,r:4,k:'thorn',life:78+L*6});}P.fireT=16;FIRE.thorn();flashMuzzle(x,y,'#ffd890');}
  else if(P.wpn==='lance'){bullets.push({x,y,vx:0,vy:-15,d:9+L*3.1,r:6,k:'lance',pierce:1,cd:0});P.fireT=30;FIRE.lance();flashMuzzle(x,y,'#ffe066');}
  else if(P.wpn==='drones'){const want=2+Math.ceil(L/2),have=bullets.filter(b=>b.drone).length;if(have<want){for(let i=have;i<want;i++)bullets.push({x:P.x+R(-30,30),y:P.y-10,vx:0,vy:0,d:1.2+L*.32,r:7,k:'drone',drone:1,pierce:1,slot:i,cd:0});FIRE.drones();}P.fireT=20;}
  else if(P.wpn==='static'){bullets.push({x,y,vx:0,vy:-2.9,d:2.6+L*1.05,r:11,k:'static',pierce:1,life:260,zapT:0,zaps:[],targets:2+Math.floor(L/2)});P.fireT=44;FIRE.static();flashMuzzle(x,y,'#d8b0ff');}
  else if(P.wpn==='saw'){const n=L>=4?2:1;for(let i=0;i<n;i++)bullets.push({x:x+(i-(n-1)/2)*24,y,vx:(i-(n-1)/2)*.6,vy:-17,d:1.7+L*.42,r:8,k:'saw',pierce:1,cd:0,ang:0,life:300});P.fireT=26;FIRE.saw();flashMuzzle(x,y,'#b0ff70');}
  else if(P.wpn==='lash'){let best=null,bd=580*580;for(const e of enemies){if(e.y>P.y)continue;const d=(e.x-P.x)**2+(e.y-P.y)**2;if(d<bd){bd=d;best=e;}}if(boss&&boss.y>0){const d=(boss.x-P.x)**2+(boss.y-P.y)**2;if(d<bd){bd=d;best=boss;}}
-  const dmg=(1.05+L*.42)*PD;if(best){best.hp-=dmg;best.fl=2;lashT={x:best.x,y:best.y,t:t,isBoss:best===boss};if(t%3===0)sparks(best.x,best.y,'#fff7b0',2,5);if(best!==boss&&best.hp<=0){best.dead=1;addScore(best.sc);onKill();killFx(best);if(best.elite)drop(best.x,best.y,randWeapon());else if(!best.tiny)drop(best.x,best.y);if(!best.tiny)gibs(best);sfxKill(best);}if(best===boss)sfxBossHit();}else lashT=null;
+  const dmg=(1.05+L*.42)*PD*(WBAL.lash||1);if(best){best.hp-=dmg*fitMul(best);best.fl=2;lashT={x:best.x,y:best.y,t:t,isBoss:best===boss};if(t%3===0)sparks(best.x,best.y,'#fff7b0',2,5);if(best!==boss&&best.hp<=0){best.dead=1;addScore(best.sc);onKill();killFx(best);if(best.elite)drop(best.x,best.y,randWeapon());else if(!best.tiny)drop(best.x,best.y);if(!best.tiny)gibs(best);sfxKill(best);}if(best===boss)sfxBossHit();}else lashT=null;
   P.fireT=4;FIRE.lash();}
  else if(P.wpn==='rain'){for(let i=0;i<4+L;i++)bullets.push({x:clamp(P.x+R(-110,110),10,W-10),y:-10-R(0,60),vx:0,vy:8+R(0,3),d:2.8+L*1.0,r:5,k:'rain',down:1});P.fireT=24;FIRE.rain();}
- else if(P.wpn==='lure'){if(bullets.filter(b=>b.k==='lure').length<2){bullets.push({x,y,vx:0,vy:-8,d:30+L*9,r:12,k:'lure',pierce:1,life:96,stopY:P.y-390});FIRE.lure();}P.fireT=20;}
+ else if(P.wpn==='lure'){if(bullets.filter(b=>b.k==='lure').length<2){{let ty=P.y-390;let bd=1e9;
+   for(const e of enemies){if(e.dead||e.y>P.y-40)continue;const dd=(e.x-P.x)**2+(e.y-P.y)**2;if(dd<bd){bd=dd;ty=e.y;}}
+   if(boss&&boss.y>0){const dd=(boss.x-P.x)**2+(boss.y-P.y)**2;if(dd<bd)ty=boss.y;}
+   bullets.push({x,y,vx:0,vy:-8,d:30+L*9,r:12,k:'lure',pierce:1,life:96,stopY:clamp(ty,40,P.y-60)});}FIRE.lure();}P.fireT=20;}
  else if(P.wpn==='grenade'){bullets.push({x,y,vx:R(-.6,.6),vy:-13.5,d:4+L*1.5,r:7,k:'grenade',ay:.17});P.fireT=34;FIRE.grenade();flashMuzzle(x,y,'#ffa54d');}
  else if(P.wpn==='wall'){if(!bullets.some(b=>b.k==='wall')){bullets.push({x:P.x,y:P.y-70,vx:0,vy:0,d:.9+L*.3,r:8,k:'wall',pierce:1,life:260,cd:0,half:44+L*8});FIRE.wall();}
   // the wall alone cannot hurt a boss, so it also spits resin darts straight up
@@ -690,10 +766,74 @@ const THEMES=[
 ];
 const NL=THEMES.length;
 function LV(){return THEMES[(stage-1)%NL];}
-function D(){const lv=(stage-1)%NL;
- // late worlds keep accelerating instead of coasting: a curve, not a straight line
- const late=lv>=11?(lv-10)*.085:0;
- return Math.min(2.5,.36+lv*.105+late+loop*.28);}
+
+// ---------------- DIFFICULTY: one number per world, every dial reads off it ----------------
+// Before 2026-09-15 difficulty was an accident of two lotteries. A world was as hard as its
+// ROSTER happened to be -- THE DUNES drew bugs that barely shoot and measured QUIETER than
+// world 1 (0.9 shots in the air against 2.2) -- and a boss was as hard as whichever of eight
+// shared attack patterns it was handed, with no regard for which world it stood in (world 16's
+// boss forced a dodging bot to move on 4.2% of frames; world 14's on 6.5%). The curve had dips
+// in it and no one could see them, because difficulty was never written down anywhere.
+//
+// heat() is now that number: 0 at THE MEADOW, 1 at THE CRYSTAL, and it keeps climbing on later
+// loops. Every dial below is a named point on that curve, so world 9 is a thing you can look up
+// instead of a thing you discover. The roster still picks WHICH bugs you fight. It no longer
+// picks how hard the world is.
+//
+// tools/difficulty_curve.mjs measures the real game against this and FAILS if any world comes
+// out easier than the one before it.
+// Per-world correction, the same trick that took the boss patterns from a 35x spread to 1.3x.
+// Every dial sits exactly on the curve, but a world's BUGS still differ in ways the curve cannot
+// see -- above all in how long a shooter sticks around. A spiderling hangs on its thread at a
+// fixed height and fires twenty times; a diving fly gets one volley on its way past. So THE
+// SWAMP measured 11.8% forced movement at world 7 while THE HIVE measured 1.2% at world 6.
+// WFIT scales each world's fire cadence so the themed roster stays exactly as it is and the
+// pressure still lands on the line. Derived by measurement, not by taste --
+// tools/world_fit.mjs re-derives it and prints a fresh table.
+const WFIT=[1.11,1.00,0.55,0.61,0.87,0.35,0.85,0.55,0.39,0.44,0.85,0.58,0.86,0.85,0.71,0.69];
+const heat=()=>((stage-1)%NL)/(NL-1)+loop*.55;
+const HC=(a,b)=>a+(b-a)*heat();
+const DIFF={
+ speed   :()=>Math.min(2.5,HC(.36,1.55)),        // how fast bugs move
+ swarm   :()=>Math.round(HC(6,19)),              // bugs allowed on screen at once
+ squads  :()=>heat()>=.78?4:heat()>=.42?3:2,     // formations allowed to share the air
+ squadAdd:()=>Math.round(HC(0,3.2)),             // extra bugs per formation
+ cadence :()=>Math.max(.14,HC(.78,.17))*WFIT[(stage-1)%NL], // wait between a bug's volleys (lower = faster)
+ airCap  :()=>Math.round(Math.min(110,HC(16,88))),// hard ceiling on enemy shots in the air
+ elite   :()=>Math.min(.85,HC(.15,.55)),         // chance a wave carries an elite
+ bossFire:()=>Math.max(.55,HC(1.18,.70)),        // boss fire period (lower = shoots more often)
+ gunners :()=>Math.min(.90,HC(.22,.82)),         // share of the swarm that must be bugs which SHOOT
+ bossHp  :()=>HC(1.30,3.05),                     // boss health, against the gun you are likely to hold
+ // ---- how cheap it is to be WRONG. this is half of difficulty and it was never on the curve ----
+ // Measured off Matt's own live run 2026-09-15: three worlds in at THE CRYSTAL, every enemy dial
+ // pegged at maximum, and he was carrying 10 lives and 5 bombs -- fifteen mistakes in hand. No
+ // amount of enemy pressure reads as danger when being wrong costs nothing.
+ maxLives:()=>Math.round(HC(9,4)),               // how many lives you may bank
+ bombCap :()=>Math.round(HC(5,3)),               // how many swarm calls you may hold
+ savePain:()=>heat()>=.5,                        // deep in, a bomb saving your life also costs you a power level
+ // Matt 2026-09-15: "I was easily able to dodge the firepower on some of the higher rounds."
+ // He was right and it was not subtle. Enemy shots carried a flat 0.55 speed multiplier at every
+ // level of the game, so at THE CRYSTAL a wasp's venom travelled 1.97 px a frame against your
+ // 4.50 -- you outran every bullet in the game by more than two to one, forever. More bullets
+ // arriving at a speed you can simply walk away from is not difficulty, it is weather. Shot
+ // speed is now the steepest line on the curve: still comfortably escapable at the end, but
+ // close enough that you have to actually go somewhere.
+ shotSpeed:()=>HC(.55,1.00),
+ // How much of the enemies' fire is actually pointed AT you. Measured 2026-09-15: THE CRYSTAL
+ // fires 14.4 shots a second, more than double any other world, and still forced a dodging bot
+ // to move only 3.6% of the time -- LESS than world five. Its roster is full of bugs that spray
+ // rings in every direction, so most of those bullets were never coming for you in the first
+ // place. Volume is not threat. Aim is. So aim is a dial: early worlds shoot roughly where you
+ // stood, late worlds shoot where you are going to BE, and a radial burst starts lining one of
+ // its spokes up on you instead of landing wherever it happens to land.
+ aimShare:()=>HC(.18,.92),
+ // And WHICH gunners show up. A bug that aims is worth several that spray: THE TUNDRA's roster
+ // is stacked with ladybugs, moths and snails and forces 20.8% movement, while THE POND is all
+ // ring-sprayers and forces 0.1%. That was the last thing deciding difficulty by roster luck
+ // instead of by the curve.
+ aimers  :()=>Math.min(.90,HC(.20,.85)),
+};
+function D(){return DIFF.speed();}
 
 // ---------- enemies ----------
 const ET={
@@ -750,31 +890,47 @@ const ET={
  hoverfly:{hp:5,r:11,sc:150,col:'#f0c030'},rosechafer:{hp:14,r:13,sc:380,col:'#3fc060'},divingbeetle:{hp:16,r:14,sc:420,col:'#5a7a20'},tigermoth:{hp:12,r:15,sc:380,col:'#ff8a30'},lunamoth:{hp:8,r:16,sc:300,col:'#b8f0b0'},damselfly:{hp:6,r:12,sc:250,col:'#40a0ff'},antlion:{hp:15,r:13,sc:400,col:'#c8a060'},rhinobeetle:{hp:22,r:16,sc:500,col:'#3a2a1a'},assassinbug:{hp:13,r:13,sc:400,col:'#8a8a9a'},jewelbeetle:{hp:12,r:13,sc:450,col:'#40e0c0'},
 };
 loadSprites();
-function spawn(type,x,y,o={}){const d=ET[type];const e=Object.assign({type,x,y,hp:(o.tiny?1.6:d.hp*EHP)*(1+loop*.6),r:o.tiny?4:d.r,sc:o.tiny?20:d.sc,col:d.col,t:0,ft:RI(40,100),dir:Math.random()<.5?-1:1,ph:R(0,7)},o);if(e.elite){e.hp*=2.2;e.sc*=3;}e.maxhp=e.hp;e.px=e.x;e.py=e.y;enemies.push(e);return e;}
+let waveSeq=0;   // which squadron a bug belongs to, so a wave can be counted and retired as one
+function spawn(type,x,y,o={}){const d=ET[type];const e=Object.assign({type,x,y,wv:waveSeq,hp:(o.tiny?1.6:d.hp*EHP)*(1+loop*.6),r:o.tiny?4:d.r,sc:o.tiny?20:d.sc,col:d.col,t:0,ft:RI(40,100),dir:Math.random()<.5?-1:1,ph:R(0,7)},o);if(e.elite){e.hp*=2.2;e.sc*=3;}e.maxhp=e.hp;e.px=e.x;e.py=e.y;enemies.push(e);return e;}
 // FORMATIONS — every wave is a shape, not a drip. fodder = the bugs that fly in shapes; shooters = the ones that take a position and fire.
 // ARCH: what an unseen bug behaves like (movement + shooting + voice recipe). PITCH: how its voice is tuned so no two sound alike.
-const ARCH={midge:'gnat',aphid:'gnat',thrips:'gnat',fruitfly:'gnat',sandfly:'gnat',blackfly:'gnat',whitefly:'gnat',springtail:'gnat',leafhopper:'gnat',fungusgnat:'gnat',mayfly:'gnat',noseeum:'gnat',psyllid:'gnat',lacebug:'gnat',planthopper:'gnat',crystalmite:'gnat',leafcutter:'ant',morpho:'butterfly',harlequin:'beetle',cavecricket:'grasshopper',millipede:'snail',whipscorpion:'earwig',stonefly:'fly',apollo:'butterfly',snowflea:'gnat',sandhopper:'grasshopper',isopod:'stinkbug',shorefly:'fly',lavacricket:'grasshopper',ashmoth:'moth',blisterbeetle:'beetle',scorpionfly:'mosquito',iceworm:'snail',woollybear:'snail',cockroach:'earwig',silverfish:'strider',bedbug:'ant',glasswing:'butterfly',jewelwasp:'wasp',lanternbug:'cicada',hoverfly:'fly',rosechafer:'beetle',divingbeetle:'beetle',tigermoth:'moth',lunamoth:'moth',damselfly:'dragon',antlion:'earwig',rhinobeetle:'beetle',assassinbug:'stinkbug',jewelbeetle:'beetle'};
+const ARCH={midge:'gnat',aphid:'gnat',thrips:'gnat',fruitfly:'gnat',sandfly:'gnat',blackfly:'gnat',whitefly:'gnat',springtail:'gnat',leafhopper:'gnat',fungusgnat:'gnat',mayfly:'gnat',noseeum:'gnat',psyllid:'gnat',lacebug:'gnat',planthopper:'gnat',crystalmite:'gnat',leafcutter:'ant',morpho:'butterfly',harlequin:'beetle',cavecricket:'grasshopper',millipede:'snail',whipscorpion:'earwig',stonefly:'fly',apollo:'butterfly',snowflea:'gnat',sandhopper:'grasshopper',isopod:'stinkbug',shorefly:'fly',lavacricket:'grasshopper',ashmoth:'moth',blisterbeetle:'beetle',scorpionfly:'mosquito',iceworm:'snail',woollybear:'snail',cockroach:'earwig',silverfish:'strider',bedbug:'ant',glasswing:'butterfly',jewelwasp:'wasp',lanternbug:'cicada',hoverfly:'fly',rosechafer:'beetle',divingbeetle:'beetle',tigermoth:'moth',lunamoth:'moth',damselfly:'dragon',antlion:'stinkbug',rhinobeetle:'beetle',assassinbug:'stinkbug',jewelbeetle:'beetle'};
 const PITCH={midge:0.80,aphid:0.86,thrips:0.92,fruitfly:0.98,sandfly:1.04,blackfly:1.10,whitefly:1.16,springtail:1.22,leafhopper:1.28,fungusgnat:1.34,mayfly:1.40,noseeum:1.46,psyllid:1.52,lacebug:1.58,planthopper:1.64,crystalmite:1.70,leafcutter:1.3,morpho:.8,harlequin:.7,cavecricket:1.4,millipede:.6,whipscorpion:.75,stonefly:1.2,apollo:1.15,snowflea:1.6,sandhopper:.9,isopod:.65,shorefly:1.35,lavacricket:.85,ashmoth:.9,blisterbeetle:1.1,scorpionfly:1.25,iceworm:.55,woollybear:.7,cockroach:.8,silverfish:1.45,bedbug:1.2,glasswing:1.5,jewelwasp:1.3,lanternbug:.75};
 const A=k=>ARCH[k]||k;
+// Which shooters actually point at you, versus the ones that spray a ring or drop straight down.
+// One aimer makes you move more than three sprayers do.
+const AIMERS=['wasp','ladybug','moth','snail','spiderling','firefly'];
+const isAimer=k=>AIMERS.includes(A(k))||AIMERS.includes(k);
 const FODDER=['fly','mosquito','gnat','ant','ladybug','grasshopper','hornet','butterfly','spiderling','earwig','katydid','strider','weevil','termite','horsefly','leafcutter','morpho','cavecricket','whipscorpion','stonefly','apollo','snowflea','sandhopper','shorefly','lavacricket','scorpionfly','cockroach','silverfish','bedbug','glasswing','jewelwasp','hoverfly','lunamoth','damselfly'],SHOOTERS=['wasp','beetle','moth','firefly','dragon','ladybug','cicada','stinkbug','snail','spiderling','glowworm','dungbeetle','harlequin','millipede','isopod','ashmoth','blisterbeetle','iceworm','woollybear','lanternbug','jewelwasp','rosechafer','divingbeetle','tigermoth','antlion','rhinobeetle','assassinbug','jewelbeetle'];
+// A squadron gets BIGGER as the worlds go on, it does not get JOINED by more squadrons.
+// One shape with more bugs in it is the 1943 answer to difficulty; fourteen overlapping
+// shapes is the thing that made world 16 unreadable.
+const WSZ=()=>DIFF.squadAdd();
+// Anything that would otherwise appear ON TOP of the player gets announced first and arrives a
+// beat later. LATE is that beat: a spawn with a fuse, drained every frame by lateTick().
+const LATE=[];
+function lateTick(){for(let i=LATE.length-1;i>=0;i--){const L=LATE[i];if(t>=L.at){LATE.splice(i,1);spawn(L.k,L.x,L.y,L.o);}}}
 const FORMS={
- line(k){const n=5,y=-20;for(let i=0;i<n;i++)spawn(k,60+i*(W-120)/(n-1),y-i*6,{pat:'fall',vy:1.3});},          // a rank marching straight down
- vee(k){for(let i=-2;i<=2;i++)spawn(k,W/2+i*55,-20-Math.abs(i)*40,{pat:'fall',vy:1.5});},                       // V wedge
- column(k){const x=R(80,W-80);for(let i=0;i<4;i++)spawn(k,x,-20-i*55,{pat:'sine',ox:x});},                      // snake column
- pincer(k){for(let i=0;i<3;i++){spawn(k,-20-i*40,80+i*25,{pat:'arc',dir:1});spawn(k,W+20+i*40,80+i*25,{pat:'arc',dir:-1});}}, // from both sides
- zig(k){const x=R(100,W-100);for(let i=0;i<3;i++)spawn(k,x,-20-i*50,{pat:'zig',dir:i%2?1:-1});},               // sharp zigzag
- ambush(k){for(const sg of[-1,1])for(let i=0;i<2;i++)spawn(k,sg<0?-20:W+20,H-160-i*40,{pat:'rise',dir:-sg});},// from BELOW the bee
- divers(k){for(let i=0;i<3;i++)spawn(k||'mosquito',R(30,W-30),-20-i*40,{pat:'dive'});},
+ line(k){const n=5+WSZ(),y=-20;for(let i=0;i<n;i++)spawn(k,60+i*(W-120)/(n-1),y-i*6,{pat:'fall',vy:1.3});},          // a rank marching straight down
+ vee(k){const h=2+WSZ();for(let i=-h;i<=h;i++)spawn(k,W/2+i*(h>3?46:55),-20-Math.abs(i)*40,{pat:'fall',vy:1.5});},                       // V wedge
+ column(k){const x=R(80,W-80);for(let i=0;i<4+WSZ();i++)spawn(k,x,-20-i*55,{pat:'sine',ox:x});},                      // snake column
+ pincer(k){for(let i=0;i<3+WSZ();i++){spawn(k,-20-i*40,80+i*25,{pat:'arc',dir:1});spawn(k,W+20+i*40,80+i*25,{pat:'arc',dir:-1});}}, // from both sides
+ zig(k){const x=R(100,W-100);for(let i=0;i<3+WSZ();i++)spawn(k,x,-20-i*50,{pat:'zig',dir:i%2?1:-1});},               // sharp zigzag
+ ambush(k){say('SOMETHING IS COMING UP BEHIND YOU!');buzz('warn');
+  for(const sg of[-1,1]){const ex=sg<0?14:W-14,ey=H-170;
+   ring(ex,ey,'#ff6b6b',70);ring(ex,ey,'#ffd166',44);
+   for(let i=0;i<2;i++)LATE.push({k,x:sg<0?-20:W+20,y:H-160-i*40,o:{pat:'rise',dir:-sg},at:t+55});}},// from BELOW the bee
+ divers(k){for(let i=0;i<3+WSZ();i++)spawn(k||'mosquito',R(30,W-30),-20-i*40,{pat:'dive'});},
  skaters(k){for(const sg of[-1,1])spawn(k||'strider',sg<0?-20:W+20,R(120,260),{pat:'dash'});},
- scurry(k){const x=R(60,W-60);for(let i=0;i<5;i++)spawn(k||'termite',x+R(-14,14),-20-i*22,{pat:'scurry'});},
+ scurry(k){const x=R(60,W-60);for(let i=0;i<5+WSZ();i++)spawn(k||'termite',x+R(-14,14),-20-i*22,{pat:'scurry'});},
  flank(k){spawn(k,60,-20,{pat:'hover',dir:1});spawn(k,W-60,-20,{pat:'hover',dir:-1});},                         // two gunners take the corners
  heavy(k){spawn(k,R(80,W-80),-30,{pat:k==='dragon'?'dash':k==='firefly'?'blink':'slow'});},
  swarm(k){const x=R(80,W-80);for(let i=0;i<6;i++)spawn(k||'gnat',x+R(-40,40),-20-i*16,{pat:'swarm'});},
- hoppers(k){for(let i=0;i<3;i++)spawn(k||'grasshopper',100+i*(W-200)/2,-20-i*30,{pat:'hop'});},                    // three grasshoppers that leap at you
- chargers(k){for(let i=0;i<2;i++)spawn(k||'hornet',R(60,W-60),-20-i*60,{pat:'charge'});},                           // hornets: wind up, then dash
+ hoppers(k){const n=3+WSZ();for(let i=0;i<n;i++)spawn(k||'grasshopper',100+i*(W-200)/(n-1),-20-i*30,{pat:'hop'});},                    // three grasshoppers that leap at you
+ chargers(k){for(let i=0;i<2+WSZ();i++)spawn(k||'hornet',R(60,W-60),-20-i*60,{pat:'charge'});},                           // hornets: wind up, then dash
  screamer(k){spawn(k||'cicada',R(80,W-80),-20,{pat:'hover',dir:Math.random()<.5?-1:1});},
  stinker(k){spawn(k||'stinkbug',R(60,W-60),-30,{pat:'slow'});},
- threads(k){for(let i=0;i<3;i++)spawn(k||'spiderling',90+i*(W-180)/2,-20,{pat:'thread',hang:R(140,260)});},      // spiderlings drop in on silk and hang there
+ threads(k){const n=3+WSZ();for(let i=0;i<n;i++)spawn(k||'spiderling',90+i*(W-180)/(n-1),-20,{pat:'thread',hang:R(140,260)});},      // spiderlings drop in on silk and hang there
  flutters(k){for(let i=0;i<2;i++)spawn(k||'butterfly',R(60,W-60),-20-i*80,{pat:'flutter'});},
  crawler(k){spawn(k||'snail',R(60,W-60),-30,{pat:'creep'});},
  cloud(k){const cx=R(120,W-120),n=Math.min(26,12+stage);   /* 22+stage*2 put 54 gnats on a phone screen: clutter, not danger */const sp2=LV().cloud||'gnat';for(let i=0;i<n;i++){const a=R(0,7),rr=Math.sqrt(Math.random());spawn(sp2,cx+Math.cos(a)*rr*110,-40+Math.sin(a)*rr*55,{pat:'cloud',tiny:1,cx,ph:R(0,7)});}},
@@ -809,30 +965,17 @@ function worldForce(){
  }
  P.px=P.x;P.py=P.y;
 }
-// THE VOLCANO: ember columns erupt from the floor. a column is cover -- it burns enemy
-// shots out of the air and cooks any bug standing in it -- but it cooks you just the same.
-// 90 frames of shimmer telegraph where it will rise, then ~4 seconds of fire.
-let volc=null,volcNext=700;
-function volcanoTick(){
- if(state!=='play'||LV().name!=='THE VOLCANO'){volc=null;return;}
- if(!volc){if(--volcNext<=0){volc={x:R(70,W-70),w:66,t:0};volcNext=RI(650,1000);}return;}
- volc.t++;const inBand=(x)=>Math.abs(x-volc.x)<volc.w/2;
- if(volc.t<90){if(volc.t%5===0)parts.push({x:volc.x+R(-volc.w/2,volc.w/2),y:H-R(10,40),vx:0,vy:-R(.5,1.2),l:20,c:'#ff9030',r:R(1,2)});return;}
- if(volc.t>330){volc=null;return;}
- if(volc.t%2===0)parts.push({x:volc.x+R(-volc.w/2,volc.w/2),y:H,vx:R(-.3,.3),vy:-R(6,10),l:R(20,40),c:['#ffd166','#ff9030','#ff5a10'][RI(0,2)],r:R(1.5,3),spark:1});
- for(const b of ebullets)if(!b.dead&&inBand(b.x)&&b.y>40){b.dead=1;sparks(b.x,b.y,'#ff9030',3,5);}
- if(!P.dead&&P.inv===0&&inBand(P.x)&&volc.t%20===0)hitPlayer();
- if(volc.t%12===0)for(const e of enemies){if(!e.dead&&inBand(e.x)&&e.y>0){e.hp-=1.2;e.fl=3;if(e.hp<=0){e.dead=1;killScore(e);killFx(e);if(!e.tiny)gibs(e);sfxKill(e);}}}
-}
+// THE VOLCANO's ember column is GONE (Matt 2026-09-15: "there's this like bar that comes down
+// and kills you in the middle of the screen... I don't like that part of the game"). It was a
+// 66px strip of fire running the full height of the screen that hit you every 20 frames you
+// stood in it, and against a lava background it was very nearly invisible -- the screenshot that
+// settled it showed a faint orange wash you would never read as lethal. A hazard you cannot see
+// is not difficulty, it is a coin flip. The falling embers in 18_scene_motion stay: those are
+// ordinary bullets, they come one at a time, and you can see every one of them.
+function volcanoTick(){}
 // the cave goes dark: you only see a pool of light around the bee
 function worldOverlay(){
  const name=LV().name;
- if(name==='THE VOLCANO'&&volc){const a=volc.t<90?.10+(volc.t/90)*.12:.32,x0=volc.x-volc.w/2;
-  X.save();const g=X.createLinearGradient(0,H,0,volc.t<90?H-120:0);
-  g.addColorStop(0,`rgba(255,120,20,${a})`);g.addColorStop(.6,`rgba(255,60,10,${a*.6})`);g.addColorStop(1,'rgba(255,40,0,0)');
-  X.fillStyle=g;X.fillRect(x0,0,volc.w,H);
-  if(volc.t>=90){X.globalCompositeOperation='lighter';X.fillStyle=`rgba(255,200,80,${.10+Math.sin(volc.t*.4)*.05})`;X.fillRect(x0+volc.w*.3,0,volc.w*.4,H);}
-  X.restore();return;}
  if(name!=='THE CAVE')return;
  // 9/3: the cave painting is pitch dark now, so the lamp is wider and the far dark is lighter than
  // when the picture underneath was a daylit arch -- you must still be able to see what is coming
@@ -875,16 +1018,41 @@ function formTwin(kind,n,opt){                       // mirrored pairs, never cr
  }
 }
 const SYMFORMS=[formSym,formArc,formWedge,formTwin];
+
+// ---------- 1943 RULES: one squadron at a time, and every squadron leaves ----------
+// Measured 2026-09-15: world 16 held 11.8 SEPARATE waves in the air at once, peaking at 18,
+// with six species mixed together. The game owns twenty formation shapes and never showed
+// you one by itself -- you cannot read a V when eighteen other shapes are stacked on it.
+// So: a hard limit on how many squadrons share the airspace, a swarm no wider than the
+// screen can show, and a clock on every wave so the next one gets a clean stage.
+const MAXWAVES=()=>DIFF.squads();
+function liveWaves(){const s=new Set();for(const e of enemies)if(!e.dead&&!e.tiny&&e.pat!=='fall')s.add(e.wv);return s.size;}
+// The old cap was 6+level*1.1, so 22 bugs by world 16. Their bodies came to 597px of solid
+// bug across a 480px screen, and separate() demands 1.45x that -- 1.8 screen widths. They
+// physically could not fit in one row, so they stacked into a lattice. That was the wall.
+// Now the cap is derived from the bugs' actual size: about one and a third rows, never more.
+function waveCap(){const rs=LV().roster.map(k=>(ET[k]?ET[k].r:13));
+ const avgR=rs.reduce((a,b)=>a+b,0)/rs.length,rowFits=Math.floor((W*1.25)/(avgR*2*1.45));
+ return Math.max(5,Math.min(rowFits,DIFF.swarm()));}
+// A camper (hover, thread) never descends, so laps alone will not retire it. Hard clock.
+const WAVE_TTL=900;
+function retireOldWaves(){for(const e of enemies){if(e.tiny||e.dead||e.pat==='fall')continue;
+ if((e.wt=(e.wt||0)+1)>WAVE_TTL){e.pat='fall';e.vy=2.6;}}}
+// The lull is the point. Attack, breathe, attack -- that beat is where a wave becomes
+// readable and where your heartrate comes down. Zero dead air is what made it a wall.
+const LULL=48;
 function wave(){const lv=LV(),pr=stageT/lv.len;
  if(stageT>lv.len){for(const e of enemies){if(e.pat!=='fall'){e.pat='fall';e.vy=2.8;}}return;}
- const cap=6+Math.floor(((stage-1)%NL)*1.1)+loop*2;
+ retireOldWaves();
+ const cap=waveCap();
  // count only REAL bugs against the cap. a gnat cloud is 40-plus tiny sprites and it was
  // blowing straight past the cap, so one cloud starved the whole level of actual enemies.
  let big=0;for(const e of enemies)if(!e.tiny&&!e.dead)big++;
  // an empty screen is dead air. if nothing is left to fight, the next wave comes NOW
  // instead of waiting out the timer.
- if(big===0&&nextWave>stageT)nextWave=stageT;
- if(stageT<nextWave||big>=cap)return;
+ if(big===0&&nextWave>stageT+LULL)nextWave=stageT+LULL;
+ if(stageT<nextWave||big>=cap||liveWaves()>=MAXWAVES())return;
+ waveSeq++;   // everything spawned from here down belongs to ONE squadron
  const gap=Math.max(96-((stage-1)%NL)*4,206-pr*95-(stage-1)*11-loop*20);   /* fewer bugs at once, so they arrive sooner */nextWave=stageT+gap;
  // a gnat cloud is atmosphere, not a wave. it used to consume the wave slot and return,
  // so a level could be nothing but gnats for ten seconds. now it drops the cloud and the
@@ -893,13 +1061,25 @@ function wave(){const lv=LV(),pr=stageT/lv.len;
  const fod=lv.roster.filter(k=>FODDER.includes(k)),sho=lv.roster.filter(k=>SHOOTERS.includes(k));
  // the newest bug of each world (last in its roster) was one random pick among six and went
  // unseen for whole runs; give it four in ten of the waves it qualifies for
+ // How much of what is on screen can actually SHOOT BACK is itself a dial now. Cadence cannot
+ // speed up the fire of a bug that never fires, and whether a world had gunners was pure roster
+ // luck: measured 2026-09-15, THE CANOPY and THE VOLCANO put ZERO shots in the air while THE
+ // GARDEN put thirteen. If the screen is short of gunners, the next wave IS gunners.
+ let gun=0,tot=0;for(const e of enemies){if(e.tiny||e.dead)continue;tot++;if(SHOOTERS.includes(A(e.type))||SHOOTERS.includes(e.type))gun++;}
+ const needGunners=sho.length&&(tot===0||gun/tot<DIFF.gunners());
  const nwst=lv.roster[lv.roster.length-1],pick=a=>(a.includes(nwst)&&Math.random()<.4)?nwst:a[RI(0,a.length-1)];
+ // when the curve wants aimers and this world has some, send those
+ const aimSho=sho.filter(isAimer),pickSho=()=>(aimSho.length&&Math.random()<DIFF.aimers())?pick(aimSho):pick(sho);
+ if(needGunners&&!SHOOTERS.includes(A(lv.roster[0]))){const k=pickSho(),ak=A(k);
+  if(ak==='spiderling')FORMS.threads(k);
+  else SYMFORMS[RI(0,SYMFORMS.length-1)](k,RI(3+WSZ(),5+WSZ()));
+  return;}
  if(!rushDone&&pr>.55){rushDone=true;say('SWARM INCOMING!');snd(300,.3,'square',.04,600);FORMS.line(fod[0]||'fly');FORMS.vee(fod[RI(0,fod.length-1)]||'fly');return;}
- const sig=lv.roster[0];const useShooter=sho.length&&Math.random()<.46+pr*.24;if(Math.random()<.45){if(SHOOTERS.includes(sig)&&!FODDER.includes(sig)){const as2=A(sig);if(as2==='cicada')FORMS.screamer(sig);else if(as2==='dragon')FORMS.heavy(sig);else if(as2==='snail')FORMS.crawler(sig);else if(as2==='stinkbug')FORMS.stinker(sig);else if(as2==='glowworm'||as2==='dungbeetle')spawn(sig,R(60,W-60),-30,{pat:as2==='glowworm'?'creep':'slow'});else FORMS[SHOOTER_FORMS[RI(0,1)]](sig);}else{let f=FODDER_FORMS[RI(0,FODDER_FORMS.length-1)];if(sig==='grasshopper')f='hoppers';if(sig==='hornet')f='chargers';if(sig==='spiderling')f='threads';if(sig==='earwig')f='zig';const asig=A(sig);if(asig==='ladybug')f=['line','vee','column'][RI(0,2)];if(asig==='firefly')f='column';if(asig==='dragon')f='skaters';if(asig==='grasshopper')f='hoppers';if(asig==='butterfly')f='flutters';if(asig==='ant')f='column';if(asig==='fly')f=['line','vee','column'][RI(0,2)];if(asig==='earwig')f='zig';if(asig==='gnat')f='swarm';if(asig==='mosquito')f='divers';if(asig==='strider')f='skaters';if(asig==='wasp')f='flank';FORMS[f](sig);}return;}
- if(useShooter){const k=pick(sho);const ak=A(k);if(ak==='cicada')FORMS.screamer(k);else if(ak==='stinkbug')FORMS.stinker(k);else if(ak==='snail')FORMS.crawler(k);else if(ak==='spiderling')FORMS.threads(k);else if(ak==='glowworm'||ak==='dungbeetle')spawn(k,R(60,W-60),-30,{pat:ak==='glowworm'?'creep':'slow'});else FORMS[SHOOTER_FORMS[RI(0,1)]](k);}
- else if(Math.random()<.55){const k=pick(fod)||'fly';SYMFORMS[RI(0,SYMFORMS.length-1)](k,RI(4,6));}
+ const sig=lv.roster[0];const useShooter=sho.length&&(needGunners||Math.random()<DIFF.gunners());if(Math.random()<.45){if(SHOOTERS.includes(sig)&&!FODDER.includes(sig)){const as2=A(sig);if(as2==='cicada')FORMS.screamer(sig);else if(as2==='dragon')FORMS.heavy(sig);else if(as2==='snail')FORMS.crawler(sig);else if(as2==='stinkbug')FORMS.stinker(sig);else if(as2==='glowworm'||as2==='dungbeetle')spawn(sig,R(60,W-60),-30,{pat:as2==='glowworm'?'creep':'slow'});else FORMS[SHOOTER_FORMS[RI(0,1)]](sig);}else{let f=FODDER_FORMS[RI(0,FODDER_FORMS.length-1)];if(sig==='grasshopper')f='hoppers';if(sig==='hornet')f='chargers';if(sig==='spiderling')f='threads';if(sig==='earwig')f='zig';const asig=A(sig);if(asig==='ladybug')f=['line','vee','column'][RI(0,2)];if(asig==='firefly')f='column';if(asig==='dragon')f='skaters';if(asig==='grasshopper')f='hoppers';if(asig==='butterfly')f='flutters';if(asig==='ant')f='column';if(asig==='fly')f=['line','vee','column'][RI(0,2)];if(asig==='earwig')f='zig';if(asig==='gnat')f='swarm';if(asig==='mosquito')f='divers';if(asig==='strider')f='skaters';if(asig==='wasp')f='flank';FORMS[f](sig);}return;}
+ if(useShooter){const k=pickSho();const ak=A(k);if(ak==='cicada')FORMS.screamer(k);else if(ak==='stinkbug')FORMS.stinker(k);else if(ak==='snail')FORMS.crawler(k);else if(ak==='spiderling')FORMS.threads(k);else if(ak==='glowworm'||ak==='dungbeetle')spawn(k,R(60,W-60),-30,{pat:ak==='glowworm'?'creep':'slow'});else FORMS[SHOOTER_FORMS[RI(0,1)]](k);}
+ else if(Math.random()<.55){const k=pick(fod)||'fly';SYMFORMS[RI(0,SYMFORMS.length-1)](k,RI(4+WSZ(),6+WSZ()));}
  else{const k=pick(fod)||'fly',ak=A(k);let f=FODDER_FORMS[RI(0,FODDER_FORMS.length-1)];if(ak==='gnat')f='swarm';if(ak==='grasshopper')f='hoppers';if(ak==='hornet')f=Math.random()<.6?'chargers':'pincer';if(ak==='spiderling')f='threads';if(ak==='butterfly')f='flutters';if(ak==='earwig')f=Math.random()<.6?'zig':'pincer';if(ak==='katydid')f='hoppers';if(ak==='strider')f='skaters';if(ak==='weevil')f='chargers';if(ak==='termite')f='scurry';if(ak==='horsefly')f='divers';if(ak==='ant')f=Math.random()<.5?'column':'line';if(k==='ant'&&(f==='pincer'||f==='ambush'))f='column';FORMS[f](k);}
- if(Math.random()<.22+((stage-1)%NL)*.052+loop*.1&&enemies.length){const e=enemies[enemies.length-1];if(!e.elite&&!e.tiny){e.elite=1;e.hp*=2.2+((stage-1)%NL)*.06;e.maxhp=e.hp;e.sc*=3;}}
+ if(Math.random()<DIFF.elite()&&enemies.length){const e=enemies[enemies.length-1];if(!e.elite&&!e.tiny){e.elite=1;e.hp*=2.2+((stage-1)%NL)*.06;e.maxhp=e.hp;e.sc*=3;}}
 }
 const anyBug=()=>{const r=LV().roster;return r[RI(0,r.length-1)];};
 const PD=1.70; // player damage multiplier — guns felt weak at 1.15
@@ -908,14 +1088,88 @@ const PD=1.70; // player damage multiplier — guns felt weak at 1.15
 // old health made every fight a formality, so bugs and bosses are tougher and there are FEWER
 // of them: the late worlds were 85 sprites of clutter, not 85 sprites of danger.
 const EHP=1.75;      // per-bug health (was a flat 1.05)
-const BHP=2.90;      // boss health (was .95)
-const EB=.55;const FR0=1.14; // FR = how much longer bugs wait between volleys. 9/3: the wave phase
+// BHP was a flat 2.90 for every boss in the game, set back when the guns were assumed to be
+// stronger than they now are. Playtested 2026-09-15 with real lives: THE MEADOW's boss took
+// between 59 and 122 SECONDS to kill with the starting gun, and spawned up to ten divers while
+// you chipped at it. Two minutes on the first fight of the game. Boss health now reads off the
+// same curve as everything else, so it is matched to the gun you are actually likely to be
+// holding: quick at THE MEADOW, a slog at THE CRYSTAL.
+const BHP=2.90;      // kept as the reference the per-boss numbers were authored against
+const EB=.55;   /* reference only -- live value is DIFF.shotSpeed(), see 07_levels */
+const FR0=1.14; // FR = how much longer bugs wait between volleys. 9/3: the wave phase
 // was a stroll (a dodging bot took 0-5 hits across a whole world), so bugs shoot sooner and their
 // shots travel a little faster. There are fewer bugs now, so the pressure comes from them, not from a crowd.
-Object.defineProperty(globalThis,'FR',{get(){const lv=(stage-1)%NL;return Math.max(.55,FR0-lv*.055-loop*.1)*(MODS.quick?.72:1);}});
+Object.defineProperty(globalThis,'FR',{get(){return DIFF.cadence()*(MODS.quick?.72:1);}});
 // kinds: dart (default), venom (green drop), seed (spiky seed), dust (moth scale puff), ember (firefly spark), drop (water), gas (stink cloud), wave (cicada sound ring), web (sticks to you and slows you), blade (mantis scythe), acorn (beetle king)
-function eshot(x,y,a,sp,r=4,col='#ff3b3b',kind='dart'){const bf=(bossAlive?.85:1)*(MODS.quick?1.12:1);ebullets.push({x,y,vx:Math.cos(a)*sp*EB*bf,vy:Math.sin(a)*sp*EB*bf,r:Math.max(6,r+2),col,t:0,kind});}
-function aim(x,y){return Math.atan2(P.y-y,P.x-x);}
+// Matt 9/15: there always has to be a way not to die. Two guarantees live here.
+// PMAX -- nothing the bugs do may be faster than the bee can run (4.5, or 2.5 focused),
+// so stepping out of the way always works.
+// EBCAP -- a hard ceiling on shots in the air. World 16 measured 56 on average and spiked
+// to 93 purely from timers coinciding; a ceiling means density can never spike like that.
+const PMAX=4.14;
+const EBCAP=()=>DIFF.airCap();
+let lastRadial=-999;   // beetles and cicadas fire in ALL directions -- there is no side to
+                       // step toward, so only one of them may be going off at a time.
+// Matt 9/15: "there always has to be some way to not die." This is that promise, enforced
+// per shot rather than hoped for. Before a bullet is added we ask whether the bee still has
+// somewhere to BE once it exists -- sixteen headings, one frame of travel, against everything
+// already in the air. If the honest answer is nowhere, the shot does not happen and the bug
+// waits a beat. It costs one pass over the bullets and only ever triggers in the 1-2% of
+// frames that were genuinely inescapable, so patterns look unchanged.
+const _PE=4,_PB=2;
+function escapeExists(nx2,ny2,nvx,nvy,nr){
+ for(let i=0;i<16;i++){
+  const th=i/16*6.2831853,px=clamp(P.x+Math.cos(th)*4.5,14,W-14),py=clamp(P.y+Math.sin(th)*4.5,30,H-20);
+  let ok=true;
+  if(nr!=null){const rx=nx2-px,ry=ny2-py,s2=nvx*nvx+nvy*nvy||1e-6,tc=Math.max(0,Math.min(26,-(rx*nvx+ry*nvy)/s2));
+   if(Math.hypot(rx+nvx*tc,ry+nvy*tc)-(nr+_PB)<0)ok=false;}
+  if(ok)for(const b of ebullets){ if(b.dead||b.kind==='web')continue;
+   const rx=b.x-px,ry=b.y-py,s2=b.vx*b.vx+b.vy*b.vy||1e-6,tc=Math.max(0,Math.min(26,-(rx*b.vx+ry*b.vy)/s2));
+   if(Math.hypot(rx+b.vx*tc,ry+b.vy*tc)-(b.r+_PB)<0){ok=false;break;} }
+  if(ok)for(const e of enemies){ if(e.dead||e.tiny)continue;
+   const evx=e.x-(e.ppx==null?e.x:e.ppx),evy=e.y-(e.ppy==null?e.y:e.ppy);
+   const rx=e.x-px,ry=e.y-py,s2=evx*evx+evy*evy;
+   const tc=s2>1e-6?Math.max(0,Math.min(26,-(rx*evx+ry*evy)/s2)):0;
+   if(Math.hypot(rx+evx*tc,ry+evy*tc)-(e.r+_PE)<0){ok=false;break;} }
+  if(ok)return true;
+ }
+ return false;
+}
+// Every enemy bullet in the game goes through here. eshot() is the aimed-shot convenience;
+// epush() is for the patterns that build their own bullet objects (the bosses do). Both
+// honour the ceiling and both honour the promise that you are never left with nowhere to go.
+// The last line of the promise. Blocking a shot at the moment it is FIRED cannot catch
+// everything: bullets that were each legal on their own converge twenty frames later, and a bug
+// can walk into the one gap you had. So every frame we also ask the plain question -- does the
+// bee have anywhere to go right now? If the answer is no, the game put you there, and the game
+// does not get to kill you for it. A mercy window, at most once every two seconds so that
+// parking in the thick of it never becomes a strategy.
+// 2s between mercy windows left you exposed if a second trap arrived inside that gap -- a full
+// 55-minute playthrough found 8-11 frames where it did. 70 frames apart with a shorter window
+// closes that without turning "stand in the fire" into a viable plan.
+const escapeNow=()=>escapeExists(0,0,0,0,null);
+function mercyTick(){
+ if(P.dead||P.inv>0)return;
+ if(t-(P.mercyT||-9999)<70)return;
+ if(escapeNow())return;
+ P.mercyT=t;P.inv=22;
+}
+function epush(o){
+ if(ebullets.length>=EBCAP())return;
+ if(!P.dead&&P.inv<=0&&!escapeExists(o.x,o.y,o.vx,o.vy,o.r))return;
+ ebullets.push(o);}
+function eshot(x,y,a,sp,r=4,col='#ff3b3b',kind='dart'){if(ebullets.length>=EBCAP())return;const bf=(bossAlive?.85:1)*(MODS.quick?1.12:1),es=DIFF.shotSpeed();
+ const vx=Math.cos(a)*sp*es*bf,vy=Math.sin(a)*sp*es*bf,rr=Math.max(6,r+2);
+ if(!P.dead&&P.inv<=0&&!escapeExists(x,y,vx,vy,rr))return;
+ ebullets.push({x,y,vx,vy,r:rr,col,t:0,kind});}
+// aim() leads the bee by however much the curve says this world should. At heat 0 it fires at
+// where you stood, which you simply walk out of; at heat 1 it fires at where you are going.
+function aim(x,y){
+ const lead=DIFF.aimShare();
+ if(lead<=0.02||P.dead)return Math.atan2(P.y-y,P.x-x);
+ const pvx=P.x-P.px,pvy=P.y-P.py;
+ const d=Math.hypot(P.x-x,P.y-y),tt=Math.min(46,d/Math.max(1.2,3*DIFF.shotSpeed()));
+ return Math.atan2(P.y+pvy*tt*lead-y,P.x+pvx*tt*lead-x);}
 function separate(){const n=enemies.length;
  // 'fall' is a normal descent pattern during play, so those get separated too.
  // only at level end, when everything is sweeping off for the boss, do we let them pass through.
@@ -936,12 +1190,12 @@ function updEnemy(e){e.t++;if(e.fl>0)e.fl--;if(e.slow>0)e.slow--;if(e.label>0)e.
  switch(e.pat){
   case 'sine':e.y+=1.4*sp;e.x=e.ox+Math.sin(e.t*.06)*70;break;
   case 'hop':{const ph=e.t%100;if(ph<60){e.y+=.35*sp;}else{if(ph===60){e.sx=e.x;e.sy=e.y;e.hx=clamp(P.x+R(-40,40),30,W-30);e.hy=e.y+R(120,190);(VOICE.grasshopper||{}).hop&&VOICE.grasshopper.hop();}const k=(ph-60)/40;e.x=e.sx+(e.hx-e.sx)*k;e.y=e.sy+(e.hy-e.sy)*k-Math.sin(k*Math.PI)*70;}break;}
-  case 'charge':if(e.t<45){e.y+=1.2*sp;}else if(e.t<75){e.x+=R(-1.5,1.5);}else{if(!e.a){e.a=aim(e.x,e.y);VOICE.hornet.enter();}e.x+=Math.cos(e.a)*5.5*sp;e.y+=Math.sin(e.a)*5.5*sp;}break;
+  case 'charge':if(e.t<45){e.y+=1.2*sp;}else if(e.t<75){e.x+=R(-1.5,1.5);if(e.t===62){e.fl=14;ring(e.x,e.y,'#ffb03a',58);snd(300,.09,'square',.02,180);}}else{if(!e.a){e.a=aim(e.x,e.y);VOICE.hornet.enter();}const cs=Math.min(5.5*sp,PMAX);e.x+=Math.cos(e.a)*cs;e.y+=Math.sin(e.a)*cs;}break;
   case 'fall':e.y+=(e.vy||1.4)*sp;break;
-  case 'dive':if(e.t<40){e.y+=1.5;}else{if(!e.a)e.a=aim(e.x,e.y);e.x+=Math.cos(e.a)*3.5*sp;e.y+=Math.sin(e.a)*3.5*sp;}break;
+  case 'dive':if(e.t<40){e.y+=1.5;if(e.t===28){e.fl=12;ring(e.x,e.y,'#ff6b6b',52);snd(520,.07,'square',.02,300);}}else{if(!e.a)e.a=aim(e.x,e.y);const ds=Math.min(3.5*sp,PMAX);e.x+=Math.cos(e.a)*ds;e.y+=Math.sin(e.a)*ds;}break;
   case 'arc':e.x+=e.dir*2.6*sp;e.y+=Math.min(2.2,e.t*.03)*sp;break;
-  case 'zig':e.y+=1.5*sp;e.x+=e.dir*3.2*sp;if(e.t%40===0)e.dir*=-1;break;
-  case 'rise':if(e.t<70){e.x+=e.dir*2.4*sp;e.y-=1.8*sp;}else{if(!e.a)e.a=aim(e.x,e.y);e.x+=Math.cos(e.a)*3*sp;e.y+=Math.sin(e.a)*3*sp;}break;
+  case 'zig':e.y+=1.5*sp;e.x+=e.dir*Math.min(3.2*sp,PMAX);if(e.t%40===0)e.dir*=-1;break;
+  case 'rise':if(e.t<70){e.x+=e.dir*2.4*sp;e.y-=1.8*sp;if(e.t===58){e.fl=12;ring(e.x,e.y,'#ff6b6b',50);}}else{if(!e.a)e.a=aim(e.x,e.y);e.x+=Math.cos(e.a)*3*sp;e.y+=Math.sin(e.a)*3*sp;}break;
   case 'flutter':e.y+=.9*sp+Math.sin(e.t*.13+e.ph)*1.6;e.x+=Math.sin(e.t*.07+e.ph)*2.6+Math.cos(e.t*.21)*1.2;break;
   case 'thread':if(e.y<e.hang){e.y+=2.2*sp;}else if(e.t<420){e.x+=Math.sin(e.t*.05)*.8;}else{e.y+=3.5*sp;}break;
   case 'creep':e.y+=.45*sp;e.x+=Math.sin(e.t*.02)*.4;break;
@@ -954,28 +1208,32 @@ function updEnemy(e){e.t++;if(e.fl>0)e.fl--;if(e.slow>0)e.slow--;if(e.label>0)e.
   case 'march':e.y+=.9*sp;e.x+=Math.sin(e.t*.15)*.6;break;
   case 'bounce':e.y+=.9*sp;e.x+=e.dir*2*sp;if(e.x<30||e.x>W-30)e.dir*=-1;break;
   case 'blink':e.y+=1.0*sp;e.x+=Math.sin(e.t*.04+e.ph)*2;break;
-  case 'dash':if(!e.dx)e.dx=e.x<W/2?1:-1;e.x+=e.dx*4.2*sp;e.y+=Math.sin(e.t*.1)*1.5;break;
+  case 'dash':if(!e.dx)e.dx=e.x<W/2?1:-1;e.x+=e.dx*Math.min(4.2*sp,PMAX);e.y+=Math.sin(e.t*.1)*1.5;break;
  }
  // shooting is by TYPE, so a wasp shoots the same way whatever formation it arrived in
  if(e.y>0&&e.y<H-80){switch(A(e.type)){
   case 'wasp':if(--e.ft<=0){e.ft=270*FR/sp;const a=aim(e.x,e.y);eshot(e.x,e.y,a-.14,3.2*sp,4,'#8fdc3a','venom');eshot(e.x,e.y,a+.14,3.2*sp,4,'#8fdc3a','venom');snd(300,.08,'triangle',.02,180,1200);}break;
-  case 'beetle':if(--e.ft<=0){e.ft=240*FR/sp;for(let i=0;i<4;i++)eshot(e.x,e.y,i*Math.PI/2+e.t*.1,2.5*sp,4,'#c77dff','seed');}break;
+  case 'beetle':if(--e.ft<=0){if(t-lastRadial<45){e.ft=24;break;}lastRadial=t;e.ft=240*FR/sp;const b0=Math.random()<DIFF.aimShare()?aim(e.x,e.y):e.t*.1;for(let i=0;i<4;i++)eshot(e.x,e.y,i*Math.PI/2+b0,2.5*sp,4,'#c77dff','seed');}break;
   case 'moth':if(--e.ft<=0){e.ft=200*FR;eshot(e.x,e.y,aim(e.x,e.y),3.5*sp,5,'#ffdd88','dust');}break;
   case 'ladybug':if(--e.ft<=0){e.ft=300*FR/sp;const a=aim(e.x,e.y);eshot(e.x,e.y,a,3*sp,4,'#8fdc3a','venom');}break;
   case 'firefly':e.glow=(Math.sin(e.t*.08)+1)/2;if(--e.ft<=0){e.ft=270*FR/sp;if(e.glow>.5){eshot(e.x,e.y,aim(e.x,e.y),2.6*sp,6,'#e8ff60','ember');snd(700,.1,'sine',.02,1400);}}break;
-  case 'dragon':if(--e.ft<=0){e.ft=250*FR/sp;eshot(e.x-8,e.y+10,Math.PI/2,3.4*sp,4,'#60e0ff','drop');eshot(e.x+8,e.y+10,Math.PI/2,3.4*sp,4,'#60e0ff','drop');}break;
-  case 'stinkbug':if(--e.ft<=0){e.ft=290*FR/sp;eshot(e.x,e.y+10,Math.PI/2+R(-.4,.4),.9*sp,13,'#9acd32','gas');VOICE.stinkbug.gas();}break;
-  case 'cicada':if(--e.ft<=0){e.ft=340*FR/sp;e.scream=30;for(let i=0;i<6;i++)eshot(e.x,e.y,i*Math.PI/3+e.t*.05,2*sp,5,'#ffcc66','wave');VOICE.cicada.scream();}if(e.scream>0)e.scream--;break;
-  case 'butterfly':if(--e.ft<=0){e.ft=320*FR/sp;eshot(e.x,e.y+8,Math.PI/2,1.6*sp,5,'#ffd080','dust');}break;
+  case 'dragon':if(--e.ft<=0){e.ft=250*FR/sp;const da=Math.random()<DIFF.aimers()?aim(e.x,e.y):Math.PI/2;eshot(e.x-8,e.y+10,da,3.4*sp,4,'#60e0ff','drop');eshot(e.x+8,e.y+10,da,3.4*sp,4,'#60e0ff','drop');}break;
+  case 'stinkbug':if(--e.ft<=0){e.ft=290*FR/sp;eshot(e.x,e.y+10,(Math.random()<DIFF.aimers()?aim(e.x,e.y):Math.PI/2)+R(-.4,.4),.9*sp,13,'#9acd32','gas');VOICE.stinkbug.gas();}break;
+  case 'cicada':if(--e.ft<=0){if(t-lastRadial<45){e.ft=24;break;}lastRadial=t;e.ft=340*FR/sp;e.scream=30;const c0=Math.random()<DIFF.aimShare()?aim(e.x,e.y):e.t*.05;for(let i=0;i<6;i++)eshot(e.x,e.y,i*Math.PI/3+c0,2*sp,5,'#ffcc66','wave');VOICE.cicada.scream();}if(e.scream>0)e.scream--;break;
+  case 'butterfly':if(--e.ft<=0){e.ft=320*FR/sp;eshot(e.x,e.y+8,Math.random()<DIFF.aimers()?aim(e.x,e.y):Math.PI/2,1.6*sp,5,'#ffd080','dust');}break;
   case 'spiderling':if(--e.ft<=0){e.ft=260*FR/sp;if(e.y>=e.hang-1)eshot(e.x,e.y,aim(e.x,e.y),2.6*sp,3,'#e8e8ff','web');}break;
   case 'snail':if(--e.ft<=0){e.ft=300*FR/sp;const a=aim(e.x,e.y);eshot(e.x,e.y-6,a,1.8*sp,6,'#8fdc3a','venom');}break;
-  case 'glowworm':e.glow=(Math.sin(e.t*.06)+1)/2;if(--e.ft<=0){e.ft=260*FR/sp;eshot(e.x,e.y+6,Math.PI/2+R(-.3,.3),1.4*sp,6,'#e8ff60','ember');}break;
-  case 'dungbeetle':if(--e.ft<=0){e.ft=280*FR/sp;eshot(e.x,e.y+14,Math.PI/2,1.6*sp,9,'#5a3a1a','acorn');snd(J(90),.15,'triangle',.03,50);}break;
+  case 'glowworm':e.glow=(Math.sin(e.t*.06)+1)/2;if(--e.ft<=0){e.ft=260*FR/sp;eshot(e.x,e.y+6,(Math.random()<DIFF.aimers()?aim(e.x,e.y):Math.PI/2)+R(-.3,.3),1.4*sp,6,'#e8ff60','ember');}break;
+  case 'dungbeetle':if(--e.ft<=0){e.ft=280*FR/sp;eshot(e.x,e.y+14,Math.random()<DIFF.aimers()?aim(e.x,e.y):Math.PI/2,1.6*sp,9,'#5a3a1a','acorn');snd(J(90),.15,'triangle',.03,50);}break;
  }}
  // a bug that gets past you should come back around for another run, not just vanish.
  // gnat clouds still blow through, and 'fall' is the level-end exit, so both still leave.
  if(e.tiny||e.pat==='fall'){if(e.y>H+40||e.x<-60||e.x>W+60)e.dead=1;}
- else if(e.y>H+40){e.y=-40;e.x=clamp(e.x+R(-70,70),30,W-30);if(e.ox!=null)e.ox=e.x;e.t=0;e.a=null;e.hx=e.hy=null;e.laps=(e.laps||0)+1;}
+ else if(e.y>H+40){
+  // a squadron that has made its pass LEAVES, the way a 1943 formation flies off the bottom.
+  // one return run first, so a bug you missed is not simply free, then it is gone.
+  if((e.laps||0)>=1){e.dead=1;}
+  else{e.y=-40;e.x=clamp(e.x+R(-70,70),30,W-30);if(e.ox!=null)e.ox=e.x;e.t=0;e.a=null;e.hx=e.hy=null;e.laps=1;}}
  else if(e.x<-60){e.x=W+50;if(e.ox!=null)e.ox=e.x;}
  else if(e.x>W+60){e.x=-50;if(e.ox!=null)e.ox=e.x;}
 
@@ -1011,10 +1269,32 @@ const faceRot=k=>0;  // every sprite PNG is stored head-down now, so nothing is 
 const BSIZE=[250,250,250,250,196,250,250,225,250,250,250,225,250,250,250,235]; // per-boss draw height: the stag beetle's antlers and the crab's claws ran off the sides
 const BROT=[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]; // art is rendered head-down now, so no sprite is flipped
 const BARCH=[0,1,2,3,4,5,6,7,4,2,0,4,1,1,0,3]; // which of the eight hand-built fight patterns each boss uses
-function spawnBoss(){const b=BOSSES[LV().boss];boss={...b,hp:b.hp*BHP*(1+loop*.7),max:b.hp*BHP*(1+loop*.7),x:W/2,y:-80,t:0,ph:0,rage:0,seg:[]};bossAlive=true;enemies=[];bossIntro=110;shake=30;say(b.name+'  —  FIGHT!');rumble(1.6,.07);swell(55,1.6,'triangle',.06,.5);
+function spawnBoss(){const b=BOSSES[LV().boss];const BH=b.hp*DIFF.bossHp()*(1+loop*.7);boss={...b,hp:BH,max:BH,x:W/2,y:-80,t:0,ph:0,rage:0,seg:[]};bossAlive=true;enemies=[];bossIntro=110;shake=30;say(b.name+'  —  FIGHT!');rumble(1.6,.07);swell(55,1.6,'triangle',.06,.5);
  if(MODS.angry)rageBoss(boss); // ANGRY HIVES: the job change starts at the door
 }
 // ---------- boss second phases ----------
+// How often a boss fires, as one number. 0.9 = it shoots 10 percent more often than it used
+// to. Measured 2026-09-15 before this: the stage 12 boss put 119 shots up across a 100-second
+// fight and a dodging bot was FORCED to move on only 1.6% of frames -- you could stand still
+// for 98% of that fight. Matt felt it immediately: "I don't have to move out of the way."
+const BFIRE=()=>DIFF.bossFire();
+// Sixteen bosses share eight attack patterns, and the patterns fire at wildly different rates:
+// measured 2026-09-15, the mantis pattern put up 692 shots in a fight where the scorpion put up
+// 119. So a boss was as hard as the pattern it was handed, and world 16's boss came out EASIER
+// than world 14's. BCOMP is the correction that makes every pattern hit the same output, so a
+// boss fight's difficulty comes from its world's heat and nothing else. Filled in by
+// measurement, not by guessing -- tools/difficulty_curve.mjs re-derives it.
+// Measured at stage 9 with only the pattern swapped (shots per 60s), after the starved
+// patterns got a third attack: 144, 284, 244, 87, 183, 158, 66, 166. BCOMP divides each of
+// those down to a common ~170, so the pattern a boss was handed no longer decides the fight.
+const BCOMP=[0.86,2.05,1.42,0.51,0.85,0.52,0.40,0.33];
+// BCOMP levels the eight PATTERNS against each other. BFIT then places each of the sixteen
+// BOSSES on the curve, because a levelled pattern still lands differently depending on the boss
+// wearing it -- its size, where it sits, how much health it has. Measured one fight at a time
+// with a fixed reference gun (tools/boss_table.mjs): before this the HORNET QUEEN, the FIRST
+// boss in the game, forced more movement than the next six put together, while the PRAYING
+// MANTIS at world 2 forced 1%. Same method as WFIT for the worlds: measure, correct, re-measure.
+const BFIT=[1.25,0.75,0.80,1.04,0.76,1.05,0.75,1.38,0.58,1.34,0.52,0.49,0.58,0.52,0.44,0.63];
 // sixteen bosses shared eight attack patterns and one identical enrage, so the fights blurred
 // together. below half health each boss now opens its OWN attack on top of its pattern.
 const PHASE2=[
@@ -1028,25 +1308,28 @@ const PHASE2=[
  {cry:'THE LIGHTS BROUGHT ME!',     k:'strafe'},   {cry:'SHINE, LITTLE BEE!',       k:'spiral'},
 ];
 function phase2(b){
- const k=PHASE2[LV().boss].k, d=D(), per=Math.max(16,80-((stage-1)%NL)*4.2);
+ const k=PHASE2[LV().boss].k, d=D(), per=Math.max(14,88*BFIRE()*BFIT[(stage-1)%NL]);
  if(b.t%per) return;
  const aim0=Math.atan2(P.y-b.y,P.x-b.x);
- const shot=(a,sp,r,col,kind)=>ebullets.push({x:b.x,y:b.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,r,col,t:0,kind});
+ const shot=(a,sp,r,col,kind)=>epush({x:b.x,y:b.y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp,r,col,t:0,kind});
  switch(k){
   case 'fan':     for(let i=-3;i<=3;i++)shot(aim0+i*.20,2.4+d,7,'#ffb03a','dart');break;
   case 'cross':   for(let i=0;i<4;i++)shot(i*Math.PI/2+t*.01,2.6+d,8,'#9dff8a','blade');break;
   case 'web':     for(let i=0;i<5;i++)shot(aim0+R(-.5,.5),1.7+d*.6,9,'#e8e8ff','web');break;
   case 'strafe':  for(let i=0;i<3;i++)shot(Math.PI/2+R(-.25,.25),3.2+d,6,'#7ae8ff','dart');break;
   case 'charge':  for(let i=-2;i<=2;i++)shot(Math.PI/2+i*.13,3.0+d,9,'#c08a40','acorn');break;
-  case 'rain':    for(let i=0;i<6;i++)ebullets.push({x:R(20,W-20),y:-12,vx:0,vy:2.2+d,r:7,col:'#ff8a4a',t:0,kind:'ember'});break;
+  case 'rain':    for(let i=0;i<6;i++)epush({x:R(20,W-20),y:-12,vx:0,vy:2.2+d,r:7,col:'#ff8a4a',t:0,kind:'ember'});break;
   case 'needle':  for(let i=0;i<2;i++)shot(aim0+R(-.06,.06),4.0+d,5,'#ff7070','dart');break;
   case 'spiral':  for(let i=0;i<3;i++)shot(b.t*.07+i*2.09,2.3+d,7,'#ffd6a0','dart');break;
-  case 'ambush':  for(let i=0;i<4;i++)ebullets.push({x:P.x+R(-70,70),y:-12,vx:0,vy:2.6+d,r:7,col:'#9ad07a',t:0,kind:'seed'});break;
+  case 'ambush':  for(let i=0;i<4;i++)epush({x:P.x+R(-70,70),y:-12,vx:0,vy:2.6+d,r:7,col:'#9ad07a',t:0,kind:'seed'});break;
   case 'lantern': for(let i=0;i<7;i++)shot(i/7*6.283,1.9+d*.7,8,'#7fe8ff','drop');break;
   case 'burst':   for(let i=0;i<9;i++)shot(i/9*6.283+b.t*.02,2.1+d,7,'#bfe8ff','dart');break;
-  case 'wall':    for(let i=0;i<8;i++)ebullets.push({x:20+i*((W-40)/7),y:-12,vx:0,vy:2.0+d,r:8,col:'#8aa08a',t:0,kind:'dart'});break;
-  case 'split':   if(b.x2!=null){const a2=Math.atan2(P.y-b.y2,P.x-b.x2);shot(aim0+.12,2.2+d,6,'#8fdc3a','venom');ebullets.push({x:b.x2,y:b.y2,vx:Math.cos(a2-.12)*(2.2+d),vy:Math.sin(a2-.12)*(2.2+d),r:8,col:'#8fdc3a',t:0,kind:'venom'});}break;
-  case 'pincer':  for(const s of[-1,1])ebullets.push({x:s<0?10:W-10,y:clamp(P.y+R(-60,20),80,H-60),vx:(s<0?1:-1)*(2.2+d),vy:R(-.3,.3),r:7,col:'#e8c070',t:0,kind:'blade'});break;
+  // A rank across the whole width reads as a bar coming down at you, which is the exact thing
+  // Matt called out. Same attack, but one shot is always missing: it is a wall with a DOOR, and
+  // you can see the door from the moment it appears. The gap moves every time.
+  case 'wall':    {const door=RI(1,6);for(let i=0;i<8;i++){if(i===door)continue;epush({x:20+i*((W-40)/7),y:-12,vx:0,vy:2.0+d,r:8,col:'#8aa08a',t:0,kind:'dart'});}}break;
+  case 'split':   if(b.x2!=null){const a2=Math.atan2(P.y-b.y2,P.x-b.x2);shot(aim0+.12,2.2+d,6,'#8fdc3a','venom');epush({x:b.x2,y:b.y2,vx:Math.cos(a2-.12)*(2.2+d),vy:Math.sin(a2-.12)*(2.2+d),r:8,col:'#8fdc3a',t:0,kind:'venom'});}break;
+  case 'pincer':  for(const s of[-1,1])epush({x:s<0?10:W-10,y:clamp(P.y+R(-60,20),80,H-60),vx:(s<0?1:-1)*(2.2+d),vy:R(-.3,.3),r:7,col:'#e8c070',t:0,kind:'blade'});break;
  }
 }
 // half health is a JOB CHANGE, not a speed bump. rageBoss flips the switch and builds
@@ -1061,7 +1344,7 @@ function rageBoss(b){if(b.rage)return;b.rage=1;const real=LV().boss;say(PHASE2[r
 // dust, a roar, a shockwave and its name punched in. It arrives; it does not just appear.
 function bossLand(b){b.landed=1;shake=18;stop(3);buzz('heavy');announce(b.name,'#ff9f9f');rumble(1.2,.08);noise(.5,.05,500,.8,150,'lowpass');ring(b.x,b.y,b.col,240);
  for(let k=0;k<28;k++)parts.push({x:b.x+R(-80,80),y:b.y+R(20,70),vx:R(-2.6,2.6),vy:R(-1.6,.4),l:R(22,44),c:['#8a7a5a','#6a5a3a','#b0a080'][RI(0,2)],r:R(2,5)});}
-function updBoss(b){b.t++;if(b.fl>0)b.fl--;if(!b.landed&&b.y>=60)bossLand(b);if(b.y>0)sfxBossIdle(b);let sp=.55+D()*.5;if(!b.rage&&b.hp<b.max*.5)rageBoss(b);if(b.rage)sp*=1.15;if(b.rage)phase2(b);const rf=b.rage?.8:1;
+function updBoss(b){b.t++;if(b.fl>0)b.fl--;if(!b.landed&&b.y>=60)bossLand(b);if(b.y>0)sfxBossIdle(b);let sp=.55+D()*.5;if(!b.rage&&b.hp<b.max*.5)rageBoss(b);if(b.rage)sp*=1.15;if(b.rage)phase2(b);const rf=(b.rage?.8:1)*BFIRE()*BCOMP[BARCH[LV().boss]]*BFIT[(stage-1)%NL];   // BFIRE: Matt 9/15 wanted ~10% more bullets out of the bosses
  if(LV().boss===8&&b.rage){b.camoT=(b.camoT||0)+1;const ph=b.camoT%300;b.camo=ph>=150;if(ph===150&&!b.saidCamo){b.saidCamo=1;say('ONLY THE TWIG-SWAY TELLS');}
   if(b.camo&&b.t%26===0)parts.push({x:b.x+R(-30,30),y:b.y+R(-20,40),vx:R(-.3,.3),vy:R(.2,.8),l:22,c:'#7a8a4a',r:2});}
  const rest=BARCH[LV().boss]===5?60:BSIZE[LV().boss]*.5+14;if(b.y<rest){b.y+=1.2;return;}   // centipede drives its own Y; everyone else stops low enough that the whole sprite is on screen
@@ -1075,70 +1358,93 @@ function updBoss(b){b.t++;if(b.fl>0)b.fl--;if(!b.landed&&b.y>=60)bossLand(b);if(
   if(b.rage){ // JOB CHANGE: split into two shorter snakes -- the twin mirrors and the pair pinch
    b.x2=W-b.x;b.y2=150+Math.sin(b.t*.0165+Math.PI/2)*74;
    b.seg2=b.seg2||[];b.seg2.unshift({x:b.x2,y:b.y2});if(b.seg2.length>90)b.seg2.pop();}
-  if(b.t%(220*rf|0)===0){const a=aim(b.x,b.y);for(let k=-1;k<=1;k+=2)eshot(b.x,b.y+10,a+k*.16,3.4*sp,5,'#8fdc3a','venom');if(b.rage&&b.x2!=null)eshot(b.x2,b.y2+10,aim(b.x2,b.y2),3.4*sp,5,'#8fdc3a','venom');snd(200,.1);}
-  if(b.t%(190*rf|0)===0){const s=b.seg[Math.min(b.seg.length-1,RI(40,Math.min(140,b.seg.length-1)))];if(s)eshot(s.x,s.y,Math.PI/2+R(-.3,.3),2.4*sp,5,'#8fdc3a','venom');}
+  if(b.t%(Math.max(8,220*rf)|0)===0){const a=aim(b.x,b.y);for(let k=-1;k<=1;k+=2)eshot(b.x,b.y+10,a+k*.16,3.4*sp,5,'#8fdc3a','venom');if(b.rage&&b.x2!=null)eshot(b.x2,b.y2+10,aim(b.x2,b.y2),3.4*sp,5,'#8fdc3a','venom');snd(200,.1);}
+  if(b.t%(Math.max(8,190*rf)|0)===0){const s=b.seg[Math.min(b.seg.length-1,RI(40,Math.min(140,b.seg.length-1)))];if(s)eshot(s.x,s.y,Math.PI/2+R(-.3,.3),2.4*sp,5,'#8fdc3a','venom');}
   if(b.t%520===0)for(let k=0;k<2;k++)spawn(anyBug(),R(40,W-40),-20,{pat:'march'});
   return;}
  b.x=W/2+Math.sin(b.t*.012)*(W/2-70);
  if(i===0){ // hornet: small aimed bursts + a slow ring + the odd mosquito
-  if(b.t%(210*rf|0)===0){const a=aim(b.x,b.y);for(let k=-1;k<=1;k+=2)eshot(b.x,b.y+20,a+k*.18,3.6*sp,4,'#ff3b3b','dart');snd(200,.1);}
+  if(b.t%(Math.max(8,210*rf)|0)===0){const a=aim(b.x,b.y);for(let k=-1;k<=1;k+=2)eshot(b.x,b.y+20,a+k*.18,3.6*sp,4,'#ff3b3b','dart');snd(200,.1);}
   if(b.t%520===0){for(let k=0;k<4;k++)eshot(b.x,b.y,k*Math.PI/2+Math.PI/4,2.4*sp,5,'#ffcc33');}
+  if(b.t%(Math.max(8,150*rf)|0)===0){const a=aim(b.x,b.y);for(let k=-1;k<=1;k++)eshot(b.x,b.y+16,a+k*.30,2.8*sp,5,'#ffcc33','dart');}
   if(b.t%700===0)spawn(anyBug(),b.x+R(-60,60),b.y,{pat:'dive'});
  }else if(i===1){ // mantis: scythe sweeps + falling walls
-  if(b.t%32===0){const a=b.t*.04;eshot(b.x,b.y,a,4*sp,4,'#7ed957','blade');eshot(b.x,b.y,a+Math.PI,4*sp,4,'#7ed957','blade');}
-  if(b.t%(300*rf|0)===0){for(let x=20;x<W;x+=90)if(Math.abs(x-P.x)>70)eshot(x,-10,Math.PI/2,3.5*sp,6,'#b5ff7a','blade');}
+  if(b.t%(Math.max(10,32*rf)|0)===0){const a=b.t*.04;eshot(b.x,b.y,a,4*sp,4,'#7ed957','blade');eshot(b.x,b.y,a+Math.PI,4*sp,4,'#7ed957','blade');}
+  if(b.t%(Math.max(8,300*rf)|0)===0){for(let x=20;x<W;x+=90)if(Math.abs(x-P.x)>70)eshot(x,-10,Math.PI/2,3.5*sp,6,'#b5ff7a','blade');}
   if(b.t%320===0)for(let k=0;k<2;k++)spawn(anyBug(),R(40,W-40),-20,{pat:'sine',ox:R(80,W-80)});
  }else if(i===2){ // spider: spirals + slow big webs
-  if(b.t%46===0){const a=b.t*.09;eshot(b.x,b.y,a,3*sp,3,'#e8e8ff','web');}
-  if(b.t%(160*rf|0)===0){const a=aim(b.x,b.y);for(let k=-1;k<=1;k++)eshot(b.x,b.y,a+k*.16,2.2*sp,9,'#e8e8ff','web');}
+  if(b.t%(Math.max(12,46*rf)|0)===0){const a=b.t*.09;eshot(b.x,b.y,a,3*sp,3,'#e8e8ff','web');}
+  if(b.t%(Math.max(8,160*rf)|0)===0){const a=aim(b.x,b.y);for(let k=-1;k<=1;k++)eshot(b.x,b.y,a+k*.16,2.2*sp,9,'#e8e8ff','web');}
   // the webs only tangle. these bite.
-  if(b.t%(150*rf|0)===0){const a=aim(b.x,b.y);for(let k=-1;k<=1;k++)eshot(b.x,b.y+8,a+k*.20,2.5*sp,4,'#ff2d2d','fang');snd(200,.1);}
-  if(b.rage&&b.t%(240*rf|0)===0){for(let k=0;k<5;k++)eshot(b.x,b.y,aim(b.x,b.y)+R(-.55,.55),2.9*sp,4,'#ff2d2d','fang');}
+  if(b.t%(Math.max(8,150*rf)|0)===0){const a=aim(b.x,b.y);for(let k=-1;k<=1;k++)eshot(b.x,b.y+8,a+k*.20,2.5*sp,4,'#ff2d2d','fang');snd(200,.1);}
+  if(b.rage&&b.t%(Math.max(8,240*rf)|0)===0){for(let k=0;k<5;k++)eshot(b.x,b.y,aim(b.x,b.y)+R(-.55,.55),2.9*sp,4,'#ff2d2d','fang');}
   if(b.t%520===0)spawn(anyBug(),R(60,W-60),-30,{pat:'slow'});
  }else if(i===3){ // dragonfly: darts fast, straight double shots, strafes
   b.x=W/2+Math.sin(b.t*.03)*(W/2-70);b.y=110+Math.abs(Math.sin(b.t*.015))*60;
-  if(b.t%(90*rf|0)===0){eshot(b.x-14,b.y+20,Math.PI/2,4*sp,4,'#60e0ff','drop');eshot(b.x+14,b.y+20,Math.PI/2,4*sp,4,'#60e0ff','drop');}
-  if(b.t%(360*rf|0)===0){const a=aim(b.x,b.y);for(let k=-1;k<=1;k++)eshot(b.x,b.y,a+k*.14,4.5*sp,4,'#a0f0ff','drop');snd(400,.1,'sine',.03,900);}
+  if(b.t%(Math.max(8,90*rf)|0)===0){eshot(b.x-14,b.y+20,Math.PI/2,4*sp,4,'#60e0ff','drop');eshot(b.x+14,b.y+20,Math.PI/2,4*sp,4,'#60e0ff','drop');}
+  if(b.t%(Math.max(8,360*rf)|0)===0){const a=aim(b.x,b.y);for(let k=-1;k<=1;k++)eshot(b.x,b.y,a+k*.14,4.5*sp,4,'#a0f0ff','drop');snd(400,.1,'sine',.03,900);}
   if(b.t%520===0)spawn(anyBug(),Math.random()<.5?-20:W+20,R(150,220),{pat:'dash'});
  }else if(i===4){ // stag beetle: heavy slow shots, dropping acorns, ants
   // b.camo is only ever set on the walking stick: hidden in the canopy it holds its fire,
   // because a shot from empty air would give the trick away (and feel cheap)
-  if(!b.camo&&b.t%(170*rf|0)===0){const a=aim(b.x,b.y);for(let k=-1;k<=1;k+=2)eshot(b.x,b.y+30,a+k*.26,2.6*sp,8,'#8a4a10','acorn');snd(120,.15,'triangle',.05,60);}
-  if(!b.camo&&b.t%(200*rf|0)===0)eshot(R(30,W-30),-10,Math.PI/2,2.2*sp,7,'#c07030','acorn');
+  // This pattern (stag beetle, walking stick, ARMOR CRAB KING on stage 12) fired a quarter of
+  // what the mantis pattern does -- two thin lines and nothing to weave through. Tightened,
+  // plus a spread of falling acorns so there is an actual shape to slip between.
+  if(!b.camo&&b.t%(Math.max(8,130*rf)|0)===0){const a=aim(b.x,b.y);for(let k=-1;k<=1;k+=2)eshot(b.x,b.y+30,a+k*.26,2.6*sp,8,'#8a4a10','acorn');snd(120,.15,'triangle',.05,60);}
+  if(!b.camo&&b.t%(Math.max(8,150*rf)|0)===0)eshot(R(30,W-30),-10,Math.PI/2,2.2*sp,7,'#c07030','acorn');
+  if(!b.camo&&b.t%(Math.max(8,260*rf)|0)===0){const gx=R(60,W-60);for(let k=-1;k<=1;k++)eshot(clamp(gx+k*95,20,W-20),-10,Math.PI/2,2.0*sp,7,'#c07030','acorn');}
   if(b.t%560===0)for(let k=0;k<2;k++)spawn(anyBug(),b.x+R(-50,50),b.y+20,{pat:'march'});
  }else if(i===6){ // mosquito matriarch: hovers, then lunges down at you and pulls back up; spits venom; calls gnats
   if(b.lunge>0){b.lunge--;if(b.lunge>25){b.x+=Math.cos(b.la)*5*sp;b.y+=Math.sin(b.la)*5*sp;}else{b.y+=(110-b.y)*.08;}}
-  else{b.y+=(110+Math.sin(b.t*.03)*20-b.y)*.05;if(b.t%(240*rf|0)===0){b.lunge=50;b.la=aim(b.x,b.y);buzz(J(1200),.5,'sine',.04,200,14,5000,600);}}
-  if(b.t%(230*rf|0)===0){const a=aim(b.x,b.y);eshot(b.x,b.y+20,a,3.2*sp,4,'#8fdc3a','venom');}
+  else{b.y+=(110+Math.sin(b.t*.03)*20-b.y)*.05;if(b.t%(Math.max(8,240*rf)|0)===0){b.lunge=50;b.la=aim(b.x,b.y);buzz(J(1200),.5,'sine',.04,200,14,5000,600);}}
+  if(b.t%(Math.max(8,230*rf)|0)===0){const a=aim(b.x,b.y);eshot(b.x,b.y+20,a,3.2*sp,4,'#8fdc3a','venom');}
+  if(b.t%(Math.max(8,120*rf)|0)===0){const a=aim(b.x,b.y);for(let k=-1;k<=1;k+=2)eshot(b.x,b.y+18,a+k*.22,2.9*sp,5,'#8fdc3a','venom');}
+  if(b.t%(Math.max(8,340*rf)|0)===0){for(let k=0;k<5;k++)eshot(b.x,b.y+10,Math.PI/2+(k-2)*.26,2.3*sp,6,'#a8e86a','venom');}
   if(b.t%900===0)FORMS.cloud();
  }else if(i===7){ // scorpion king: scuttles side to side, tail stabs (fast darts), pincer sweeps (blades), ants
   // JOB CHANGE at half health: the tail plants in the sand as a turret (drawn where it rooted)
   // and keeps firing aimed darts from there while the body flanks faster with pincers only.
   b.x=W/2+Math.sin(b.t*(b.rage?.032:.02))*(W/2-80);b.y=110+Math.abs(Math.sin(b.t*.01))*30;
-  if(b.rage&&b.turret){b.turret.t++;if(b.turret.t%(120*rf|0)===0){const a=Math.atan2(P.y-b.turret.y,P.x-b.turret.x);eshot(b.turret.x,b.turret.y,a,4.2*sp,4,'#ff3b3b','dart');click(700,.04);}}
-  if(!b.rage&&b.t%(190*rf|0)===0){const a=aim(b.x,b.y);for(let k=-1;k<=1;k+=2)eshot(b.x,b.y-30,a+k*.1,5*sp,4,'#ff3b3b','dart');click(600,.04);}
-  if(b.t%(280*rf|0)===0){for(const sg of[-1,1])eshot(b.x+sg*40,b.y+10,Math.PI/2+sg*.35,2.8*sp,6,'#e8c070','blade');}
+  if(b.rage&&b.turret){b.turret.t++;if(b.turret.t%(Math.max(8,120*rf)|0)===0){const a=Math.atan2(P.y-b.turret.y,P.x-b.turret.x);eshot(b.turret.x,b.turret.y,a,4.2*sp,4,'#ff3b3b','dart');click(700,.04);}}
+  if(!b.rage&&b.t%(Math.max(8,190*rf)|0)===0){const a=aim(b.x,b.y);for(let k=-1;k<=1;k+=2)eshot(b.x,b.y-30,a+k*.1,5*sp,4,'#ff3b3b','dart');click(600,.04);}
+  if(b.t%(Math.max(8,280*rf)|0)===0){for(const sg of[-1,1])eshot(b.x+sg*40,b.y+10,Math.PI/2+sg*.35,2.8*sp,6,'#e8c070','blade');}
+  if(b.t%(Math.max(8,135*rf)|0)===0){const a=aim(b.x,b.y);for(let k=-1;k<=1;k++)eshot(b.x,b.y-24,a+k*.17,3.6*sp,4,'#ff6b3b','dart');}
+  if(b.t%(Math.max(8,300*rf)|0)===0){const gx=clamp(P.x+R(-60,60),30,W-30);for(let k=-1;k<=1;k++)eshot(gx+k*70,-10,Math.PI/2,2.4*sp,6,'#e8c070','blade');}
   if(b.t%440===0)for(let k=0;k<2;k++)spawn(anyBug(),b.x+R(-60,60),b.y+30,{pat:'march'});
  }
 }
 // ---------- pickups ----------
-function drop(x,y,force){const r=Math.random();let k=null;
+function drop(x,y,force,prize){const r=Math.random();let k=null;
  // the old chain tested r<.14 and r<.143 AFTER r<.17, so bombs and lives never dropped
  // by chance -- only when forced. now they exist. ROYAL FEAST doubles the nectar band.
  const nb=MODS.feast?.22:.11;
  if(force)k=force;else if(r<nb)k='nectar';else if(r<nb+.06)k=randWeapon();else if(r<nb+.09)k='bomb';else if(r<nb+.093)k='life';
  if(k==='bomb'&&MODS.nobomb)k='nectar';   // NO SWARM CALLS means none, not "found one anyway"
- if(k)pickups.push({x,y,k,vy:1.1,t:0});}
+ if(k)pickups.push({x,y,k,vy:1.1,t:0,prize:prize?1:0});}
 function take(p){buzz('light');
- if(p.k==='nectar'){SFX.nectar();if(P.lvl<5){P.lvl++;say('POWER UP  Lv'+P.lvl);pop(p.x,p.y,'POWER Lv'+P.lvl,'#ffd23f',13);}else{addScore(1000);say('MAX POWER +1000');pop(p.x,p.y,'+1000','#ffd23f',13);}}
- else if(p.k==='bomb'){SFX.bomb();P.bombs=Math.min(5,P.bombs+1);say('SWARM CALL +1');pop(p.x,p.y,'+1 BOMB','#8dff9a',13);}
- else if(p.k==='life'){SFX.life();P.lives++;say('EXTRA LIFE!');pop(p.x,p.y,'1 UP','#8dff9a',15);buzz('success');}
- else{SFX.weapon(p.k);if(P.wpn!==p.k){bullets=bullets.filter(b=>!b.orbit&&!b.drone&&b.k!=='wall'&&b.k!=='lure');lashT=null;}if(P.wpn===p.k){P.lvl=Math.min(5,P.lvl+1);say(WEAPONS[p.k].name+'  Lv'+P.lvl);}else{P.wpn=p.k;P.lvl=Math.max(1,P.lvl-1);say(WEAPONS[p.k].name+'  —  '+WEAPONS[p.k].tag);}}}
+ // At max power every nectar used to turn into a flat +1000 points -- a currency that changes
+ // nothing about the fight you are in (Matt 9/15: "then you just get points... that part of the
+ // strategy feels weak"). Now a maxed-out bee banks the overflow as a SWARM CALL, which is the
+ // thing you actually want, and only pays points once even that is full.
+ if(p.k==='nectar'){SFX.nectar();
+  if(P.lvl<5){P.lvl++;say('POWER UP  Lv'+P.lvl);pop(p.x,p.y,'POWER Lv'+P.lvl,'#ffd23f',13);}
+  else if(P.bombs<DIFF.bombCap()){P.bombs++;SFX.bomb();say('MAX POWER  \u2192  SWARM CALL +1');pop(p.x,p.y,'+1 BOMB','#8dff9a',13);}
+  else{addScore(1000);say('MAX POWER +1000');pop(p.x,p.y,'+1000','#ffd23f',13);}}
+ else if(p.k==='bomb'){SFX.bomb();P.bombs=Math.min(DIFF.bombCap(),P.bombs+1);say('SWARM CALL +1');pop(p.x,p.y,'+1 BOMB','#8dff9a',13);}
+ else if(p.k==='life'){if(P.lives>=DIFF.maxLives()){addScore(20000);say('LIVES FULL  +20000');pop(p.x,p.y,'+20000','#ffd23f',13);}else{SFX.life();P.lives++;say('EXTRA LIFE!');pop(p.x,p.y,'1 UP','#8dff9a',15);buzz('success');}}
+ else{SFX.weapon(p.k);if(P.wpn!==p.k){bullets=bullets.filter(b=>!b.orbit&&!b.drone&&b.k!=='wall'&&b.k!=='lure');lashT=null;}if(P.wpn===p.k){P.lvl=Math.min(5,P.lvl+1);say(WEAPONS[p.k].name+'  Lv'+P.lvl);}else{P.wpn=p.k;P.lvl=Math.max(1,P.lvl-1);const g=GUNFIT[p.k];say(WEAPONS[p.k].name+(g?'  —  STRONG vs '+FITLABEL[g.up]:'  —  '+WEAPONS[p.k].tag));}}}
 let chain=0,chainT=0,chainBest=0,grazed=0,nextExt=0;
-const EXTENDS=[100000,250000,500000,900000];
+// Extra lives were four fixed milestones -- 100k, 250k, 500k, 900k -- set for a scoring economy
+// that no longer exists. Late worlds pay 5,000 a stage for a boss, chains multiply by up to 8x
+// and grazing pays too, so Matt's single-world best on world 10 is 942,000 ON ITS OWN: he
+// crossed all four lines inside the first level and a half. A milestone you clear by simply
+// arriving is not a reward. Now they compound, so the Nth extra life always costs more than the
+// last, and score inflation can never outrun them.
+const EXT0=250000, EXTG=2.4;
+const extendAt=n=>Math.round(EXT0*Math.pow(EXTG,n));
 const chainMult=()=>Math.min(8,1+Math.floor(chain/6));
 function addScore(n){const got=Math.round(n*chainMult()*cmult);score+=got;
- while(nextExt<EXTENDS.length&&score>=EXTENDS[nextExt]){nextExt++;P.lives++;say('EXTRA LIFE!');announce('EXTRA LIFE!','#8dff9a');buzz('success');
+ while(nextExt<12&&score>=extendAt(nextExt)){nextExt++;if(P.lives>=DIFF.maxLives()){addScore(25000);continue;}P.lives++;say('EXTRA LIFE!');announce('EXTRA LIFE!','#8dff9a');buzz('success');
   jingle([880,1174,1568,2093],'sine',.03,.07);}return got;}
 function onKill(){chain++;chainT=190;if(chain>chainBest)chainBest=chain;
  if(chain%6===0){
@@ -1171,9 +1477,13 @@ function grazeTick(){if(P.dead||P.inv>0)return;
   if(d>near&&d<far){const pays=b.hot?2:1;b.grz=1;const got=addScore(60*pays);if(b.hot)pop(b.x,b.y,'+'+got,'#8dff9a',10);
    sparks(b.x+(dx?dx/d*6:0),b.y+(dy?dy/d*6:0),b.hot?'#8dff9a':'#ffe680',2,4);
    for(let g=pays;g--;){grazed++;
-    if(grazed%22===0&&P.bombs<5){P.bombs++;say(learned.has('graze')?'BOMB FROM GRAZING':'FREE BOMB  \u00b7  FOR SLIPPING PAST SHOTS');learned.add('graze');}}
+    if(grazed%22===0&&P.bombs<DIFF.bombCap()){P.bombs++;say(learned.has('graze')?'BOMB FROM GRAZING':'FREE BOMB  \u00b7  FOR SLIPPING PAST SHOTS');learned.add('graze');}}
    if(grazed%6<pays)snd(2200,.03,'sine',.012,3000);}}}
-function hitPlayer(){if(P.inv>0||P.dead)return;if(P.bombs>0){bomb();P.inv=90;say('AUTO SWARM CALL!');return;}breakChain();P.lives--;P.dead=90;shake=20;stop(10);buzz('heavy');boom(P.x,P.y,'#ffd166',40,7);noise(.7,.05,1400,.6,200,'lowpass');swell(90,.9,'sine',.08,.05,40);
+function hitPlayer(){if(P.inv>0||P.dead)return;
+ if(P.bombs>0){bomb();P.inv=90;
+  // deep in the game a bomb is no longer a free life: it saves you, and it costs you a level
+  if(DIFF.savePain()&&P.lvl>1){P.lvl--;say('SAVED \u2014 BUT THE SWARM THINNED');}else say('AUTO SWARM CALL!');
+  return;}breakChain();P.lives--;P.dead=90;shake=20;stop(10);buzz('heavy');boom(P.x,P.y,'#ffd166',40,7);noise(.7,.05,1400,.6,200,'lowpass');swell(90,.9,'sine',.08,.05,40);
  P.lvl=Math.max(1,P.lvl-1);ebullets=[];
  if(P.lives<0){state='over';music('title');endRun();if(score>hi){hi=score;localStorage.hs_hi=hi;}}}
 
@@ -1259,17 +1569,19 @@ function updateInner(){t++;juiceTick();if(collapse>0){collapse--;if(collapse%9==
   if(P.inv>0)P.inv--;
   if(P.fireT>0)P.fireT--;else fire();
   if(keys.KeyX||keys.KeyB||wantBomb){if(!P.bt)bomb();P.bt=1;}else P.bt=0;wantBomb=0;}
+ mercyTick();   // BEFORE any collision check: no frame may exist in which there is nowhere
+                // to stand AND the game is still allowed to kill you for it
  // stage flow: intro -> waves -> WARNING -> boss -> LEVEL CLEAR -> next
  if(levelClear>0){levelClear--;if(levelClear===0){recordBest((stage-1)%NL+1,score);if(stage%NL===0&&loop===0){unlockUpTo(16);state='won';music('title');endRun();if(score>hi){hi=score;localStorage.hs_hi=hi;}return;}stage++;stageT=0;unlockUpTo((stage-1)%NL+1);if(stage>STAT.deepest){STAT.deepest=stage;}statSave();if((stage-1)%NL===0){loop++;}levelIntro=200;nextWave=0;rushDone=false;nextCloud=400;buildDecor((stage-1)%NL);SFX.levelStart();}}
  else if(!bossAlive){
   if(levelIntro>0){levelIntro--;if(levelIntro===0)music('main');}
   else if(bossWarn>0){bossWarn--;if(bossWarn%45===0){swell(70,.5,'sine',.07,.08);rumble(.5,.04);}if(bossWarn===0)spawnBoss();}
-  else{stageT++;wave();
-   if(LV().name==='THE ROOFTOPS'&&blackoutStage!==stage&&stageT>LV().len*.42){blackoutStage=stage;blackout=250;say('BLACKOUT');noise(.7,.06,260,.6,70,'lowpass');buzz('warn');flash=.4;}
-   if(stageT>LV().len){for(const e of enemies){if(e.pat!=='fall'){e.pat='fall';e.vy=2.8;}}bossWarn=210;ebullets=[];shake=10;music('boss');drop(clamp(P.x-50,40,W-40),P.y-260,randWeapon());drop(clamp(P.x+50,40,W-40),P.y-280,'nectar');if(P.bombs<2)drop(P.x,P.y-300,'bomb');}}}
+  else{stageT++;lateTick();wave();
+   if(LV().name==='THE ROOFTOPS'&&blackoutStage!==stage&&stageT>LV().len*.30){blackoutStage=stage;blackout=170;say('THE LIGHTS ARE GOING OUT');noise(.7,.06,260,.6,70,'lowpass');buzz('warn');flash=.4;}
+   if(stageT>LV().len){for(const e of enemies){if(e.pat!=='fall'){e.pat='fall';e.vy=2.8;}}bossWarn=210;ebullets=[];shake=10;music('boss');drop(clamp(P.x-50,40,W-40),P.y-260,randWeapon(),1);drop(clamp(P.x+50,40,W-40),P.y-280,'nectar',1);if(P.bombs<2)drop(P.x,P.y-300,'bomb',1);}}}
  else if(boss&&boss.dying>0){boss.dying--;boss.fl=2;boss.x+=R(-3,3);if(boss.dying%7===0){boom(boss.x+R(-40,40),boss.y+R(-40,40),['#fff','#ffd166',boss.col][RI(0,2)],18,6);shake=8;rumble(.35,.06);noise(.12,.03,900,.7,250,'lowpass');click(R(1500,3000),.02);}if(boss.dying%20===0)hiss(.3,.03,R(2000,5000),800);if(boss.dying===0){boss.hp=0;}}
  else if(boss){updBoss(boss);if(boss.hp<=0&&boss.dying==null){boss.dying=90;ebullets=[];say(boss.name+' IS GOING DOWN!');announce('BOSS DOWN!');stop(8);slowmo=56;buzz('heavy');ring(boss.x,boss.y,boss.col,440);ring(boss.x,boss.y,'#fff',300);for(let k=0;k<16;k++)parts.push({x:boss.x+R(-30,30),y:boss.y+R(-30,30),vx:R(-5,5),vy:R(-7,2),l:R(45,90),c:k%3?boss.col:'#2a1a08',r:R(3,7),gib:1,rx:R(1,2.4),a:R(0,7),va:R(-.2,.2)});STAT.bdex[LV().boss]=(STAT.bdex[LV().boss]||0)+1;statSave();rumble(1.5,.07);swell(80,1.4,'triangle',.05,.3,30);return;}if(boss.hp<=0){addScore(5000*(stage+loop));boom(boss.x,boss.y,boss.col,80,9);boom(boss.x,boss.y,'#fff',40,5);sparks(boss.x,boss.y,'#fff',40,12);flash=.6;shake=22;rumble(1.8,.1);swell(60,1.8,'sine',.07,.2,30);noise(.6,.05,700,.6,120,'lowpass');jingle([660,880,1108,1318,1760],'sine',.03,.09);
-  for(let i=0;i<3;i++)drop(clamp(boss.x-80+i*80,50,W-50),boss.y+i*10,i===0?'nectar':i===1?randWeapon():['nectar','bomb','bomb',(stage%2===0?'life':'bomb')][RI(0,3)]);
+  for(let i=0;i<3;i++)drop(clamp(P.x-80+i*80,50,W-50),Math.min(boss.y+i*10,P.y-140),i===0?'nectar':i===1?randWeapon():['nectar','bomb','bomb',(stage%2===0?'life':'bomb')][RI(0,3)],1);
   const bi=LV().boss,bx=boss.x,by=boss.y;boss=null;bossAlive=false;ebullets=[];enemies=[];levelClear=220;msgT=0;STAT.bosses++;statSave();SFX.levelClear();
   if(bi===5){collapse=170;levelClear=170;collapseAt={x:bx,y:by};say('THE COMB IS GIVING WAY!');music(null);}          // hive collapse: no score screen, you fall straight into the swamp
   else if(bi===15){music(null);slowmo=130;stop(14);flash=1;say('...');}                                                // atlas moth: the music stops on the last wingbeat
@@ -1280,8 +1592,8 @@ function updateInner(){t++;juiceTick();if(collapse>0){collapse--;if(collapse%9==
   if(b.cd>0)b.cd--;
   if(b.drone){if(P.wpn!=='drones'||P.dead){b.dead=1;}let tg=null,bd=560*560;   /* 300 was shorter than the gap to a boss, so drones just idled through every boss fight */for(const e of enemies){const d=(e.x-b.x)**2+(e.y-b.y)**2;if(d<bd){bd=d;tg=e;}}if(boss&&boss.y>0){const d=(boss.x-b.x)**2+(boss.y-b.y)**2;if(d<bd){bd=d;tg=boss;}}
    let hx,hy;if(tg){hx=tg.x;hy=tg.y;}else{const a=t*.05+b.slot*2.1;hx=P.x+Math.cos(a)*36;hy=P.y-14+Math.sin(a)*12;}const dx=hx-b.x,dy=hy-b.y,d=Math.hypot(dx,dy)||1,spd=tg?6.5:4;b.vx+=(dx/d*spd-b.vx)*.18;b.vy+=(dy/d*spd-b.vy)*.18;b.x+=b.vx;b.y+=b.vy;b.x=clamp(b.x,10,W-10);b.y=clamp(b.y,30,H-20);}
-  else if(b.k==='static'){b.y+=b.vy;b.x+=Math.sin(t*.05+b.y*.02)*.6;b.zaps=b.zaps.filter(z=>--z.ttl>0);if(--b.zapT<=0){b.zapT=18;const near=enemies.filter(e=>!e.dead&&(e.x-b.x)**2+(e.y-b.y)**2<105*105).sort((p,q)=>((p.x-b.x)**2+(p.y-b.y)**2)-((q.x-b.x)**2+(q.y-b.y)**2)).slice(0,b.targets);for(const e of near){e.hp-=b.d*PD;e.fl=3;b.zaps.push({x:e.x,y:e.y,ttl:8});sparks(e.x,e.y,'#e0c0ff',3,5);if(e.hp<=0){e.dead=1;killScore(e);killFx(e);if(e.elite)drop(e.x,e.y,randWeapon());else if(!e.tiny)drop(e.x,e.y);if(!e.tiny)gibs(e);sfxKill(e);}}if(boss&&boss.y>0&&(boss.x-b.x)**2+(boss.y-b.y)**2<130*130){boss.hp-=b.d*PD*1.5;boss.fl=3;b.zaps.push({x:boss.x,y:boss.y,ttl:8});sfxBossHit();}if(near.length||(boss&&b.zaps.length))IMPACT.static();}}
-  else if(b.k==='lure'){if(b.y>b.stopY)b.y+=b.vy;for(const e of enemies){if(e.tiny)continue;const dx=b.x-e.x,dy=b.y-e.y,d=Math.hypot(dx,dy);if(d<170&&d>4){e.x+=dx/d*2.2;e.y+=dy/d*2.2;}}if(t%6===0)parts.push({x:b.x+R(-20,20),y:b.y+R(-20,20),vx:0,vy:-.6,l:18,c:'#ff7ad9',r:2});if(b.life===1){boom(b.x,b.y,'#ff7ad9',50,9);boom(b.x,b.y,'#fff',20,5);flash=.25;shake=10;for(const e of enemies){if((e.x-b.x)**2+(e.y-b.y)**2<100*100){e.hp-=b.d*PD;e.fl=4;if(e.hp<=0){e.dead=1;killScore(e);killFx(e);if(!e.tiny)gibs(e);sfxKill(e);}}}if(boss&&boss.y>0&&(boss.x-b.x)**2+(boss.y-b.y)**2<130*130){boss.hp-=b.d*PD*2;boss.fl=3;}rumble(.5,.05);tone(J(600),.3,'sine',.03,200);}}
+  else if(b.k==='static'){b.y+=b.vy;b.x+=Math.sin(t*.05+b.y*.02)*.6;b.zaps=b.zaps.filter(z=>--z.ttl>0);if(--b.zapT<=0){b.zapT=18;const near=enemies.filter(e=>!e.dead&&(e.x-b.x)**2+(e.y-b.y)**2<105*105).sort((p,q)=>((p.x-b.x)**2+(p.y-b.y)**2)-((q.x-b.x)**2+(q.y-b.y)**2)).slice(0,b.targets);for(const e of near){e.hp-=b.d*PD*fitMul(e);e.fl=3;b.zaps.push({x:e.x,y:e.y,ttl:8});sparks(e.x,e.y,'#e0c0ff',3,5);if(e.hp<=0){e.dead=1;killScore(e);killFx(e);if(e.elite)drop(e.x,e.y,randWeapon());else if(!e.tiny)drop(e.x,e.y);if(!e.tiny)gibs(e);sfxKill(e);}}if(boss&&boss.y>0&&(boss.x-b.x)**2+(boss.y-b.y)**2<130*130){boss.hp-=b.d*PD*1.5*fitMul(boss);boss.fl=3;b.zaps.push({x:boss.x,y:boss.y,ttl:8});sfxBossHit();}if(near.length||(boss&&b.zaps.length))IMPACT.static();}}
+  else if(b.k==='lure'){if(b.y>b.stopY)b.y+=b.vy;for(const e of enemies){if(e.tiny)continue;const dx=b.x-e.x,dy=b.y-e.y,d=Math.hypot(dx,dy);if(d<170&&d>4){e.x+=dx/d*2.2;e.y+=dy/d*2.2;}}if(t%6===0)parts.push({x:b.x+R(-20,20),y:b.y+R(-20,20),vx:0,vy:-.6,l:18,c:'#ff7ad9',r:2});if(b.life===1){boom(b.x,b.y,'#ff7ad9',50,9);boom(b.x,b.y,'#fff',20,5);flash=.25;shake=10;for(const e of enemies){if((e.x-b.x)**2+(e.y-b.y)**2<100*100){e.hp-=b.d*PD*fitMul(e);e.fl=4;if(e.hp<=0){e.dead=1;killScore(e);killFx(e);if(!e.tiny)gibs(e);sfxKill(e);}}}if(boss&&boss.y>0&&(boss.x-b.x)**2+(boss.y-b.y)**2<130*130){boss.hp-=b.d*PD*2*fitMul(boss);boss.fl=3;}rumble(.5,.05);tone(J(600),.3,'sine',.03,200);}}
   else if(b.k==='grenade'){b.vy+=b.ay;b.x+=b.vx;b.y+=b.vy;if(b.vy>0||enemies.some(e=>!e.dead&&(e.x-b.x)**2+(e.y-b.y)**2<(e.r+b.r+6)**2)){b.dead=1;boom(b.x,b.y,'#ffa54d',16,5);for(let k=0;k<8;k++){const a=k*Math.PI/4+R(-.2,.2);bullets.push({x:b.x,y:b.y,vx:Math.cos(a)*7,vy:Math.sin(a)*7,d:b.d*.45,r:4,k:'shard',life:26});}IMPACT.grenade();}}
   else if(b.k==='wall'){b.x+=(P.x-b.x)*.2;b.y=P.y-70;if(P.wpn!=='wall'||P.dead)b.dead=1;}
   else if(b.k==='saw'){b.vy+=.28;   /* was .42: the arc peaked 200px up and no boss sits that low */b.ang+=.5;if(b.vy>0){b.vx+=(P.x-b.x)*.004;}b.x+=b.vx;b.y+=b.vy;if(b.vy>0&&b.y>P.y+10)b.dead=1;}
@@ -1290,14 +1602,14 @@ function updateInner(){t++;juiceTick();if(collapse>0){collapse--;if(collapse%9==
    if(LV().name==='THE CRYSTAL'&&!b.bounced&&((b.x<8&&b.vx<0)||(b.x>W-8&&b.vx>0))){b.vx=-b.vx;b.bounced=1;b.x=clamp(b.x,8,W-8);sparks(b.x,b.y,'#c8a0ff',3,5);}
    if((b.y<-20&&!b.down)||b.y<-90||b.x<-20||b.x>W+20||b.y>H+20)b.dead=1;}if(b.life!=null&&--b.life<=0)b.dead=1;if(b.evo&&!b.orbit&&!b.drone&&t%2===0)parts.push({x:b.x+R(-5,5),y:b.y+R(-5,5),vx:R(-.9,.9),vy:R(-.4,1.4),l:R(10,20),c:t%4?'#fff':(WEAPONS[b.k]?WEAPONS[b.k].col:'#fff'),r:R(1,2.2)});
    if(!b.orbit&&!b.drone&&b.k!=='stinger'&&b.k!=='static'&&t%3===0)parts.push({x:b.x+R(-2,2),y:b.y+R(-2,2),vx:R(-.4,.4),vy:R(.3,1),l:R(8,14),c:WEAPONS[b.k]?WEAPONS[b.k].col:'#fff',r:R(1,2.2)});
-  for(const e of enemies){if(b.k==='static'||b.k==='lure'||b.k==='grenade')break;if((b.k==='lance'||b.k==='saw'||b.drone||b.k==='wall')&&b.cd>0)break;const hitW=b.k==='wall'?(Math.abs(e.x-b.x)<b.half+e.r&&Math.abs(e.y-b.y)<12+e.r):(e.x-b.x)**2+(e.y-b.y)**2<(e.r*1.3+b.r)**2;if(!e.dead&&!b.dead&&hitW){if(b.k==='lance'||b.k==='saw')b.cd=6;if(b.drone)b.cd=14;if(b.k==='wall')b.cd=8;e.hp-=b.d*PD;e.fl=4;if(!b.pierce)b.dead=1;if(b.k==='water'){for(const o of enemies){if(o!==e&&!o.dead&&(o.x-b.x)**2+(o.y-b.y)**2<48*48){o.hp-=b.d*.5;o.fl=3;}}for(let q=0;q<5;q++)parts.push({x:b.x,y:b.y,vx:R(-3,3),vy:R(-3,1),l:14,c:'#ffd070',r:2});}if(b.k==='wax'){e.slow=140;}if(b.orbit&&t%6!==0)continue;sfxHit(e);sfxImpact();sparks(b.x,b.y,WEAPONS[b.k]?WEAPONS[b.k].col:'#fff',4,6);if(e.hp<=0){e.dead=1;killScore(e);killFx(e);if(e.elite)drop(e.x,e.y,Math.random()<.5?randWeapon():['nectar','nectar','bomb'][RI(0,2)]);else if(!e.tiny)drop(e.x,e.y);if(!e.tiny)gibs(e);if(!e.tiny||t%4===0)sfxKill(e);}}}
+  for(const e of enemies){if(b.k==='static'||b.k==='lure'||b.k==='grenade')break;if((b.k==='lance'||b.k==='saw'||b.drone||b.k==='wall')&&b.cd>0)break;const hitW=b.k==='wall'?(Math.abs(e.x-b.x)<b.half+e.r&&Math.abs(e.y-b.y)<12+e.r):(e.x-b.x)**2+(e.y-b.y)**2<(e.r*1.3+b.r)**2;if(!e.dead&&!b.dead&&hitW){if(b.k==='lance'||b.k==='saw')b.cd=6;if(b.drone)b.cd=14;if(b.k==='wall')b.cd=8;e.hp-=b.d*PD*fitMul(e);e.fl=4;if(!b.pierce)b.dead=1;if(b.k==='water'){for(const o of enemies){if(o!==e&&!o.dead&&(o.x-b.x)**2+(o.y-b.y)**2<48*48){o.hp-=b.d*.5*fitMul(o);o.fl=3;}}for(let q=0;q<5;q++)parts.push({x:b.x,y:b.y,vx:R(-3,3),vy:R(-3,1),l:14,c:'#ffd070',r:2});}if(b.k==='wax'){e.slow=140;}if(b.orbit&&t%6!==0)continue;sfxHit(e);sfxImpact();sparks(b.x,b.y,WEAPONS[b.k]?WEAPONS[b.k].col:'#fff',4,6);if(e.hp<=0){e.dead=1;killScore(e);killFx(e);if(e.elite)drop(e.x,e.y,Math.random()<.5?randWeapon():['nectar','nectar','bomb'][RI(0,2)]);else if(!e.tiny)drop(e.x,e.y);if(!e.tiny)gibs(e);if(!e.tiny||t%4===0)sfxKill(e);}}}
   if(boss&&!b.dead&&b.k!=='static'&&b.k!=='lure'&&b.k!=='grenade'&&b.k!=='wall'&&!((b.k==='lance'||b.k==='saw'||b.drone)&&b.cd>0)&&boss.y>0&&(boss.x-b.x)**2+(boss.y-b.y)**2<(boss.r+b.r+(boss.wings&&(boss.wings.l>0||boss.wings.r>0)?44:0))**2){if(b.k==='lance'||b.k==='saw')b.cd=6;if(b.drone)b.cd=14;
    // atlas moth: while a wing lives it soaks the hit for its side. break one and that half
    // of the screen fills with scales you can graze -- the shield becomes the feast.
-   if(boss.wings&&(boss.wings.l>0||boss.wings.r>0)){const side=(b.x<boss.x&&boss.wings.l>0)||boss.wings.r<=0?'l':'r';boss.wings[side]-=b.d*PD;boss.fl=3;
+   if(boss.wings&&(boss.wings.l>0||boss.wings.r>0)){const side=(b.x<boss.x&&boss.wings.l>0)||boss.wings.r<=0?'l':'r';boss.wings[side]-=b.d*PD*fitMul(boss);boss.fl=3;
     if(boss.wings[side]<=0){boss.wings[side]=0;const sx=side==='l'?boss.x-90:boss.x+90;boom(sx,boss.y,'#e0a060',40,7);flash=.3;shake=14;stop(4);say('A WING BREAKS!');rumble(.8,.06);
-     for(let k=0;k<16;k++)ebullets.push({x:side==='l'?R(10,W/2-20):R(W/2+20,W-10),y:R(-50,90),vx:R(-.2,.2),vy:R(.7,1.3),r:6,col:'#ffdd88',t:0,kind:'dust'});drop(sx,boss.y+40,'bomb');}}
-   else{boss.hp-=b.d*PD;boss.fl=3;}
+     for(let k=0;k<16;k++)epush({x:side==='l'?R(10,W/2-20):R(W/2+20,W-10),y:R(-50,90),vx:R(-.2,.2),vy:R(.7,1.3),r:6,col:'#ffdd88',t:0,kind:'dust'});drop(sx,boss.y+40,'bomb',1);}}
+   else{boss.hp-=b.d*PD*fitMul(boss);boss.fl=3;}
    if(!b.pierce)b.dead=1;sfxBossHit();parts.push({x:b.x,y:b.y,vx:R(-2,2),vy:R(-2,2),l:10,c:'#fff',r:2});}
  }
  bullets=bullets.filter(b=>!b.dead);
@@ -1305,15 +1617,39 @@ function updateInner(){t++;juiceTick();if(collapse>0){collapse--;if(collapse%9==
  // bugs must never sit on top of each other -- you cannot shoot what you cannot see.
  // this runs AFTER the movement patterns, or they would just write the overlap back.
  separate();
+ for(const e of enemies){e.ppx=e.x;e.ppy=e.y;}   // so next frame can tell which way each bug is moving
  enemies=enemies.filter(e=>!e.dead);
  if(boss&&!P.dead&&(boss.x-P.x)**2+(boss.y-P.y)**2<(boss.r+P.r-6)**2)hitPlayer();
- if(!P.dead&&P.inv===0&&P.bombs>0){for(const b of ebullets){if(b.kind==='web')continue;const dx=P.x-b.x,dy=P.y-b.y,d2=dx*dx+dy*dy;if(d2<30*30&&(dx*b.vx+dy*b.vy)>0){bomb();P.inv=90;say('AUTO SWARM CALL!');break;}}}
+ // The pre-emptive auto-bomb is GONE (Matt 9/15). It fired whenever any shot drifted within
+ // 30px and closing, which spent your whole stock on near misses -- and it triggered inside the
+ // graze band, so it was burning the bombs that grazing would have paid back. The bomb is the
+ // one real decision in the game and the game was making it for you. It still fires itself
+ // rather than let you die (13_pickups hitPlayer), so a bomb is a life you have not spent yet:
+ // clear the screen now, or hold it as a cushion. That is the choice, and it is yours.
  const walls=bullets.filter(w=>w.k==='wall');
  for(const b of ebullets){if(b.kind==='fang'&&!P.dead&&(b.hm=(b.hm||0)+1)<170){const s2=Math.hypot(b.vx,b.vy)||1,ca=Math.atan2(b.vy,b.vx);let d=Math.atan2(P.y-b.y,P.x-b.x)-ca;while(d>Math.PI)d-=6.283185307179586;while(d<-Math.PI)d+=6.283185307179586;const na=ca+clamp(d,-.032,.032);b.vx=Math.cos(na)*s2;b.vy=Math.sin(na)*s2;}
   b.x+=b.vx;b.y+=b.vy;if(b.y>H+20||b.y<-60||b.x<-20||b.x>W+20)b.dead=1;for(const w of walls){if(Math.abs(b.x-w.x)<w.half&&Math.abs(b.y-w.y)<10){b.dead=1;sparks(b.x,b.y,'#c8a050',4,5);IMPACT.wall();}}if(!P.dead&&(b.x-P.x)**2+(b.y-P.y)**2<(b.r+2)**2){b.dead=1;if(b.kind==='web'){if(!P.webbed){say('TANGLED IN WEB!');noise(.3,.04,2500,.5,600,'bandpass');}P.webbed=190;}else hitPlayer();}}
  if(P.webbed>0)P.webbed--;
  ebullets=ebullets.filter(b=>!b.dead);
- for(const p of pickups){p.t++;p.y+=p.vy;p.x+=Math.sin(p.t*.05);const dx=P.x-p.x,dy=P.y-p.y,dd=Math.hypot(dx,dy);if(!P.dead&&dd<90){p.x+=dx/dd*2.5;p.y+=dy/dd*2.5;}if(p.y>H+20)p.dead=1;if(!P.dead&&dd<34){p.dead=1;take(p);}}
+ // Matt 2026-09-15: "a lot of times I'm forced into getting guns." He was right -- every pickup
+ // homed in on the bee from 90px away and landed the moment it was within 34, so a gun you did
+ // not want took your gun AND a power level, and you never got a say. Nectar, bombs and lives
+ // still come to you: there is no decision in those, you always want them. A GUN now coasts to
+ // a stop and waits, and you have to go and take it on purpose. That is the whole point -- the
+ // pickup is the biggest decision in the game and it was not a decision at all.
+ for(const p of pickups){p.t++;
+  // a prize always comes to you, and once the level is won everything does: nothing you earned
+  // should be stranded at the top of the screen while the clear timer runs out
+  const gun=!(p.prize||levelClear>0||p.k==='nectar'||p.k==='bomb'||p.k==='life');
+  if(gun){ p.vy*=.955; p.y+=p.vy; p.x+=Math.sin(p.t*.05)*.5;      // settles, then hovers where it fell
+   if(p.t>430)p.vy=Math.max(p.vy,1.6);                             // and drifts away if you leave it
+   if(p.t>60&&p.vy<.25)p.vy=.02;
+  } else { p.y+=p.vy; p.x+=Math.sin(p.t*.05);
+   const dx0=P.x-p.x,dy0=P.y-p.y,d0=Math.hypot(dx0,dy0);
+   if(!P.dead&&d0<90){p.x+=dx0/d0*2.5;p.y+=dy0/d0*2.5;} }
+  const dx=P.x-p.x,dy=P.y-p.y,dd=Math.hypot(dx,dy);
+  if(p.y>H+20)p.dead=1;
+  if(!P.dead&&dd<34){p.dead=1;take(p);}}
  pickups=pickups.filter(p=>!p.dead);
  for(const p of parts){p.x+=p.vx;p.y+=p.vy;if(p.spark){p.vx*=.88;p.vy*=.88;}else if(p.gib){p.vy+=p.wing?.03:.12;p.vx*=.97;p.a+=p.va;if(p.wing)p.x+=Math.sin(p.l*.3)*1.2;}else p.vy+=p.bee?.05:.08;p.l--;}parts=parts.filter(p=>p.l>0);
 }
@@ -2042,21 +2378,55 @@ let ringsFx=[];
 function drawCollapse(){const f=1-collapse/170,o=collapseAt||{x:W/2,y:H*.3};X.save();X.strokeStyle='rgba(20,8,0,.95)';X.lineCap='round';
  for(let i=0;i<9;i++){let x=o.x,y=o.y,a=i/9*Math.PI*2+.3;X.lineWidth=1+f*7;X.beginPath();X.moveTo(x,y);const n=Math.floor(3+f*14);for(let k=0;k<n;k++){const s=((i*7919+k*104729)%1000)/1000;a+=(s-.5)*1.1;const L=26+s*30;x+=Math.cos(a)*L;y+=Math.sin(a)*L;X.lineTo(x,y);}X.stroke();}
  X.fillStyle='rgba(0,0,0,'+Math.min(.85,f*1.1)+')';X.fillRect(-20,-H*2,W+40,H*4);X.restore();}
-// rooftop blackout: the city's lights die for four seconds. Only your shots, theirs, the bee's
-// own glow, a few fireflies, and the bugs' eyes are left. Matt's roadmap, word for word.
-function drawBlackout(){const a=blackout>230?(250-blackout)/20:blackout<30?blackout/30:1;X.save();X.fillStyle='rgba(0,0,12,'+(.92*a)+')';X.fillRect(-20,-20,W+40,H+40);X.globalCompositeOperation='lighter';
- for(const e of enemies){if(e.dead||e.y<0)continue;const ex=e.x+pxo(e.x,e.y),s=dep(e.y);X.fillStyle='rgba(255,70,40,'+a+')';ell(ex-5*s,e.y-3*s,1.8,1.8);X.fill();ell(ex+5*s,e.y-3*s,1.8,1.8);X.fill();}
- for(let i=0;i<10;i++){const fx=((i*97+t*.25)%(W+40))-20,fy=(i*61+Math.sin(t*.015+i)*24+H*.3)%H,g=Math.max(0,Math.sin(t*.04+i*1.7));X.fillStyle='rgba(200,255,120,'+(g*a*.85)+')';ell(fx,fy,2.2,2.2);X.fill();}X.restore();}
+// THE ROOFTOPS blackout: the city's lights die. It used to be a flat wall of 92% black for
+// four and a bit seconds, with nothing left of a bug but two 1.8px eyes -- so you could see the
+// shots but not the things firing them, and dying in it felt arbitrary (Matt 2026-09-15: "make
+// it a little lighter or something"). Now it is a LAMP, not a blindfold: dark at the edges of
+// the roof, readable around the bee, every bug still a shape you can aim at, and two and a half
+// seconds instead of four. The scare survives; the guessing does not.
+function drawBlackout(){
+ const a=blackout>150?(170-blackout)/20:blackout<30?blackout/30:1;
+ X.save();
+ const lx=P.x+pxo(P.x,P.y),ly=P.y;
+ const g=X.createRadialGradient(lx,ly,50,lx,ly,420);
+ // First pass at this was so light Matt did not notice the lights had gone out at all. The
+ // point is to feel the city die and still be able to fight: dark enough to read as a blackout
+ // at the edges of the roof, clear enough around the bee that nothing kills you out of nowhere.
+ g.addColorStop(0,  'rgba(0,0,12,'+(.24*a)+')');
+ g.addColorStop(.42,'rgba(0,0,12,'+(.58*a)+')');
+ g.addColorStop(1,  'rgba(0,0,12,'+(.84*a)+')');
+ X.fillStyle=g;X.fillRect(-20,-20,W+40,H+40);
+ X.globalCompositeOperation='lighter';
+ // a bug is still a THING out there: a soft body glow you can aim at, plus its eyes
+ for(const e of enemies){if(e.dead||e.y<0)continue;
+  const ex=e.x+pxo(e.x,e.y),sc=dep(e.y),rr=Math.max(9,e.r*sc*1.15);
+  const gg=X.createRadialGradient(ex,e.y,0,ex,e.y,rr*1.8);
+  gg.addColorStop(0,'rgba(255,120,70,'+(.34*a)+')');
+  gg.addColorStop(1,'rgba(255,60,30,0)');
+  X.fillStyle=gg;X.beginPath();X.arc(ex,e.y,rr*1.8,0,6.2832);X.fill();
+  X.fillStyle='rgba(255,90,55,'+a+')';
+  ell(ex-5*sc,e.y-3*sc,2.6,2.6);X.fill();ell(ex+5*sc,e.y-3*sc,2.6,2.6);X.fill();}
+ // the boss never disappears -- losing a boss in the dark is the worst version of this
+ if(boss&&boss.y>0){const bx=boss.x+pxo(boss.x,boss.y);
+  const bg=X.createRadialGradient(bx,boss.y,0,bx,boss.y,boss.r*2.6);
+  bg.addColorStop(0,'rgba(255,150,90,'+(.40*a)+')');bg.addColorStop(1,'rgba(255,80,40,0)');
+  X.fillStyle=bg;X.beginPath();X.arc(bx,boss.y,boss.r*2.6,0,6.2832);X.fill();}
+ // pickups keep glinting, or a power-up dropped in the dark is simply lost
+ for(const p of pickups){const px2=p.x+pxo(p.x,p.y);
+  X.fillStyle='rgba(255,220,120,'+(.55*a)+')';ell(px2,p.y,4,4);X.fill();}
+ for(let i=0;i<10;i++){const fx=((i*97+t*.25)%(W+40))-20,fy=(i*61+Math.sin(t*.015+i)*24+H*.3)%H,gl=Math.max(0,Math.sin(t*.04+i*1.7));
+  X.fillStyle='rgba(200,255,120,'+(gl*a*.85)+')';ell(fx,fy,2.2,2.2);X.fill();}
+ X.restore();}
 function ring(x,y,c,max=60){ringsFx.push({x,y,c,r:4,max});}
 const _boom=boom;boom=function(x,y,c,n=12,sp=4){_boom(x,y,c,n,sp);ring(x,y,c,n>30?120:50);};
 function worldHazard(){
  const name=LV().name;
  if(name==='THE VOLCANO'&&t%Math.max(26,70-((stage-1)%NL)*2)===0){
-  const x=R(20,W-20);ebullets.push({x,y:-14,vx:R(-.4,.4),vy:2.1+D()*1.3,r:7,col:'#ff9030',t:0,kind:'ember'});}
+  const x=R(20,W-20);epush({x,y:-14,vx:R(-.4,.4),vy:2.1+D()*1.3,r:7,col:'#ff9030',t:0,kind:'ember'});}
  if(name==='THE CRYSTAL'&&t%Math.max(30,90-((stage-1)%NL)*2)===0){
-  const x=R(20,W-20);ebullets.push({x,y:-14,vx:0,vy:2.4+D()*1.2,r:7,col:'#c9a0ff',t:0,kind:'dart'});}
+  const x=R(20,W-20);epush({x,y:-14,vx:0,vy:2.4+D()*1.2,r:7,col:'#c9a0ff',t:0,kind:'dart'});}
  if(name==='THE NIGHT WOOD'&&t%Math.max(40,110-((stage-1)%NL)*2)===0){
-  const x=R(20,W-20);ebullets.push({x,y:-14,vx:R(-.6,.6),vy:1.7+D(),r:6,col:'#cfe0ff',t:0,kind:'drop'});}
+  const x=R(20,W-20);epush({x,y:-14,vx:R(-.6,.6),vy:1.7+D(),r:6,col:'#cfe0ff',t:0,kind:'drop'});}
 }
 function drawOverlays(){
  const v=X.createRadialGradient(W/2,H/2,H*.35,W/2,H/2,H*.75);v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,'rgba(0,0,0,.45)');X.fillStyle=v;X.fillRect(0,0,W,H);
@@ -2217,6 +2587,10 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
   X.textAlign='left';X.fillStyle=col;X.font='bold 14px '+FONT;X.shadowColor='#000';X.shadowBlur=4;X.fillText(wp.name,cx-54,by-2);
   for(let i=0;i<5;i++){X.fillStyle=i<P.lvl?col:'rgba(255,255,255,.22)';X.beginPath();X.roundRect(cx-54+i*17,by+5,14,6,3);X.fill();}
   X.fillStyle='rgba(255,255,255,.55)';X.font='bold 9px '+FONT;X.fillText('LV '+P.lvl,cx+34,by+11);
+  // what this gun is FOR, always on screen -- the matchup is the decision, so it cannot be hidden
+  {const g=GUNFIT[P.wpn];if(g){X.textAlign='center';X.font='bold 8px '+FONT;
+   X.fillStyle='rgba(141,255,154,.85)';X.fillText('\u25b2 '+FITLABEL[g.up],cx-44,by+22);
+   X.fillStyle='rgba(255,140,140,.75)';X.fillText('\u25bc '+FITLABEL[g.dn],cx+44,by+22);}}
   X.restore();}
  X.shadowBlur=0;
  // cap the bee row at five and count the rest -- eleven lives used to run into the
@@ -2366,14 +2740,14 @@ function drawCard(kind){
   X.textAlign='center';line('bigger number = harder run, bigger score',CARD_CONTRACT_Y0+CONTRACTS.length*CARD_CONTRACT_H+22,12,'#cfe8ff');}
  else if(kind==='help'){title('HOW TO PLAY','#fff');
   const rows=touchMode
-   ?[['MOVE','drag anywhere, the bee rides above your finger'],['BOMB','the button bottom right, or it fires itself when you are about to be hit'],['PAUSE','the II button top right']]
-   :[['MOVE','arrows or WASD, the bee follows the mouse'],['FOCUS','hold SHIFT to go slow and precise'],['BOMB','X or B, or it fires itself when you are about to be hit'],['PAUSE','P']];
+   ?[['MOVE','drag anywhere, the bee rides above your finger'],['BOMB','the button bottom right. yours to spend -- it only fires itself to save your life'],['PAUSE','the II button top right']]
+   :[['MOVE','arrows or WASD, the bee follows the mouse'],['FOCUS','hold SHIFT to go slow and precise'],['BOMB','X or B. yours to spend -- it only fires itself to save your life'],['PAUSE','P']];
   let y=136;for(const r of rows){X.textAlign='left';X.fillStyle='#ffd23f';X.font='bold 15px '+FONT;X.fillText(r[0],36,y);X.fillStyle='#fff';X.font='13px '+FONT;X.fillText(r[1],110,y);y+=30;}
   y+=6;X.textAlign='center';
   // the two colours you must know, drawn as the things themselves, not described
   X.strokeStyle='#8dff9a';X.lineWidth=3;ell(110,y+10,14,14);X.stroke();X.fillStyle='#fff';X.font='bold 15px '+FONT;X.fillText('GRAB IT',110,y+44);
   X.fillStyle=rg(W-110,y+10,22,'rgba(255,60,220,.9)','rgba(255,40,200,0)');ell(W-110,y+10,22,22);X.fill();X.strokeStyle='#ff3bd4';X.lineWidth=2;ell(W-110,y+10,14,14);X.stroke();X.fillStyle='#fff';X.fillText('DODGE IT',W-110,y+44);
-  y+=84;const pick=[['NECTAR','power up, Lv1 to Lv5'],['S','a bomb'],['HEART','an extra life'],['GUN','the label says what it does']];
+  y+=84;const pick=[['NECTAR','power up, Lv1 to Lv5. at max it banks a bomb'],['S','a bomb'],['HEART','an extra life'],['GUN','waits where it fell. go and take it, or leave it']];
   for(const r of pick){X.textAlign='left';X.fillStyle='#8dff9a';X.font='bold 14px '+FONT;X.fillText(r[0],36,y);X.fillStyle='#fff';X.font='13px '+FONT;X.fillText(r[1],110,y);y+=26;}
   y+=10;X.textAlign='center';line('CHAIN: six fast kills = x2 score, up to x8.',y,13,'#cfe8ff');line('Fill the bar at the top to reach the boss.',y+20,13,'#cfe8ff');
   line('TAP TO CLOSE',H-40,14,'#ffd23f');}
@@ -2594,14 +2968,23 @@ function storeInit(){
   store.initialize(plats).then(()=>{STORE.ready=true;try{if(store.owned(PAY_ID))ownedSave(true);}catch(e){}});
  }catch(e){STORE.note='store unavailable';}
 }
-function storeBuy(){
+let buyWait=0;
+function storeBuy(retry){
  if(STORE.busy)return;
  if(!STORE.native||!window.CdvPurchase){STORE.note='no store on this device';return;}
+ const n=retry||0;
+ if(!n&&buyWait)return;                          // one wait at a time, however many times it is tapped
  try{const {store}=window.CdvPurchase;const p=store.get(PAY_ID);
-  if(!p){STORE.note='product not found yet';return;}
+  if(!p){
+   // A cold launch can reach this button before the store has answered. Wait for it instead of
+   // saying the product does not exist - that message is what App Review saw on 2026-09-12.
+   if(!n){try{store.update();}catch(e){}}
+   if(n<12){buyWait=1;STORE.note='asking the store...';setTimeout(()=>storeBuy(n+1),600);return;}
+   buyWait=0;STORE.note='the store has not answered yet. try again in a moment.';return;}
+  buyWait=0;
   const o=p.getOffer();if(!o){STORE.note='no offer yet';return;}
   STORE.busy=true;STORE.note='opening the store...';store.order(o);
- }catch(e){STORE.busy=false;STORE.note='could not open the store';}
+ }catch(e){buyWait=0;STORE.busy=false;STORE.note='could not open the store';}
 }
 function storeRestore(){                        // Apple requires this button to exist
  if(!STORE.native||!window.CdvPurchase){STORE.note='nothing to restore here';return;}
@@ -2694,13 +3077,28 @@ function askCode(){
  setTimeout(()=>input.focus(),40);
 }
 
-// the quiet reminder on the title while the trial is still running
+// The unlock button on the title screen. It used to be a caption you could not tap, and the
+// paywall only appeared once the free month had run out - so for the first thirty days there
+// was no way to reach the in-app purchase at all. App Review could not find it and rejected
+// 1.3.0 under guideline 2.1(b) on 2026-09-15 ("we cannot locate the In-App Purchases, such as
+// 'Unlock Hive Strike', within the app"). It is a real button now, on the title screen from
+// the first launch, and it says the price out loud.
+const TRIALB={x:W/2-150,y:H-30,w:300,h:24};
+function trialBtnShown(){return STORE.native&&!STORE.owned;}
 function drawTrialLine(){
- if(!STORE.native||STORE.owned)return;
- const d=trialDaysLeft();if(d>TRIAL_DAYS)return;
- X.save();X.textAlign='center';X.font='bold 10px '+FONT;X.lineJoin='round';X.strokeStyle='rgba(0,0,0,.85)';X.lineWidth=3;
- const s=d>0?('FREE MONTH  ·  '+d+(d===1?' DAY LEFT':' DAYS LEFT')):'TAP PLAY TO UNLOCK  ·  '+STORE.price;
- X.strokeText(s,W/2,H-14);X.fillStyle=d>3?'rgba(220,235,255,.85)':'#ffd23f';X.fillText(s,W/2,H-14);X.restore();
+ if(!trialBtnShown())return;
+ const d=trialDaysLeft();
+ X.save();
+ X.fillStyle='rgba(0,0,0,.34)';X.beginPath();X.roundRect(TRIALB.x,TRIALB.y,TRIALB.w,TRIALB.h,TRIALB.h/2);X.fill();
+ X.strokeStyle='rgba(255,210,63,.6)';X.lineWidth=1.2;X.stroke();
+ const s=d>0?('UNLOCK FULL GAME  ·  '+STORE.price+'  ·  '+d+(d===1?' DAY LEFT':' DAYS LEFT'))
+            :('UNLOCK FULL GAME  ·  '+STORE.price);
+ X.textAlign='center';X.lineJoin='round';
+ let px=11;X.font='bold '+px+'px '+FONT;                       // shrink to fit, never spill out of the pill
+ while(px>8&&X.measureText(s).width>TRIALB.w-20){px-=0.5;X.font='bold '+px+'px '+FONT;}
+ X.strokeStyle='rgba(0,0,0,.85)';X.lineWidth=3;X.strokeText(s,W/2,TRIALB.y+16);
+ X.fillStyle='#ffd23f';X.fillText(s,W/2,TRIALB.y+16);X.restore();
 }
+
 storeInit();
 </script></body></html>

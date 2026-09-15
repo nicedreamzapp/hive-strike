@@ -70,7 +70,7 @@ function start(){clearCheckpoint();STAT.runs++;statSave();learned.clear();POPS.l
  dailyRun=wantDaily?dayKey():null;wantDaily=false;
  const c=dailyRun?dailyContract():CONTRACTS[contractIx];MODS=c.mods;cmult=c.mult;
  if(dailyRun)stage=1;                                  // a daily score means nothing unless everyone starts at the door
- if(MODS.guard)P.bombs=5;if(MODS.nobomb)P.bombs=0;
+ if(MODS.guard)P.bombs=DIFF.bombCap();if(MODS.nobomb)P.bombs=0;
  bossWarn=0;levelClear=0;levelIntro=200;nextWave=0;rushDone=false;nextCloud=500;buildDecor((stage-1)%NL);palA=palB=(stage-1)%NL;palMix=1;SFX.levelStart();music('main');
  if(dailyRun)say('DAILY HIVE  ·  '+c.label+'  ·  x'+c.mult);else if(c.mult!==1)say(c.label+'  ·  SCORE x'+c.mult);}
 function say(s){msg=s;msgT=150;}

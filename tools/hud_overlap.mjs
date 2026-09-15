@@ -17,7 +17,7 @@ const ws=new WebSocket(list.find(p=>p.type==='page').webSocketDebuggerUrl);await
 let id=0;const pend={};ws.onmessage=m=>{const d=JSON.parse(m.data);if(d.id&&pend[d.id]){pend[d.id](d);delete pend[d.id];}};
 const send=(m,p={})=>new Promise(r=>{const i=++id;pend[i]=r;ws.send(JSON.stringify({id:i,method:m,params:p}));});
 await send('Page.enable');await send('Runtime.enable');
-await send('Page.navigate',{url:process.env.HS_URL||'http://127.0.0.1:8919/dist/index.html'});await sleep(2400);
+await send('Page.navigate',{url:process.env.HS_URL||'http://127.0.0.1:8919/index.html'   /* dist/ is a stale build artifact until npm run build runs; check the real game */});await sleep(2400);
 const ev=async e=>{const r=await send('Runtime.evaluate',{expression:e,returnByValue:true,awaitPromise:true});if(r.result.exceptionDetails)throw new Error(JSON.stringify(r.result.exceptionDetails).slice(0,300));return r.result.result.value;};
 await ev(`arm();startStage=1;start();for(let i=0;i<240;i++)t++;1`);
 const probe = `(()=>{
@@ -44,8 +44,17 @@ const probe = `(()=>{
 })()`;
 const clashes=await ev(probe);
 // title-screen controls must not collide either
-const title=await ev(`(()=>{const out=[];const rs=[{k:'musicBtn',...BTN.music},{k:'fxBtn',...BTN.sfx},{k:'musSlider',...BARS.mus},{k:'fxSlider',...BARS.sfx}];
- for(let i=0;i<16;i++)rs.push({k:'tile'+(i+1),...TILE(i)});
+// Two groups, because they are never on screen together: the world grid belongs to the title
+// screen, and the volume sliders live inside the SETTINGS panel, which draws over everything and
+// swallows every tap before the tile loop is reached (00_boot.js). Comparing them against each
+// other reported five "overlaps" that no player can ever hit.
+const title=await ev(`(()=>{const out=[];
+ const rs=[{k:'musicBtn',...BTN.music},{k:'fxBtn',...BTN.sfx}];
+ for(let i=0;i<16;i++)rs.push({k:'tile'+(i+1),...WCHIP(i)});   /* TILE was renamed WCHIP; this tool had been ERRORING, not passing, ever since */
+ const settings=[{k:'musSlider',...BARS.mus},{k:'fxSlider',...BARS.sfx},{k:'musToggle',...SBTN.music},{k:'fxToggle',...SBTN.sfx}];
+ for(let i=0;i<settings.length;i++)for(let j=i+1;j<settings.length;j++){const a=settings[i],b=settings[j];
+  if(a.x<b.x+b.w&&b.x<a.x+a.w&&a.y<b.y+b.h&&b.y<a.y+a.h)out.push('settings: '+a.k+' x '+b.k);}
+ for(const r of settings) if(r.x<0||r.y<0||r.x+r.w>W||r.y+r.h>H)out.push('settings OFFSCREEN '+r.k);
  for(let i=0;i<rs.length;i++)for(let j=i+1;j<rs.length;j++){const a=rs[i],b=rs[j];
   if(a.x<b.x+b.w&&b.x<a.x+a.w&&a.y<b.y+b.h&&b.y<a.y+a.h)out.push(a.k+' x '+b.k);}
  for(const r of rs) if(r.x<0||r.y<0||r.x+r.w>W||r.y+r.h>H)out.push('OFFSCREEN '+r.k);

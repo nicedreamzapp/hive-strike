@@ -83,14 +83,14 @@ function drawCard(kind){
   X.textAlign='center';line('bigger number = harder run, bigger score',CARD_CONTRACT_Y0+CONTRACTS.length*CARD_CONTRACT_H+22,12,'#cfe8ff');}
  else if(kind==='help'){title('HOW TO PLAY','#fff');
   const rows=touchMode
-   ?[['MOVE','drag anywhere, the bee rides above your finger'],['BOMB','the button bottom right, or it fires itself when you are about to be hit'],['PAUSE','the II button top right']]
-   :[['MOVE','arrows or WASD, the bee follows the mouse'],['FOCUS','hold SHIFT to go slow and precise'],['BOMB','X or B, or it fires itself when you are about to be hit'],['PAUSE','P']];
+   ?[['MOVE','drag anywhere, the bee rides above your finger'],['BOMB','the button bottom right. yours to spend -- it only fires itself to save your life'],['PAUSE','the II button top right']]
+   :[['MOVE','arrows or WASD, the bee follows the mouse'],['FOCUS','hold SHIFT to go slow and precise'],['BOMB','X or B. yours to spend -- it only fires itself to save your life'],['PAUSE','P']];
   let y=136;for(const r of rows){X.textAlign='left';X.fillStyle='#ffd23f';X.font='bold 15px '+FONT;X.fillText(r[0],36,y);X.fillStyle='#fff';X.font='13px '+FONT;X.fillText(r[1],110,y);y+=30;}
   y+=6;X.textAlign='center';
   // the two colours you must know, drawn as the things themselves, not described
   X.strokeStyle='#8dff9a';X.lineWidth=3;ell(110,y+10,14,14);X.stroke();X.fillStyle='#fff';X.font='bold 15px '+FONT;X.fillText('GRAB IT',110,y+44);
   X.fillStyle=rg(W-110,y+10,22,'rgba(255,60,220,.9)','rgba(255,40,200,0)');ell(W-110,y+10,22,22);X.fill();X.strokeStyle='#ff3bd4';X.lineWidth=2;ell(W-110,y+10,14,14);X.stroke();X.fillStyle='#fff';X.fillText('DODGE IT',W-110,y+44);
-  y+=84;const pick=[['NECTAR','power up, Lv1 to Lv5'],['S','a bomb'],['HEART','an extra life'],['GUN','the label says what it does']];
+  y+=84;const pick=[['NECTAR','power up, Lv1 to Lv5. at max it banks a bomb'],['S','a bomb'],['HEART','an extra life'],['GUN','waits where it fell. go and take it, or leave it']];
   for(const r of pick){X.textAlign='left';X.fillStyle='#8dff9a';X.font='bold 14px '+FONT;X.fillText(r[0],36,y);X.fillStyle='#fff';X.font='13px '+FONT;X.fillText(r[1],110,y);y+=26;}
   y+=10;X.textAlign='center';line('CHAIN: six fast kills = x2 score, up to x8.',y,13,'#cfe8ff');line('Fill the bar at the top to reach the boss.',y+20,13,'#cfe8ff');
   line('TAP TO CLOSE',H-40,14,'#ffd23f');}

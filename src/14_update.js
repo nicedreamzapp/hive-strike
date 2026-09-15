@@ -25,17 +25,19 @@ function updateInner(){t++;juiceTick();if(collapse>0){collapse--;if(collapse%9==
   if(P.inv>0)P.inv--;
   if(P.fireT>0)P.fireT--;else fire();
   if(keys.KeyX||keys.KeyB||wantBomb){if(!P.bt)bomb();P.bt=1;}else P.bt=0;wantBomb=0;}
+ mercyTick();   // BEFORE any collision check: no frame may exist in which there is nowhere
+                // to stand AND the game is still allowed to kill you for it
  // stage flow: intro -> waves -> WARNING -> boss -> LEVEL CLEAR -> next
  if(levelClear>0){levelClear--;if(levelClear===0){recordBest((stage-1)%NL+1,score);if(stage%NL===0&&loop===0){unlockUpTo(16);state='won';music('title');endRun();if(score>hi){hi=score;localStorage.hs_hi=hi;}return;}stage++;stageT=0;unlockUpTo((stage-1)%NL+1);if(stage>STAT.deepest){STAT.deepest=stage;}statSave();if((stage-1)%NL===0){loop++;}levelIntro=200;nextWave=0;rushDone=false;nextCloud=400;buildDecor((stage-1)%NL);SFX.levelStart();}}
  else if(!bossAlive){
   if(levelIntro>0){levelIntro--;if(levelIntro===0)music('main');}
   else if(bossWarn>0){bossWarn--;if(bossWarn%45===0){swell(70,.5,'sine',.07,.08);rumble(.5,.04);}if(bossWarn===0)spawnBoss();}
-  else{stageT++;wave();
-   if(LV().name==='THE ROOFTOPS'&&blackoutStage!==stage&&stageT>LV().len*.42){blackoutStage=stage;blackout=250;say('BLACKOUT');noise(.7,.06,260,.6,70,'lowpass');buzz('warn');flash=.4;}
-   if(stageT>LV().len){for(const e of enemies){if(e.pat!=='fall'){e.pat='fall';e.vy=2.8;}}bossWarn=210;ebullets=[];shake=10;music('boss');drop(clamp(P.x-50,40,W-40),P.y-260,randWeapon());drop(clamp(P.x+50,40,W-40),P.y-280,'nectar');if(P.bombs<2)drop(P.x,P.y-300,'bomb');}}}
+  else{stageT++;lateTick();wave();
+   if(LV().name==='THE ROOFTOPS'&&blackoutStage!==stage&&stageT>LV().len*.30){blackoutStage=stage;blackout=170;say('THE LIGHTS ARE GOING OUT');noise(.7,.06,260,.6,70,'lowpass');buzz('warn');flash=.4;}
+   if(stageT>LV().len){for(const e of enemies){if(e.pat!=='fall'){e.pat='fall';e.vy=2.8;}}bossWarn=210;ebullets=[];shake=10;music('boss');drop(clamp(P.x-50,40,W-40),P.y-260,randWeapon(),1);drop(clamp(P.x+50,40,W-40),P.y-280,'nectar',1);if(P.bombs<2)drop(P.x,P.y-300,'bomb',1);}}}
  else if(boss&&boss.dying>0){boss.dying--;boss.fl=2;boss.x+=R(-3,3);if(boss.dying%7===0){boom(boss.x+R(-40,40),boss.y+R(-40,40),['#fff','#ffd166',boss.col][RI(0,2)],18,6);shake=8;rumble(.35,.06);noise(.12,.03,900,.7,250,'lowpass');click(R(1500,3000),.02);}if(boss.dying%20===0)hiss(.3,.03,R(2000,5000),800);if(boss.dying===0){boss.hp=0;}}
  else if(boss){updBoss(boss);if(boss.hp<=0&&boss.dying==null){boss.dying=90;ebullets=[];say(boss.name+' IS GOING DOWN!');announce('BOSS DOWN!');stop(8);slowmo=56;buzz('heavy');ring(boss.x,boss.y,boss.col,440);ring(boss.x,boss.y,'#fff',300);for(let k=0;k<16;k++)parts.push({x:boss.x+R(-30,30),y:boss.y+R(-30,30),vx:R(-5,5),vy:R(-7,2),l:R(45,90),c:k%3?boss.col:'#2a1a08',r:R(3,7),gib:1,rx:R(1,2.4),a:R(0,7),va:R(-.2,.2)});STAT.bdex[LV().boss]=(STAT.bdex[LV().boss]||0)+1;statSave();rumble(1.5,.07);swell(80,1.4,'triangle',.05,.3,30);return;}if(boss.hp<=0){addScore(5000*(stage+loop));boom(boss.x,boss.y,boss.col,80,9);boom(boss.x,boss.y,'#fff',40,5);sparks(boss.x,boss.y,'#fff',40,12);flash=.6;shake=22;rumble(1.8,.1);swell(60,1.8,'sine',.07,.2,30);noise(.6,.05,700,.6,120,'lowpass');jingle([660,880,1108,1318,1760],'sine',.03,.09);
-  for(let i=0;i<3;i++)drop(clamp(boss.x-80+i*80,50,W-50),boss.y+i*10,i===0?'nectar':i===1?randWeapon():['nectar','bomb','bomb',(stage%2===0?'life':'bomb')][RI(0,3)]);
+  for(let i=0;i<3;i++)drop(clamp(P.x-80+i*80,50,W-50),Math.min(boss.y+i*10,P.y-140),i===0?'nectar':i===1?randWeapon():['nectar','bomb','bomb',(stage%2===0?'life':'bomb')][RI(0,3)],1);
   const bi=LV().boss,bx=boss.x,by=boss.y;boss=null;bossAlive=false;ebullets=[];enemies=[];levelClear=220;msgT=0;STAT.bosses++;statSave();SFX.levelClear();
   if(bi===5){collapse=170;levelClear=170;collapseAt={x:bx,y:by};say('THE COMB IS GIVING WAY!');music(null);}          // hive collapse: no score screen, you fall straight into the swamp
   else if(bi===15){music(null);slowmo=130;stop(14);flash=1;say('...');}                                                // atlas moth: the music stops on the last wingbeat
@@ -46,8 +48,8 @@ function updateInner(){t++;juiceTick();if(collapse>0){collapse--;if(collapse%9==
   if(b.cd>0)b.cd--;
   if(b.drone){if(P.wpn!=='drones'||P.dead){b.dead=1;}let tg=null,bd=560*560;   /* 300 was shorter than the gap to a boss, so drones just idled through every boss fight */for(const e of enemies){const d=(e.x-b.x)**2+(e.y-b.y)**2;if(d<bd){bd=d;tg=e;}}if(boss&&boss.y>0){const d=(boss.x-b.x)**2+(boss.y-b.y)**2;if(d<bd){bd=d;tg=boss;}}
    let hx,hy;if(tg){hx=tg.x;hy=tg.y;}else{const a=t*.05+b.slot*2.1;hx=P.x+Math.cos(a)*36;hy=P.y-14+Math.sin(a)*12;}const dx=hx-b.x,dy=hy-b.y,d=Math.hypot(dx,dy)||1,spd=tg?6.5:4;b.vx+=(dx/d*spd-b.vx)*.18;b.vy+=(dy/d*spd-b.vy)*.18;b.x+=b.vx;b.y+=b.vy;b.x=clamp(b.x,10,W-10);b.y=clamp(b.y,30,H-20);}
-  else if(b.k==='static'){b.y+=b.vy;b.x+=Math.sin(t*.05+b.y*.02)*.6;b.zaps=b.zaps.filter(z=>--z.ttl>0);if(--b.zapT<=0){b.zapT=18;const near=enemies.filter(e=>!e.dead&&(e.x-b.x)**2+(e.y-b.y)**2<105*105).sort((p,q)=>((p.x-b.x)**2+(p.y-b.y)**2)-((q.x-b.x)**2+(q.y-b.y)**2)).slice(0,b.targets);for(const e of near){e.hp-=b.d*PD;e.fl=3;b.zaps.push({x:e.x,y:e.y,ttl:8});sparks(e.x,e.y,'#e0c0ff',3,5);if(e.hp<=0){e.dead=1;killScore(e);killFx(e);if(e.elite)drop(e.x,e.y,randWeapon());else if(!e.tiny)drop(e.x,e.y);if(!e.tiny)gibs(e);sfxKill(e);}}if(boss&&boss.y>0&&(boss.x-b.x)**2+(boss.y-b.y)**2<130*130){boss.hp-=b.d*PD*1.5;boss.fl=3;b.zaps.push({x:boss.x,y:boss.y,ttl:8});sfxBossHit();}if(near.length||(boss&&b.zaps.length))IMPACT.static();}}
-  else if(b.k==='lure'){if(b.y>b.stopY)b.y+=b.vy;for(const e of enemies){if(e.tiny)continue;const dx=b.x-e.x,dy=b.y-e.y,d=Math.hypot(dx,dy);if(d<170&&d>4){e.x+=dx/d*2.2;e.y+=dy/d*2.2;}}if(t%6===0)parts.push({x:b.x+R(-20,20),y:b.y+R(-20,20),vx:0,vy:-.6,l:18,c:'#ff7ad9',r:2});if(b.life===1){boom(b.x,b.y,'#ff7ad9',50,9);boom(b.x,b.y,'#fff',20,5);flash=.25;shake=10;for(const e of enemies){if((e.x-b.x)**2+(e.y-b.y)**2<100*100){e.hp-=b.d*PD;e.fl=4;if(e.hp<=0){e.dead=1;killScore(e);killFx(e);if(!e.tiny)gibs(e);sfxKill(e);}}}if(boss&&boss.y>0&&(boss.x-b.x)**2+(boss.y-b.y)**2<130*130){boss.hp-=b.d*PD*2;boss.fl=3;}rumble(.5,.05);tone(J(600),.3,'sine',.03,200);}}
+  else if(b.k==='static'){b.y+=b.vy;b.x+=Math.sin(t*.05+b.y*.02)*.6;b.zaps=b.zaps.filter(z=>--z.ttl>0);if(--b.zapT<=0){b.zapT=18;const near=enemies.filter(e=>!e.dead&&(e.x-b.x)**2+(e.y-b.y)**2<105*105).sort((p,q)=>((p.x-b.x)**2+(p.y-b.y)**2)-((q.x-b.x)**2+(q.y-b.y)**2)).slice(0,b.targets);for(const e of near){e.hp-=b.d*PD*fitMul(e);e.fl=3;b.zaps.push({x:e.x,y:e.y,ttl:8});sparks(e.x,e.y,'#e0c0ff',3,5);if(e.hp<=0){e.dead=1;killScore(e);killFx(e);if(e.elite)drop(e.x,e.y,randWeapon());else if(!e.tiny)drop(e.x,e.y);if(!e.tiny)gibs(e);sfxKill(e);}}if(boss&&boss.y>0&&(boss.x-b.x)**2+(boss.y-b.y)**2<130*130){boss.hp-=b.d*PD*1.5*fitMul(boss);boss.fl=3;b.zaps.push({x:boss.x,y:boss.y,ttl:8});sfxBossHit();}if(near.length||(boss&&b.zaps.length))IMPACT.static();}}
+  else if(b.k==='lure'){if(b.y>b.stopY)b.y+=b.vy;for(const e of enemies){if(e.tiny)continue;const dx=b.x-e.x,dy=b.y-e.y,d=Math.hypot(dx,dy);if(d<170&&d>4){e.x+=dx/d*2.2;e.y+=dy/d*2.2;}}if(t%6===0)parts.push({x:b.x+R(-20,20),y:b.y+R(-20,20),vx:0,vy:-.6,l:18,c:'#ff7ad9',r:2});if(b.life===1){boom(b.x,b.y,'#ff7ad9',50,9);boom(b.x,b.y,'#fff',20,5);flash=.25;shake=10;for(const e of enemies){if((e.x-b.x)**2+(e.y-b.y)**2<100*100){e.hp-=b.d*PD*fitMul(e);e.fl=4;if(e.hp<=0){e.dead=1;killScore(e);killFx(e);if(!e.tiny)gibs(e);sfxKill(e);}}}if(boss&&boss.y>0&&(boss.x-b.x)**2+(boss.y-b.y)**2<130*130){boss.hp-=b.d*PD*2*fitMul(boss);boss.fl=3;}rumble(.5,.05);tone(J(600),.3,'sine',.03,200);}}
   else if(b.k==='grenade'){b.vy+=b.ay;b.x+=b.vx;b.y+=b.vy;if(b.vy>0||enemies.some(e=>!e.dead&&(e.x-b.x)**2+(e.y-b.y)**2<(e.r+b.r+6)**2)){b.dead=1;boom(b.x,b.y,'#ffa54d',16,5);for(let k=0;k<8;k++){const a=k*Math.PI/4+R(-.2,.2);bullets.push({x:b.x,y:b.y,vx:Math.cos(a)*7,vy:Math.sin(a)*7,d:b.d*.45,r:4,k:'shard',life:26});}IMPACT.grenade();}}
   else if(b.k==='wall'){b.x+=(P.x-b.x)*.2;b.y=P.y-70;if(P.wpn!=='wall'||P.dead)b.dead=1;}
   else if(b.k==='saw'){b.vy+=.28;   /* was .42: the arc peaked 200px up and no boss sits that low */b.ang+=.5;if(b.vy>0){b.vx+=(P.x-b.x)*.004;}b.x+=b.vx;b.y+=b.vy;if(b.vy>0&&b.y>P.y+10)b.dead=1;}
@@ -56,14 +58,14 @@ function updateInner(){t++;juiceTick();if(collapse>0){collapse--;if(collapse%9==
    if(LV().name==='THE CRYSTAL'&&!b.bounced&&((b.x<8&&b.vx<0)||(b.x>W-8&&b.vx>0))){b.vx=-b.vx;b.bounced=1;b.x=clamp(b.x,8,W-8);sparks(b.x,b.y,'#c8a0ff',3,5);}
    if((b.y<-20&&!b.down)||b.y<-90||b.x<-20||b.x>W+20||b.y>H+20)b.dead=1;}if(b.life!=null&&--b.life<=0)b.dead=1;if(b.evo&&!b.orbit&&!b.drone&&t%2===0)parts.push({x:b.x+R(-5,5),y:b.y+R(-5,5),vx:R(-.9,.9),vy:R(-.4,1.4),l:R(10,20),c:t%4?'#fff':(WEAPONS[b.k]?WEAPONS[b.k].col:'#fff'),r:R(1,2.2)});
    if(!b.orbit&&!b.drone&&b.k!=='stinger'&&b.k!=='static'&&t%3===0)parts.push({x:b.x+R(-2,2),y:b.y+R(-2,2),vx:R(-.4,.4),vy:R(.3,1),l:R(8,14),c:WEAPONS[b.k]?WEAPONS[b.k].col:'#fff',r:R(1,2.2)});
-  for(const e of enemies){if(b.k==='static'||b.k==='lure'||b.k==='grenade')break;if((b.k==='lance'||b.k==='saw'||b.drone||b.k==='wall')&&b.cd>0)break;const hitW=b.k==='wall'?(Math.abs(e.x-b.x)<b.half+e.r&&Math.abs(e.y-b.y)<12+e.r):(e.x-b.x)**2+(e.y-b.y)**2<(e.r*1.3+b.r)**2;if(!e.dead&&!b.dead&&hitW){if(b.k==='lance'||b.k==='saw')b.cd=6;if(b.drone)b.cd=14;if(b.k==='wall')b.cd=8;e.hp-=b.d*PD;e.fl=4;if(!b.pierce)b.dead=1;if(b.k==='water'){for(const o of enemies){if(o!==e&&!o.dead&&(o.x-b.x)**2+(o.y-b.y)**2<48*48){o.hp-=b.d*.5;o.fl=3;}}for(let q=0;q<5;q++)parts.push({x:b.x,y:b.y,vx:R(-3,3),vy:R(-3,1),l:14,c:'#ffd070',r:2});}if(b.k==='wax'){e.slow=140;}if(b.orbit&&t%6!==0)continue;sfxHit(e);sfxImpact();sparks(b.x,b.y,WEAPONS[b.k]?WEAPONS[b.k].col:'#fff',4,6);if(e.hp<=0){e.dead=1;killScore(e);killFx(e);if(e.elite)drop(e.x,e.y,Math.random()<.5?randWeapon():['nectar','nectar','bomb'][RI(0,2)]);else if(!e.tiny)drop(e.x,e.y);if(!e.tiny)gibs(e);if(!e.tiny||t%4===0)sfxKill(e);}}}
+  for(const e of enemies){if(b.k==='static'||b.k==='lure'||b.k==='grenade')break;if((b.k==='lance'||b.k==='saw'||b.drone||b.k==='wall')&&b.cd>0)break;const hitW=b.k==='wall'?(Math.abs(e.x-b.x)<b.half+e.r&&Math.abs(e.y-b.y)<12+e.r):(e.x-b.x)**2+(e.y-b.y)**2<(e.r*1.3+b.r)**2;if(!e.dead&&!b.dead&&hitW){if(b.k==='lance'||b.k==='saw')b.cd=6;if(b.drone)b.cd=14;if(b.k==='wall')b.cd=8;e.hp-=b.d*PD*fitMul(e);e.fl=4;if(!b.pierce)b.dead=1;if(b.k==='water'){for(const o of enemies){if(o!==e&&!o.dead&&(o.x-b.x)**2+(o.y-b.y)**2<48*48){o.hp-=b.d*.5*fitMul(o);o.fl=3;}}for(let q=0;q<5;q++)parts.push({x:b.x,y:b.y,vx:R(-3,3),vy:R(-3,1),l:14,c:'#ffd070',r:2});}if(b.k==='wax'){e.slow=140;}if(b.orbit&&t%6!==0)continue;sfxHit(e);sfxImpact();sparks(b.x,b.y,WEAPONS[b.k]?WEAPONS[b.k].col:'#fff',4,6);if(e.hp<=0){e.dead=1;killScore(e);killFx(e);if(e.elite)drop(e.x,e.y,Math.random()<.5?randWeapon():['nectar','nectar','bomb'][RI(0,2)]);else if(!e.tiny)drop(e.x,e.y);if(!e.tiny)gibs(e);if(!e.tiny||t%4===0)sfxKill(e);}}}
   if(boss&&!b.dead&&b.k!=='static'&&b.k!=='lure'&&b.k!=='grenade'&&b.k!=='wall'&&!((b.k==='lance'||b.k==='saw'||b.drone)&&b.cd>0)&&boss.y>0&&(boss.x-b.x)**2+(boss.y-b.y)**2<(boss.r+b.r+(boss.wings&&(boss.wings.l>0||boss.wings.r>0)?44:0))**2){if(b.k==='lance'||b.k==='saw')b.cd=6;if(b.drone)b.cd=14;
    // atlas moth: while a wing lives it soaks the hit for its side. break one and that half
    // of the screen fills with scales you can graze -- the shield becomes the feast.
-   if(boss.wings&&(boss.wings.l>0||boss.wings.r>0)){const side=(b.x<boss.x&&boss.wings.l>0)||boss.wings.r<=0?'l':'r';boss.wings[side]-=b.d*PD;boss.fl=3;
+   if(boss.wings&&(boss.wings.l>0||boss.wings.r>0)){const side=(b.x<boss.x&&boss.wings.l>0)||boss.wings.r<=0?'l':'r';boss.wings[side]-=b.d*PD*fitMul(boss);boss.fl=3;
     if(boss.wings[side]<=0){boss.wings[side]=0;const sx=side==='l'?boss.x-90:boss.x+90;boom(sx,boss.y,'#e0a060',40,7);flash=.3;shake=14;stop(4);say('A WING BREAKS!');rumble(.8,.06);
-     for(let k=0;k<16;k++)ebullets.push({x:side==='l'?R(10,W/2-20):R(W/2+20,W-10),y:R(-50,90),vx:R(-.2,.2),vy:R(.7,1.3),r:6,col:'#ffdd88',t:0,kind:'dust'});drop(sx,boss.y+40,'bomb');}}
-   else{boss.hp-=b.d*PD;boss.fl=3;}
+     for(let k=0;k<16;k++)epush({x:side==='l'?R(10,W/2-20):R(W/2+20,W-10),y:R(-50,90),vx:R(-.2,.2),vy:R(.7,1.3),r:6,col:'#ffdd88',t:0,kind:'dust'});drop(sx,boss.y+40,'bomb',1);}}
+   else{boss.hp-=b.d*PD*fitMul(boss);boss.fl=3;}
    if(!b.pierce)b.dead=1;sfxBossHit();parts.push({x:b.x,y:b.y,vx:R(-2,2),vy:R(-2,2),l:10,c:'#fff',r:2});}
  }
  bullets=bullets.filter(b=>!b.dead);
@@ -71,15 +73,39 @@ function updateInner(){t++;juiceTick();if(collapse>0){collapse--;if(collapse%9==
  // bugs must never sit on top of each other -- you cannot shoot what you cannot see.
  // this runs AFTER the movement patterns, or they would just write the overlap back.
  separate();
+ for(const e of enemies){e.ppx=e.x;e.ppy=e.y;}   // so next frame can tell which way each bug is moving
  enemies=enemies.filter(e=>!e.dead);
  if(boss&&!P.dead&&(boss.x-P.x)**2+(boss.y-P.y)**2<(boss.r+P.r-6)**2)hitPlayer();
- if(!P.dead&&P.inv===0&&P.bombs>0){for(const b of ebullets){if(b.kind==='web')continue;const dx=P.x-b.x,dy=P.y-b.y,d2=dx*dx+dy*dy;if(d2<30*30&&(dx*b.vx+dy*b.vy)>0){bomb();P.inv=90;say('AUTO SWARM CALL!');break;}}}
+ // The pre-emptive auto-bomb is GONE (Matt 9/15). It fired whenever any shot drifted within
+ // 30px and closing, which spent your whole stock on near misses -- and it triggered inside the
+ // graze band, so it was burning the bombs that grazing would have paid back. The bomb is the
+ // one real decision in the game and the game was making it for you. It still fires itself
+ // rather than let you die (13_pickups hitPlayer), so a bomb is a life you have not spent yet:
+ // clear the screen now, or hold it as a cushion. That is the choice, and it is yours.
  const walls=bullets.filter(w=>w.k==='wall');
  for(const b of ebullets){if(b.kind==='fang'&&!P.dead&&(b.hm=(b.hm||0)+1)<170){const s2=Math.hypot(b.vx,b.vy)||1,ca=Math.atan2(b.vy,b.vx);let d=Math.atan2(P.y-b.y,P.x-b.x)-ca;while(d>Math.PI)d-=6.283185307179586;while(d<-Math.PI)d+=6.283185307179586;const na=ca+clamp(d,-.032,.032);b.vx=Math.cos(na)*s2;b.vy=Math.sin(na)*s2;}
   b.x+=b.vx;b.y+=b.vy;if(b.y>H+20||b.y<-60||b.x<-20||b.x>W+20)b.dead=1;for(const w of walls){if(Math.abs(b.x-w.x)<w.half&&Math.abs(b.y-w.y)<10){b.dead=1;sparks(b.x,b.y,'#c8a050',4,5);IMPACT.wall();}}if(!P.dead&&(b.x-P.x)**2+(b.y-P.y)**2<(b.r+2)**2){b.dead=1;if(b.kind==='web'){if(!P.webbed){say('TANGLED IN WEB!');noise(.3,.04,2500,.5,600,'bandpass');}P.webbed=190;}else hitPlayer();}}
  if(P.webbed>0)P.webbed--;
  ebullets=ebullets.filter(b=>!b.dead);
- for(const p of pickups){p.t++;p.y+=p.vy;p.x+=Math.sin(p.t*.05);const dx=P.x-p.x,dy=P.y-p.y,dd=Math.hypot(dx,dy);if(!P.dead&&dd<90){p.x+=dx/dd*2.5;p.y+=dy/dd*2.5;}if(p.y>H+20)p.dead=1;if(!P.dead&&dd<34){p.dead=1;take(p);}}
+ // Matt 2026-09-15: "a lot of times I'm forced into getting guns." He was right -- every pickup
+ // homed in on the bee from 90px away and landed the moment it was within 34, so a gun you did
+ // not want took your gun AND a power level, and you never got a say. Nectar, bombs and lives
+ // still come to you: there is no decision in those, you always want them. A GUN now coasts to
+ // a stop and waits, and you have to go and take it on purpose. That is the whole point -- the
+ // pickup is the biggest decision in the game and it was not a decision at all.
+ for(const p of pickups){p.t++;
+  // a prize always comes to you, and once the level is won everything does: nothing you earned
+  // should be stranded at the top of the screen while the clear timer runs out
+  const gun=!(p.prize||levelClear>0||p.k==='nectar'||p.k==='bomb'||p.k==='life');
+  if(gun){ p.vy*=.955; p.y+=p.vy; p.x+=Math.sin(p.t*.05)*.5;      // settles, then hovers where it fell
+   if(p.t>430)p.vy=Math.max(p.vy,1.6);                             // and drifts away if you leave it
+   if(p.t>60&&p.vy<.25)p.vy=.02;
+  } else { p.y+=p.vy; p.x+=Math.sin(p.t*.05);
+   const dx0=P.x-p.x,dy0=P.y-p.y,d0=Math.hypot(dx0,dy0);
+   if(!P.dead&&d0<90){p.x+=dx0/d0*2.5;p.y+=dy0/d0*2.5;} }
+  const dx=P.x-p.x,dy=P.y-p.y,dd=Math.hypot(dx,dy);
+  if(p.y>H+20)p.dead=1;
+  if(!P.dead&&dd<34){p.dead=1;take(p);}}
  pickups=pickups.filter(p=>!p.dead);
  for(const p of parts){p.x+=p.vx;p.y+=p.vy;if(p.spark){p.vx*=.88;p.vy*=.88;}else if(p.gib){p.vy+=p.wing?.03:.12;p.vx*=.97;p.a+=p.va;if(p.wing)p.x+=Math.sin(p.l*.3)*1.2;}else p.vy+=p.bee?.05:.08;p.l--;}parts=parts.filter(p=>p.l>0);
 }

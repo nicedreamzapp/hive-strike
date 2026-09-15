@@ -22,11 +22,21 @@ function musicGain(k,a){
  // (music peak 0.00000 while a control oscillator read fine). Android honours a.volume, so
  // skip the graph there too. Only iOS needs the GainNode route.
  if(/Android/i.test(navigator.userAgent)){MUSIC.gains[k]=null;return null;}
- try{const ac=ctx();const src=ac.createMediaElementSource(a);g=ac.createGain();g.gain.value=0;src.connect(g).connect(ac.destination);}
+ try{const ac=ctx();const src=ac.createMediaElementSource(a);g=ac.createGain();g.gain.value=0;src.connect(g).connect(ac.destination);
+  // An element routed into Web Audio STILL attenuates what it feeds the graph by its own
+  // .volume in Chromium, and musicLoad() creates every track at volume 0. So the GainNode
+  // was being handed silence no matter what its gain read. Measured 2026-09-15 over
+  // http://127.0.0.1: element playing, currentTime climbing 0.4s per 400ms, gain 0.393,
+  // and the peak at the gain node exactly 0.00000 while a control oscillator read fine.
+  // file:// and Android never hit it because they skip the graph; iOS never hit it because
+  // it resets .volume to 1 on load, which is the whole reason the graph exists. Desktop
+  // served over http or https is the case nobody had. The graph does the fading now, so
+  // the element itself must run wide open.
+  a.volume=1;}
  catch(e){g=null;}                       // fall back to a.volume if the graph refuses
  MUSIC.gains[k]=g;return g;}
 const mvol=(k,a)=>{const g=MUSIC.gains[k];return g?g.gain.value:a.volume;};
-function msetvol(k,a,v){const g=musicGain(k,a);if(g)g.gain.value=v;else a.volume=v;}
+function msetvol(k,a,v){const g=musicGain(k,a);if(g){g.gain.value=v;if(a.volume!==1)a.volume=1;}else a.volume=v;}
 // Diagnostic readout (2026-09-02, Android burner reported no music): the music button's
 // toast now shows the audio context state and the wanted track's element state so the
 // cause can be read straight off the phone -- no adb needed.

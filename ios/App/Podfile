@@ -1,6 +1,6 @@
 require_relative '../../node_modules/@capacitor/ios/scripts/pods_helpers'
 
-platform :ios, '14.0'
+platform :ios, '15.0'
 use_frameworks!
 
 # workaround to avoid Xcode caching of Pods that requires
@@ -24,4 +24,11 @@ end
 
 post_install do |installer|
   assertDeploymentTarget(installer)
+  # Xcode 27 refuses anything below iOS 15, and the pods carry their own 14.0 from their
+  # podspecs, so force every pod target up to match the app (2026-09-15).
+  installer.pods_project.targets.each do |t|
+    t.build_configurations.each do |c|
+      c.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+    end
+  end
 end

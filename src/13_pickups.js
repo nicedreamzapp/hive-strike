@@ -1,21 +1,35 @@
 // ---------- pickups ----------
-function drop(x,y,force){const r=Math.random();let k=null;
+function drop(x,y,force,prize){const r=Math.random();let k=null;
  // the old chain tested r<.14 and r<.143 AFTER r<.17, so bombs and lives never dropped
  // by chance -- only when forced. now they exist. ROYAL FEAST doubles the nectar band.
  const nb=MODS.feast?.22:.11;
  if(force)k=force;else if(r<nb)k='nectar';else if(r<nb+.06)k=randWeapon();else if(r<nb+.09)k='bomb';else if(r<nb+.093)k='life';
  if(k==='bomb'&&MODS.nobomb)k='nectar';   // NO SWARM CALLS means none, not "found one anyway"
- if(k)pickups.push({x,y,k,vy:1.1,t:0});}
+ if(k)pickups.push({x,y,k,vy:1.1,t:0,prize:prize?1:0});}
 function take(p){buzz('light');
- if(p.k==='nectar'){SFX.nectar();if(P.lvl<5){P.lvl++;say('POWER UP  Lv'+P.lvl);pop(p.x,p.y,'POWER Lv'+P.lvl,'#ffd23f',13);}else{addScore(1000);say('MAX POWER +1000');pop(p.x,p.y,'+1000','#ffd23f',13);}}
- else if(p.k==='bomb'){SFX.bomb();P.bombs=Math.min(5,P.bombs+1);say('SWARM CALL +1');pop(p.x,p.y,'+1 BOMB','#8dff9a',13);}
- else if(p.k==='life'){SFX.life();P.lives++;say('EXTRA LIFE!');pop(p.x,p.y,'1 UP','#8dff9a',15);buzz('success');}
- else{SFX.weapon(p.k);if(P.wpn!==p.k){bullets=bullets.filter(b=>!b.orbit&&!b.drone&&b.k!=='wall'&&b.k!=='lure');lashT=null;}if(P.wpn===p.k){P.lvl=Math.min(5,P.lvl+1);say(WEAPONS[p.k].name+'  Lv'+P.lvl);}else{P.wpn=p.k;P.lvl=Math.max(1,P.lvl-1);say(WEAPONS[p.k].name+'  —  '+WEAPONS[p.k].tag);}}}
+ // At max power every nectar used to turn into a flat +1000 points -- a currency that changes
+ // nothing about the fight you are in (Matt 9/15: "then you just get points... that part of the
+ // strategy feels weak"). Now a maxed-out bee banks the overflow as a SWARM CALL, which is the
+ // thing you actually want, and only pays points once even that is full.
+ if(p.k==='nectar'){SFX.nectar();
+  if(P.lvl<5){P.lvl++;say('POWER UP  Lv'+P.lvl);pop(p.x,p.y,'POWER Lv'+P.lvl,'#ffd23f',13);}
+  else if(P.bombs<DIFF.bombCap()){P.bombs++;SFX.bomb();say('MAX POWER  \u2192  SWARM CALL +1');pop(p.x,p.y,'+1 BOMB','#8dff9a',13);}
+  else{addScore(1000);say('MAX POWER +1000');pop(p.x,p.y,'+1000','#ffd23f',13);}}
+ else if(p.k==='bomb'){SFX.bomb();P.bombs=Math.min(DIFF.bombCap(),P.bombs+1);say('SWARM CALL +1');pop(p.x,p.y,'+1 BOMB','#8dff9a',13);}
+ else if(p.k==='life'){if(P.lives>=DIFF.maxLives()){addScore(20000);say('LIVES FULL  +20000');pop(p.x,p.y,'+20000','#ffd23f',13);}else{SFX.life();P.lives++;say('EXTRA LIFE!');pop(p.x,p.y,'1 UP','#8dff9a',15);buzz('success');}}
+ else{SFX.weapon(p.k);if(P.wpn!==p.k){bullets=bullets.filter(b=>!b.orbit&&!b.drone&&b.k!=='wall'&&b.k!=='lure');lashT=null;}if(P.wpn===p.k){P.lvl=Math.min(5,P.lvl+1);say(WEAPONS[p.k].name+'  Lv'+P.lvl);}else{P.wpn=p.k;P.lvl=Math.max(1,P.lvl-1);const g=GUNFIT[p.k];say(WEAPONS[p.k].name+(g?'  —  STRONG vs '+FITLABEL[g.up]:'  —  '+WEAPONS[p.k].tag));}}}
 let chain=0,chainT=0,chainBest=0,grazed=0,nextExt=0;
-const EXTENDS=[100000,250000,500000,900000];
+// Extra lives were four fixed milestones -- 100k, 250k, 500k, 900k -- set for a scoring economy
+// that no longer exists. Late worlds pay 5,000 a stage for a boss, chains multiply by up to 8x
+// and grazing pays too, so Matt's single-world best on world 10 is 942,000 ON ITS OWN: he
+// crossed all four lines inside the first level and a half. A milestone you clear by simply
+// arriving is not a reward. Now they compound, so the Nth extra life always costs more than the
+// last, and score inflation can never outrun them.
+const EXT0=250000, EXTG=2.4;
+const extendAt=n=>Math.round(EXT0*Math.pow(EXTG,n));
 const chainMult=()=>Math.min(8,1+Math.floor(chain/6));
 function addScore(n){const got=Math.round(n*chainMult()*cmult);score+=got;
- while(nextExt<EXTENDS.length&&score>=EXTENDS[nextExt]){nextExt++;P.lives++;say('EXTRA LIFE!');announce('EXTRA LIFE!','#8dff9a');buzz('success');
+ while(nextExt<12&&score>=extendAt(nextExt)){nextExt++;if(P.lives>=DIFF.maxLives()){addScore(25000);continue;}P.lives++;say('EXTRA LIFE!');announce('EXTRA LIFE!','#8dff9a');buzz('success');
   jingle([880,1174,1568,2093],'sine',.03,.07);}return got;}
 function onKill(){chain++;chainT=190;if(chain>chainBest)chainBest=chain;
  if(chain%6===0){
@@ -48,9 +62,13 @@ function grazeTick(){if(P.dead||P.inv>0)return;
   if(d>near&&d<far){const pays=b.hot?2:1;b.grz=1;const got=addScore(60*pays);if(b.hot)pop(b.x,b.y,'+'+got,'#8dff9a',10);
    sparks(b.x+(dx?dx/d*6:0),b.y+(dy?dy/d*6:0),b.hot?'#8dff9a':'#ffe680',2,4);
    for(let g=pays;g--;){grazed++;
-    if(grazed%22===0&&P.bombs<5){P.bombs++;say(learned.has('graze')?'BOMB FROM GRAZING':'FREE BOMB  \u00b7  FOR SLIPPING PAST SHOTS');learned.add('graze');}}
+    if(grazed%22===0&&P.bombs<DIFF.bombCap()){P.bombs++;say(learned.has('graze')?'BOMB FROM GRAZING':'FREE BOMB  \u00b7  FOR SLIPPING PAST SHOTS');learned.add('graze');}}
    if(grazed%6<pays)snd(2200,.03,'sine',.012,3000);}}}
-function hitPlayer(){if(P.inv>0||P.dead)return;if(P.bombs>0){bomb();P.inv=90;say('AUTO SWARM CALL!');return;}breakChain();P.lives--;P.dead=90;shake=20;stop(10);buzz('heavy');boom(P.x,P.y,'#ffd166',40,7);noise(.7,.05,1400,.6,200,'lowpass');swell(90,.9,'sine',.08,.05,40);
+function hitPlayer(){if(P.inv>0||P.dead)return;
+ if(P.bombs>0){bomb();P.inv=90;
+  // deep in the game a bomb is no longer a free life: it saves you, and it costs you a level
+  if(DIFF.savePain()&&P.lvl>1){P.lvl--;say('SAVED \u2014 BUT THE SWARM THINNED');}else say('AUTO SWARM CALL!');
+  return;}breakChain();P.lives--;P.dead=90;shake=20;stop(10);buzz('heavy');boom(P.x,P.y,'#ffd166',40,7);noise(.7,.05,1400,.6,200,'lowpass');swell(90,.9,'sine',.08,.05,40);
  P.lvl=Math.max(1,P.lvl-1);ebullets=[];
  if(P.lives<0){state='over';music('title');endRun();if(score>hi){hi=score;localStorage.hs_hi=hi;}}}
 

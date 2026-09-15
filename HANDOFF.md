@@ -1,4 +1,34 @@
-# Hive Strike — where a new session picks up (2026-09-03, 2:50pm)
+# Hive Strike — where a new session picks up (2026-09-15, 2:05pm)
+
+**BEFORE ANY SUBMISSION, READ `store/SUBMITTING.md`.** It lists every trap that has actually bitten
+this project, with the misleading symptom each one shows. Submissions are the thing we get wrong.
+
+## Current state (2026-09-15)
+
+- **Google Play: 1.4.0 LIVE.** versionCode 3, production, full rollout, verified by reading the
+  track back from the API.
+- **App Store: 1.4.0 WAITING_FOR_REVIEW**, submitted 2026-09-15 1:57pm, build 5 attached.
+  The 1.3.0 that was sitting in the queue was cancelled deliberately: it was the September 3
+  binary, so letting it through would have shipped the old game and cost a second review anyway.
+- **Audit: 21/21 checks pass** — `ssh mini-vps 'cd ~/hs-store && python3 <repo>/tools/submission_audit.py'`.
+- One thing to watch: the in-app purchase reads `READY_TO_SUBMIT`. A brand new IAP rides along
+  with the app version and cannot be attached to a review submission separately (the API has no
+  `inAppPurchaseV2` relationship). If Apple approves the app and the unlock stays unapproved,
+  that is the thing to chase.
+
+## What changed in 1.4.0
+
+Difficulty became a formula instead of an accident. `heat()` in `src/07_levels.js` runs 0 at THE
+MEADOW to 1 at THE CRYSTAL and every dial reads off it: bug count, speed, fire cadence, bullet
+speed, how much of the fire is aimed, the bullet ceiling, elite rate, boss health, and the lives
+and bombs you are allowed to bank. `WFIT` (worlds) and `BFIT`/`BCOMP` (bosses) are per-world and
+per-boss corrections derived by measurement, not taste. Four tools re-derive and re-check all of
+it: `difficulty_curve.mjs`, `world_fit.mjs`, `boss_table.mjs`, `gun_balance.mjs`, plus
+`playtest.mjs` which plays the whole game with real lives and asserts you can never be killed
+with no way out.
+
+---
+
 
 Paste this into a fresh chat:
 

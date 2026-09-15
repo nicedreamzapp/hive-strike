@@ -109,6 +109,7 @@ C.addEventListener('pointerdown',e=>{const isT=e.pointerType==='touch',p=ptr(e),
  if(state!=='play'){
   if(cardOpen){const was=cardOpen;cardOpen=null;holdBtn=null;if(was==='contract'){const k=contractCardHit(raw);if(k>=0){contractIx=k;localStorage.hs_contract=k;click(1200,.02);}}else click(900,.02);return;}
   if(inBtn(raw,CBTN.gear)){settingsOpen=true;click(1200,.02);return;}
+  if(trialBtnShown()&&inBtn(raw,TRIALB)){payOpen=true;click(1200,.02);return;}   // the in-app purchase, reachable from launch (see 22_store.js)
   for(const k of ['help','dex']){if(inBtn(raw,CBTN[k])){holdBtn=k;holdT=t;return;}}
   if(!armed)arm();
   for(let i=0;i<16;i++){if(inBtn(raw,WCHIP(i))){const again=startStage===i+1&&i+1<=unlocked;pickStage(i+1);if(again){if(firstHelp())return;start();}return;}}   // tap picks a world, tapping it again flies

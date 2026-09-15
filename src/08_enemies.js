@@ -53,31 +53,47 @@ const ET={
  hoverfly:{hp:5,r:11,sc:150,col:'#f0c030'},rosechafer:{hp:14,r:13,sc:380,col:'#3fc060'},divingbeetle:{hp:16,r:14,sc:420,col:'#5a7a20'},tigermoth:{hp:12,r:15,sc:380,col:'#ff8a30'},lunamoth:{hp:8,r:16,sc:300,col:'#b8f0b0'},damselfly:{hp:6,r:12,sc:250,col:'#40a0ff'},antlion:{hp:15,r:13,sc:400,col:'#c8a060'},rhinobeetle:{hp:22,r:16,sc:500,col:'#3a2a1a'},assassinbug:{hp:13,r:13,sc:400,col:'#8a8a9a'},jewelbeetle:{hp:12,r:13,sc:450,col:'#40e0c0'},
 };
 loadSprites();
-function spawn(type,x,y,o={}){const d=ET[type];const e=Object.assign({type,x,y,hp:(o.tiny?1.6:d.hp*EHP)*(1+loop*.6),r:o.tiny?4:d.r,sc:o.tiny?20:d.sc,col:d.col,t:0,ft:RI(40,100),dir:Math.random()<.5?-1:1,ph:R(0,7)},o);if(e.elite){e.hp*=2.2;e.sc*=3;}e.maxhp=e.hp;e.px=e.x;e.py=e.y;enemies.push(e);return e;}
+let waveSeq=0;   // which squadron a bug belongs to, so a wave can be counted and retired as one
+function spawn(type,x,y,o={}){const d=ET[type];const e=Object.assign({type,x,y,wv:waveSeq,hp:(o.tiny?1.6:d.hp*EHP)*(1+loop*.6),r:o.tiny?4:d.r,sc:o.tiny?20:d.sc,col:d.col,t:0,ft:RI(40,100),dir:Math.random()<.5?-1:1,ph:R(0,7)},o);if(e.elite){e.hp*=2.2;e.sc*=3;}e.maxhp=e.hp;e.px=e.x;e.py=e.y;enemies.push(e);return e;}
 // FORMATIONS — every wave is a shape, not a drip. fodder = the bugs that fly in shapes; shooters = the ones that take a position and fire.
 // ARCH: what an unseen bug behaves like (movement + shooting + voice recipe). PITCH: how its voice is tuned so no two sound alike.
-const ARCH={midge:'gnat',aphid:'gnat',thrips:'gnat',fruitfly:'gnat',sandfly:'gnat',blackfly:'gnat',whitefly:'gnat',springtail:'gnat',leafhopper:'gnat',fungusgnat:'gnat',mayfly:'gnat',noseeum:'gnat',psyllid:'gnat',lacebug:'gnat',planthopper:'gnat',crystalmite:'gnat',leafcutter:'ant',morpho:'butterfly',harlequin:'beetle',cavecricket:'grasshopper',millipede:'snail',whipscorpion:'earwig',stonefly:'fly',apollo:'butterfly',snowflea:'gnat',sandhopper:'grasshopper',isopod:'stinkbug',shorefly:'fly',lavacricket:'grasshopper',ashmoth:'moth',blisterbeetle:'beetle',scorpionfly:'mosquito',iceworm:'snail',woollybear:'snail',cockroach:'earwig',silverfish:'strider',bedbug:'ant',glasswing:'butterfly',jewelwasp:'wasp',lanternbug:'cicada',hoverfly:'fly',rosechafer:'beetle',divingbeetle:'beetle',tigermoth:'moth',lunamoth:'moth',damselfly:'dragon',antlion:'earwig',rhinobeetle:'beetle',assassinbug:'stinkbug',jewelbeetle:'beetle'};
+const ARCH={midge:'gnat',aphid:'gnat',thrips:'gnat',fruitfly:'gnat',sandfly:'gnat',blackfly:'gnat',whitefly:'gnat',springtail:'gnat',leafhopper:'gnat',fungusgnat:'gnat',mayfly:'gnat',noseeum:'gnat',psyllid:'gnat',lacebug:'gnat',planthopper:'gnat',crystalmite:'gnat',leafcutter:'ant',morpho:'butterfly',harlequin:'beetle',cavecricket:'grasshopper',millipede:'snail',whipscorpion:'earwig',stonefly:'fly',apollo:'butterfly',snowflea:'gnat',sandhopper:'grasshopper',isopod:'stinkbug',shorefly:'fly',lavacricket:'grasshopper',ashmoth:'moth',blisterbeetle:'beetle',scorpionfly:'mosquito',iceworm:'snail',woollybear:'snail',cockroach:'earwig',silverfish:'strider',bedbug:'ant',glasswing:'butterfly',jewelwasp:'wasp',lanternbug:'cicada',hoverfly:'fly',rosechafer:'beetle',divingbeetle:'beetle',tigermoth:'moth',lunamoth:'moth',damselfly:'dragon',antlion:'stinkbug',rhinobeetle:'beetle',assassinbug:'stinkbug',jewelbeetle:'beetle'};
 const PITCH={midge:0.80,aphid:0.86,thrips:0.92,fruitfly:0.98,sandfly:1.04,blackfly:1.10,whitefly:1.16,springtail:1.22,leafhopper:1.28,fungusgnat:1.34,mayfly:1.40,noseeum:1.46,psyllid:1.52,lacebug:1.58,planthopper:1.64,crystalmite:1.70,leafcutter:1.3,morpho:.8,harlequin:.7,cavecricket:1.4,millipede:.6,whipscorpion:.75,stonefly:1.2,apollo:1.15,snowflea:1.6,sandhopper:.9,isopod:.65,shorefly:1.35,lavacricket:.85,ashmoth:.9,blisterbeetle:1.1,scorpionfly:1.25,iceworm:.55,woollybear:.7,cockroach:.8,silverfish:1.45,bedbug:1.2,glasswing:1.5,jewelwasp:1.3,lanternbug:.75};
 const A=k=>ARCH[k]||k;
+// Which shooters actually point at you, versus the ones that spray a ring or drop straight down.
+// One aimer makes you move more than three sprayers do.
+const AIMERS=['wasp','ladybug','moth','snail','spiderling','firefly'];
+const isAimer=k=>AIMERS.includes(A(k))||AIMERS.includes(k);
 const FODDER=['fly','mosquito','gnat','ant','ladybug','grasshopper','hornet','butterfly','spiderling','earwig','katydid','strider','weevil','termite','horsefly','leafcutter','morpho','cavecricket','whipscorpion','stonefly','apollo','snowflea','sandhopper','shorefly','lavacricket','scorpionfly','cockroach','silverfish','bedbug','glasswing','jewelwasp','hoverfly','lunamoth','damselfly'],SHOOTERS=['wasp','beetle','moth','firefly','dragon','ladybug','cicada','stinkbug','snail','spiderling','glowworm','dungbeetle','harlequin','millipede','isopod','ashmoth','blisterbeetle','iceworm','woollybear','lanternbug','jewelwasp','rosechafer','divingbeetle','tigermoth','antlion','rhinobeetle','assassinbug','jewelbeetle'];
+// A squadron gets BIGGER as the worlds go on, it does not get JOINED by more squadrons.
+// One shape with more bugs in it is the 1943 answer to difficulty; fourteen overlapping
+// shapes is the thing that made world 16 unreadable.
+const WSZ=()=>DIFF.squadAdd();
+// Anything that would otherwise appear ON TOP of the player gets announced first and arrives a
+// beat later. LATE is that beat: a spawn with a fuse, drained every frame by lateTick().
+const LATE=[];
+function lateTick(){for(let i=LATE.length-1;i>=0;i--){const L=LATE[i];if(t>=L.at){LATE.splice(i,1);spawn(L.k,L.x,L.y,L.o);}}}
 const FORMS={
- line(k){const n=5,y=-20;for(let i=0;i<n;i++)spawn(k,60+i*(W-120)/(n-1),y-i*6,{pat:'fall',vy:1.3});},          // a rank marching straight down
- vee(k){for(let i=-2;i<=2;i++)spawn(k,W/2+i*55,-20-Math.abs(i)*40,{pat:'fall',vy:1.5});},                       // V wedge
- column(k){const x=R(80,W-80);for(let i=0;i<4;i++)spawn(k,x,-20-i*55,{pat:'sine',ox:x});},                      // snake column
- pincer(k){for(let i=0;i<3;i++){spawn(k,-20-i*40,80+i*25,{pat:'arc',dir:1});spawn(k,W+20+i*40,80+i*25,{pat:'arc',dir:-1});}}, // from both sides
- zig(k){const x=R(100,W-100);for(let i=0;i<3;i++)spawn(k,x,-20-i*50,{pat:'zig',dir:i%2?1:-1});},               // sharp zigzag
- ambush(k){for(const sg of[-1,1])for(let i=0;i<2;i++)spawn(k,sg<0?-20:W+20,H-160-i*40,{pat:'rise',dir:-sg});},// from BELOW the bee
- divers(k){for(let i=0;i<3;i++)spawn(k||'mosquito',R(30,W-30),-20-i*40,{pat:'dive'});},
+ line(k){const n=5+WSZ(),y=-20;for(let i=0;i<n;i++)spawn(k,60+i*(W-120)/(n-1),y-i*6,{pat:'fall',vy:1.3});},          // a rank marching straight down
+ vee(k){const h=2+WSZ();for(let i=-h;i<=h;i++)spawn(k,W/2+i*(h>3?46:55),-20-Math.abs(i)*40,{pat:'fall',vy:1.5});},                       // V wedge
+ column(k){const x=R(80,W-80);for(let i=0;i<4+WSZ();i++)spawn(k,x,-20-i*55,{pat:'sine',ox:x});},                      // snake column
+ pincer(k){for(let i=0;i<3+WSZ();i++){spawn(k,-20-i*40,80+i*25,{pat:'arc',dir:1});spawn(k,W+20+i*40,80+i*25,{pat:'arc',dir:-1});}}, // from both sides
+ zig(k){const x=R(100,W-100);for(let i=0;i<3+WSZ();i++)spawn(k,x,-20-i*50,{pat:'zig',dir:i%2?1:-1});},               // sharp zigzag
+ ambush(k){say('SOMETHING IS COMING UP BEHIND YOU!');buzz('warn');
+  for(const sg of[-1,1]){const ex=sg<0?14:W-14,ey=H-170;
+   ring(ex,ey,'#ff6b6b',70);ring(ex,ey,'#ffd166',44);
+   for(let i=0;i<2;i++)LATE.push({k,x:sg<0?-20:W+20,y:H-160-i*40,o:{pat:'rise',dir:-sg},at:t+55});}},// from BELOW the bee
+ divers(k){for(let i=0;i<3+WSZ();i++)spawn(k||'mosquito',R(30,W-30),-20-i*40,{pat:'dive'});},
  skaters(k){for(const sg of[-1,1])spawn(k||'strider',sg<0?-20:W+20,R(120,260),{pat:'dash'});},
- scurry(k){const x=R(60,W-60);for(let i=0;i<5;i++)spawn(k||'termite',x+R(-14,14),-20-i*22,{pat:'scurry'});},
+ scurry(k){const x=R(60,W-60);for(let i=0;i<5+WSZ();i++)spawn(k||'termite',x+R(-14,14),-20-i*22,{pat:'scurry'});},
  flank(k){spawn(k,60,-20,{pat:'hover',dir:1});spawn(k,W-60,-20,{pat:'hover',dir:-1});},                         // two gunners take the corners
  heavy(k){spawn(k,R(80,W-80),-30,{pat:k==='dragon'?'dash':k==='firefly'?'blink':'slow'});},
  swarm(k){const x=R(80,W-80);for(let i=0;i<6;i++)spawn(k||'gnat',x+R(-40,40),-20-i*16,{pat:'swarm'});},
- hoppers(k){for(let i=0;i<3;i++)spawn(k||'grasshopper',100+i*(W-200)/2,-20-i*30,{pat:'hop'});},                    // three grasshoppers that leap at you
- chargers(k){for(let i=0;i<2;i++)spawn(k||'hornet',R(60,W-60),-20-i*60,{pat:'charge'});},                           // hornets: wind up, then dash
+ hoppers(k){const n=3+WSZ();for(let i=0;i<n;i++)spawn(k||'grasshopper',100+i*(W-200)/(n-1),-20-i*30,{pat:'hop'});},                    // three grasshoppers that leap at you
+ chargers(k){for(let i=0;i<2+WSZ();i++)spawn(k||'hornet',R(60,W-60),-20-i*60,{pat:'charge'});},                           // hornets: wind up, then dash
  screamer(k){spawn(k||'cicada',R(80,W-80),-20,{pat:'hover',dir:Math.random()<.5?-1:1});},
  stinker(k){spawn(k||'stinkbug',R(60,W-60),-30,{pat:'slow'});},
- threads(k){for(let i=0;i<3;i++)spawn(k||'spiderling',90+i*(W-180)/2,-20,{pat:'thread',hang:R(140,260)});},      // spiderlings drop in on silk and hang there
+ threads(k){const n=3+WSZ();for(let i=0;i<n;i++)spawn(k||'spiderling',90+i*(W-180)/(n-1),-20,{pat:'thread',hang:R(140,260)});},      // spiderlings drop in on silk and hang there
  flutters(k){for(let i=0;i<2;i++)spawn(k||'butterfly',R(60,W-60),-20-i*80,{pat:'flutter'});},
  crawler(k){spawn(k||'snail',R(60,W-60),-30,{pat:'creep'});},
  cloud(k){const cx=R(120,W-120),n=Math.min(26,12+stage);   /* 22+stage*2 put 54 gnats on a phone screen: clutter, not danger */const sp2=LV().cloud||'gnat';for(let i=0;i<n;i++){const a=R(0,7),rr=Math.sqrt(Math.random());spawn(sp2,cx+Math.cos(a)*rr*110,-40+Math.sin(a)*rr*55,{pat:'cloud',tiny:1,cx,ph:R(0,7)});}},

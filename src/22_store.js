@@ -44,14 +44,23 @@ function storeInit(){
   store.initialize(plats).then(()=>{STORE.ready=true;try{if(store.owned(PAY_ID))ownedSave(true);}catch(e){}});
  }catch(e){STORE.note='store unavailable';}
 }
-function storeBuy(){
+let buyWait=0;
+function storeBuy(retry){
  if(STORE.busy)return;
  if(!STORE.native||!window.CdvPurchase){STORE.note='no store on this device';return;}
+ const n=retry||0;
+ if(!n&&buyWait)return;                          // one wait at a time, however many times it is tapped
  try{const {store}=window.CdvPurchase;const p=store.get(PAY_ID);
-  if(!p){STORE.note='product not found yet';return;}
+  if(!p){
+   // A cold launch can reach this button before the store has answered. Wait for it instead of
+   // saying the product does not exist - that message is what App Review saw on 2026-09-12.
+   if(!n){try{store.update();}catch(e){}}
+   if(n<12){buyWait=1;STORE.note='asking the store...';setTimeout(()=>storeBuy(n+1),600);return;}
+   buyWait=0;STORE.note='the store has not answered yet. try again in a moment.';return;}
+  buyWait=0;
   const o=p.getOffer();if(!o){STORE.note='no offer yet';return;}
   STORE.busy=true;STORE.note='opening the store...';store.order(o);
- }catch(e){STORE.busy=false;STORE.note='could not open the store';}
+ }catch(e){buyWait=0;STORE.busy=false;STORE.note='could not open the store';}
 }
 function storeRestore(){                        // Apple requires this button to exist
  if(!STORE.native||!window.CdvPurchase){STORE.note='nothing to restore here';return;}
@@ -144,12 +153,27 @@ function askCode(){
  setTimeout(()=>input.focus(),40);
 }
 
-// the quiet reminder on the title while the trial is still running
+// The unlock button on the title screen. It used to be a caption you could not tap, and the
+// paywall only appeared once the free month had run out - so for the first thirty days there
+// was no way to reach the in-app purchase at all. App Review could not find it and rejected
+// 1.3.0 under guideline 2.1(b) on 2026-09-15 ("we cannot locate the In-App Purchases, such as
+// 'Unlock Hive Strike', within the app"). It is a real button now, on the title screen from
+// the first launch, and it says the price out loud.
+const TRIALB={x:W/2-150,y:H-30,w:300,h:24};
+function trialBtnShown(){return STORE.native&&!STORE.owned;}
 function drawTrialLine(){
- if(!STORE.native||STORE.owned)return;
- const d=trialDaysLeft();if(d>TRIAL_DAYS)return;
- X.save();X.textAlign='center';X.font='bold 10px '+FONT;X.lineJoin='round';X.strokeStyle='rgba(0,0,0,.85)';X.lineWidth=3;
- const s=d>0?('FREE MONTH  ·  '+d+(d===1?' DAY LEFT':' DAYS LEFT')):'TAP PLAY TO UNLOCK  ·  '+STORE.price;
- X.strokeText(s,W/2,H-14);X.fillStyle=d>3?'rgba(220,235,255,.85)':'#ffd23f';X.fillText(s,W/2,H-14);X.restore();
+ if(!trialBtnShown())return;
+ const d=trialDaysLeft();
+ X.save();
+ X.fillStyle='rgba(0,0,0,.34)';X.beginPath();X.roundRect(TRIALB.x,TRIALB.y,TRIALB.w,TRIALB.h,TRIALB.h/2);X.fill();
+ X.strokeStyle='rgba(255,210,63,.6)';X.lineWidth=1.2;X.stroke();
+ const s=d>0?('UNLOCK FULL GAME  ·  '+STORE.price+'  ·  '+d+(d===1?' DAY LEFT':' DAYS LEFT'))
+            :('UNLOCK FULL GAME  ·  '+STORE.price);
+ X.textAlign='center';X.lineJoin='round';
+ let px=11;X.font='bold '+px+'px '+FONT;                       // shrink to fit, never spill out of the pill
+ while(px>8&&X.measureText(s).width>TRIALB.w-20){px-=0.5;X.font='bold '+px+'px '+FONT;}
+ X.strokeStyle='rgba(0,0,0,.85)';X.lineWidth=3;X.strokeText(s,W/2,TRIALB.y+16);
+ X.fillStyle='#ffd23f';X.fillText(s,W/2,TRIALB.y+16);X.restore();
 }
+
 storeInit();

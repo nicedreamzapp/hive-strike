@@ -272,21 +272,55 @@ let ringsFx=[];
 function drawCollapse(){const f=1-collapse/170,o=collapseAt||{x:W/2,y:H*.3};X.save();X.strokeStyle='rgba(20,8,0,.95)';X.lineCap='round';
  for(let i=0;i<9;i++){let x=o.x,y=o.y,a=i/9*Math.PI*2+.3;X.lineWidth=1+f*7;X.beginPath();X.moveTo(x,y);const n=Math.floor(3+f*14);for(let k=0;k<n;k++){const s=((i*7919+k*104729)%1000)/1000;a+=(s-.5)*1.1;const L=26+s*30;x+=Math.cos(a)*L;y+=Math.sin(a)*L;X.lineTo(x,y);}X.stroke();}
  X.fillStyle='rgba(0,0,0,'+Math.min(.85,f*1.1)+')';X.fillRect(-20,-H*2,W+40,H*4);X.restore();}
-// rooftop blackout: the city's lights die for four seconds. Only your shots, theirs, the bee's
-// own glow, a few fireflies, and the bugs' eyes are left. Matt's roadmap, word for word.
-function drawBlackout(){const a=blackout>230?(250-blackout)/20:blackout<30?blackout/30:1;X.save();X.fillStyle='rgba(0,0,12,'+(.92*a)+')';X.fillRect(-20,-20,W+40,H+40);X.globalCompositeOperation='lighter';
- for(const e of enemies){if(e.dead||e.y<0)continue;const ex=e.x+pxo(e.x,e.y),s=dep(e.y);X.fillStyle='rgba(255,70,40,'+a+')';ell(ex-5*s,e.y-3*s,1.8,1.8);X.fill();ell(ex+5*s,e.y-3*s,1.8,1.8);X.fill();}
- for(let i=0;i<10;i++){const fx=((i*97+t*.25)%(W+40))-20,fy=(i*61+Math.sin(t*.015+i)*24+H*.3)%H,g=Math.max(0,Math.sin(t*.04+i*1.7));X.fillStyle='rgba(200,255,120,'+(g*a*.85)+')';ell(fx,fy,2.2,2.2);X.fill();}X.restore();}
+// THE ROOFTOPS blackout: the city's lights die. It used to be a flat wall of 92% black for
+// four and a bit seconds, with nothing left of a bug but two 1.8px eyes -- so you could see the
+// shots but not the things firing them, and dying in it felt arbitrary (Matt 2026-09-15: "make
+// it a little lighter or something"). Now it is a LAMP, not a blindfold: dark at the edges of
+// the roof, readable around the bee, every bug still a shape you can aim at, and two and a half
+// seconds instead of four. The scare survives; the guessing does not.
+function drawBlackout(){
+ const a=blackout>150?(170-blackout)/20:blackout<30?blackout/30:1;
+ X.save();
+ const lx=P.x+pxo(P.x,P.y),ly=P.y;
+ const g=X.createRadialGradient(lx,ly,50,lx,ly,420);
+ // First pass at this was so light Matt did not notice the lights had gone out at all. The
+ // point is to feel the city die and still be able to fight: dark enough to read as a blackout
+ // at the edges of the roof, clear enough around the bee that nothing kills you out of nowhere.
+ g.addColorStop(0,  'rgba(0,0,12,'+(.24*a)+')');
+ g.addColorStop(.42,'rgba(0,0,12,'+(.58*a)+')');
+ g.addColorStop(1,  'rgba(0,0,12,'+(.84*a)+')');
+ X.fillStyle=g;X.fillRect(-20,-20,W+40,H+40);
+ X.globalCompositeOperation='lighter';
+ // a bug is still a THING out there: a soft body glow you can aim at, plus its eyes
+ for(const e of enemies){if(e.dead||e.y<0)continue;
+  const ex=e.x+pxo(e.x,e.y),sc=dep(e.y),rr=Math.max(9,e.r*sc*1.15);
+  const gg=X.createRadialGradient(ex,e.y,0,ex,e.y,rr*1.8);
+  gg.addColorStop(0,'rgba(255,120,70,'+(.34*a)+')');
+  gg.addColorStop(1,'rgba(255,60,30,0)');
+  X.fillStyle=gg;X.beginPath();X.arc(ex,e.y,rr*1.8,0,6.2832);X.fill();
+  X.fillStyle='rgba(255,90,55,'+a+')';
+  ell(ex-5*sc,e.y-3*sc,2.6,2.6);X.fill();ell(ex+5*sc,e.y-3*sc,2.6,2.6);X.fill();}
+ // the boss never disappears -- losing a boss in the dark is the worst version of this
+ if(boss&&boss.y>0){const bx=boss.x+pxo(boss.x,boss.y);
+  const bg=X.createRadialGradient(bx,boss.y,0,bx,boss.y,boss.r*2.6);
+  bg.addColorStop(0,'rgba(255,150,90,'+(.40*a)+')');bg.addColorStop(1,'rgba(255,80,40,0)');
+  X.fillStyle=bg;X.beginPath();X.arc(bx,boss.y,boss.r*2.6,0,6.2832);X.fill();}
+ // pickups keep glinting, or a power-up dropped in the dark is simply lost
+ for(const p of pickups){const px2=p.x+pxo(p.x,p.y);
+  X.fillStyle='rgba(255,220,120,'+(.55*a)+')';ell(px2,p.y,4,4);X.fill();}
+ for(let i=0;i<10;i++){const fx=((i*97+t*.25)%(W+40))-20,fy=(i*61+Math.sin(t*.015+i)*24+H*.3)%H,gl=Math.max(0,Math.sin(t*.04+i*1.7));
+  X.fillStyle='rgba(200,255,120,'+(gl*a*.85)+')';ell(fx,fy,2.2,2.2);X.fill();}
+ X.restore();}
 function ring(x,y,c,max=60){ringsFx.push({x,y,c,r:4,max});}
 const _boom=boom;boom=function(x,y,c,n=12,sp=4){_boom(x,y,c,n,sp);ring(x,y,c,n>30?120:50);};
 function worldHazard(){
  const name=LV().name;
  if(name==='THE VOLCANO'&&t%Math.max(26,70-((stage-1)%NL)*2)===0){
-  const x=R(20,W-20);ebullets.push({x,y:-14,vx:R(-.4,.4),vy:2.1+D()*1.3,r:7,col:'#ff9030',t:0,kind:'ember'});}
+  const x=R(20,W-20);epush({x,y:-14,vx:R(-.4,.4),vy:2.1+D()*1.3,r:7,col:'#ff9030',t:0,kind:'ember'});}
  if(name==='THE CRYSTAL'&&t%Math.max(30,90-((stage-1)%NL)*2)===0){
-  const x=R(20,W-20);ebullets.push({x,y:-14,vx:0,vy:2.4+D()*1.2,r:7,col:'#c9a0ff',t:0,kind:'dart'});}
+  const x=R(20,W-20);epush({x,y:-14,vx:0,vy:2.4+D()*1.2,r:7,col:'#c9a0ff',t:0,kind:'dart'});}
  if(name==='THE NIGHT WOOD'&&t%Math.max(40,110-((stage-1)%NL)*2)===0){
-  const x=R(20,W-20);ebullets.push({x,y:-14,vx:R(-.6,.6),vy:1.7+D(),r:6,col:'#cfe0ff',t:0,kind:'drop'});}
+  const x=R(20,W-20);epush({x,y:-14,vx:R(-.6,.6),vy:1.7+D(),r:6,col:'#cfe0ff',t:0,kind:'drop'});}
 }
 function drawOverlays(){
  const v=X.createRadialGradient(W/2,H/2,H*.35,W/2,H/2,H*.75);v.addColorStop(0,'rgba(0,0,0,0)');v.addColorStop(1,'rgba(0,0,0,.45)');X.fillStyle=v;X.fillRect(0,0,W,H);
@@ -447,6 +481,10 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
   X.textAlign='left';X.fillStyle=col;X.font='bold 14px '+FONT;X.shadowColor='#000';X.shadowBlur=4;X.fillText(wp.name,cx-54,by-2);
   for(let i=0;i<5;i++){X.fillStyle=i<P.lvl?col:'rgba(255,255,255,.22)';X.beginPath();X.roundRect(cx-54+i*17,by+5,14,6,3);X.fill();}
   X.fillStyle='rgba(255,255,255,.55)';X.font='bold 9px '+FONT;X.fillText('LV '+P.lvl,cx+34,by+11);
+  // what this gun is FOR, always on screen -- the matchup is the decision, so it cannot be hidden
+  {const g=GUNFIT[P.wpn];if(g){X.textAlign='center';X.font='bold 8px '+FONT;
+   X.fillStyle='rgba(141,255,154,.85)';X.fillText('\u25b2 '+FITLABEL[g.up],cx-44,by+22);
+   X.fillStyle='rgba(255,140,140,.75)';X.fillText('\u25bc '+FITLABEL[g.dn],cx+44,by+22);}}
   X.restore();}
  X.shadowBlur=0;
  // cap the bee row at five and count the rest -- eleven lives used to run into the
