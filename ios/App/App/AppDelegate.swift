@@ -47,3 +47,25 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
 }
+
+// iOS 27 terminates any app linked against its SDK that has not adopted the
+// scene lifecycle (UIApplicationEvaluateRuntimeIssueForNoSceneLifecycleAdoption,
+// SIGTRAP at launch). Build 5 of 1.4.0 was the first Hive Strike built with
+// Xcode 27 and crashed on open, found on Matt's iPhone 2026-09-16. The window now
+// belongs to this scene; Info.plist names it and keeps Main.storyboard, so
+// Capacitor's bridge view controller loads exactly as before.
+class SceneDelegate: UIResponder, UIWindowSceneDelegate {
+
+    var window: UIWindow?
+
+    func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
+        for context in URLContexts {
+            _ = ApplicationDelegateProxy.shared.application(UIApplication.shared, open: context.url, options: [:])
+        }
+    }
+
+    func scene(_ scene: UIScene, continue userActivity: NSUserActivity) {
+        _ = ApplicationDelegateProxy.shared.application(UIApplication.shared, continue: userActivity) { _ in }
+    }
+}
+
