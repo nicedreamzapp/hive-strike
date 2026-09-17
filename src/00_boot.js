@@ -22,6 +22,14 @@ function lowSave(){try{localStorage.hs_low=LOW3?'3':LOW2?'2':LOW?'1':'0';}catch(
 function setLow(v){if(LOW===v&&!(LOW2&&!v))return;LOW=v;if(!v){LOW2=false;LOW3=false;}lowSave();fit();}
 function setLow2(v){if(LOW2===v&&!(LOW3&&!v))return;LOW2=v;if(v)LOW=true;else LOW3=false;lowSave();fit();}
 function setLow3(v){if(LOW3===v)return;LOW3=v;if(v){LOW=true;LOW2=true;}lowSave();fit();}
+// In any LOW mode a blurred canvas shadow becomes a 1px hard one. Measured 2026-09-16 on the
+// MT6765 burner in LOW3: the blur passes alone held play at ~30 fps; hard shadows ran ~38-40
+// and the text stays readable over the busy backgrounds. Nothing in src sets shadowOffset,
+// so the setter owns it. On the prototype because offscreen sprite canvases draw text too.
+{const P=CanvasRenderingContext2D.prototype,sb=Object.getOwnPropertyDescriptor(P,'shadowBlur');
+ if(sb&&sb.set)Object.defineProperty(P,'shadowBlur',{configurable:true,get(){return sb.get.call(this);},
+  set(v){if(LOW&&v>0){sb.set.call(this,0);this.shadowOffsetX=this.shadowOffsetY=1;}
+   else{sb.set.call(this,v);if(this.shadowOffsetX)this.shadowOffsetX=this.shadowOffsetY=0;}}});}
 let DPR=Math.min(3,window.devicePixelRatio||1);
 C.width=W*DPR;C.height=H*DPR;C.style.width=W+'px';C.style.height=H+'px';X.setTransform(DPR,0,0,DPR,0,0);
 const FONT='"Avenir Next Condensed","Futura","Arial Narrow","Helvetica Neue",sans-serif';

@@ -1,6 +1,6 @@
 {
   "name": "hive-strike",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "private": true,
   "description": "Vertical bug shooter. Every asset generated locally on one Mac.",
   "scripts": {
