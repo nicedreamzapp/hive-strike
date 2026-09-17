@@ -44,8 +44,11 @@ are. Creating a fresh version means rebuilding all of it, which is where metadat
 
 ### 5. Two errors that are NORMAL and are not failures
 - `whatsNew cannot be edited at this time` — there are no release notes on a first release.
-- `'inAppPurchaseV2' is not a relationship on reviewSubmissionItems` — a brand new in-app
-  purchase rides along with the app version; it cannot be attached separately.
+- `'inAppPurchaseV2' is not a relationship on reviewSubmissionItems` — the API cannot attach an
+  in-app purchase. It does NOT ride along by itself: 1.3.0 and then 1.4.0 (2026-09-16) both went into
+  review without the unlock. Attach it in App Store Connect: the IAP page, then Add for Review, then pick
+  the draft submission. Before calling it done, check that the submission has 2 items and the IAP reads
+  WAITING_FOR_REVIEW.
 
 ### 6. Bump all four version numbers, not two
 `package.json`, `android/app/build.gradle` (**versionName AND versionCode**), and

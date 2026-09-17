@@ -67,6 +67,9 @@ chk(len(live) == 1, "exactly one live review submission", [(s["id"][:8], s["attr
 if live:
     items = call("/v1/reviewSubmissions/" + live[0]["id"] + "/items")["data"]
     chk(len(items) >= 1, "version attached to the submission", [i["attributes"].get("state") for i in items])
+    # An unapproved first IAP must ride IN the submission. A version-only submission passed this
+    # audit on 2026-09-15 with the unlock stranded at READY_TO_SUBMIT (caught 9/16).
+    chk(len(items) >= 2, "IAP is a second item on the submission", len(items))
 locs = call(f"/v1/appStoreVersions/{V}/appStoreVersionLocalizations")["data"]
 for l in locs:
     a = l["attributes"]
@@ -86,7 +89,8 @@ chk(bool(rd.get("contactEmail")) and bool(rd.get("contactPhone")), "reviewer con
     f"{rd.get('contactFirstName')} {rd.get('contactEmail')}")
 try:
     ip = call(f"/v2/inAppPurchases/{IAP}")["data"]["attributes"]
-    chk(ip.get("state") in ("APPROVED","READY_TO_SUBMIT","WAITING_FOR_REVIEW","IN_REVIEW"),
+    # READY_TO_SUBMIT means the unlock is NOT in review, so it is a failure while the version is.
+    chk(ip.get("state") in ("APPROVED","WAITING_FOR_REVIEW","IN_REVIEW"),
         "in-app purchase state", ip.get("state"))
 except Exception as e:
     chk(False, "in-app purchase", str(e)[:80])
