@@ -118,4 +118,4 @@ The iPhone build is with App Review.
 
 The code is [MIT](LICENSE), so you are free to read it, run it and reuse it. The art, music,
 icons, store graphics and the Hive Strike name are not open licensed (all rights reserved, Nice
-Dreamz LLC), so a copy of the game cannot be republished to the app stores; the exact list is in [LICENSE](LICENSE).
+Dreamz LLC), so a copy of the game cannot be republished to the app stores; the exact list is in [ASSETS-LICENSE.md](ASSETS-LICENSE.md).
