@@ -1,0 +1,44 @@
+MIT License
+
+Copyright (c) 2026 Matt Macosko
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+--------------------------------------------------------------------------------
+ASSETS AND NAME: NOT COVERED BY THE MIT LICENSE ABOVE
+--------------------------------------------------------------------------------
+
+The MIT license above covers the source code only. The following are
+Copyright (c) 2026 Nice Dreamz LLC, All Rights Reserved, and are not licensed
+for reuse, redistribution, or publication in any app store:
+
+  - art/        all sprites, backgrounds, paintings and animated scenes
+  - music/      all music and sound
+  - assets/     app icon and splash screens
+  - icons/      app icons
+  - media/      gameplay video
+  - store/      store listing text, graphics and screenshots
+  - image and audio files inside ios/App/App/Assets.xcassets and
+    android/app/src/main/res (the icons and splash screens of the phone apps)
+  - the name "Hive Strike" and its logo and icon
+
+You are welcome to read, run, and learn from everything in this repository,
+and to use the code in your own projects under the MIT terms. To publish a game
+built from this code, replace the assets above with your own and use a
+different name.

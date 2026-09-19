@@ -113,3 +113,9 @@ Level 12, the Tide Pool. Also on the [product page](https://nicedreamzwholesale.
 **Live on Google Play** — [Hive Strike](https://play.google.com/store/apps/details?id=com.nicedreamz.hivestrike).
 Free for thirty days, then a one-time $1.99 unlock, no subscription and no adverts.
 The iPhone build is with App Review.
+
+## License
+
+The code is [MIT](LICENSE), so you are free to read it, run it and reuse it. The art, music,
+icons, store graphics and the Hive Strike name are not open licensed (all rights reserved, Nice
+Dreamz LLC), so a copy of the game cannot be republished to the app stores; the exact list is in [LICENSE](LICENSE).
