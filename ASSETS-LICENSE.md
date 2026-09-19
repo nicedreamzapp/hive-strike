@@ -1,6 +1,6 @@
 # Assets and name: not covered by the MIT license
 
-The MIT license above covers the source code only. The following are
+The MIT license in [LICENSE](LICENSE) covers the source code only. The following are
 Copyright (c) 2026 Nice Dreamz LLC, All Rights Reserved, and are not licensed
 for reuse, redistribution, or publication in any app store:
 
