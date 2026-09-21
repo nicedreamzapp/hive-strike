@@ -18,11 +18,20 @@ function trialDaysLeft(){const used=(Date.now()-trialStart())/86400000;return Ma
 function locked(){return STORE.native&&!STORE.owned&&trialDaysLeft()<=0;}
 function ownedSave(v){STORE.owned=!!v;try{localStorage.hs_owned=v?'1':'';}catch(e){}}
 
+let storeStarted=false;
 function storeInit(){
  STORE.native=native();
  try{if(localStorage.hs_owned)STORE.owned=true;}catch(e){}
  trialStart();
- if(!STORE.native||!window.CdvPurchase){STORE.note=STORE.native?'store unavailable':'';return;}
+ if(!STORE.native)return;
+ // Cordova plugins can finish loading after this script runs. Wait for deviceready rather than
+ // giving up, and say in the log which way it went so a build can be checked from the console.
+ if(!window.CdvPurchase){STORE.note='store unavailable';
+  if(!storeInit.waiting){storeInit.waiting=1;document.addEventListener('deviceready',storeInit,false);}
+  console.log('[hs-store] billing plugin not loaded yet');return;}
+ if(storeStarted)return;
+ storeStarted=true;STORE.note='';
+ console.log('[hs-store] billing plugin loaded, platform '+((window.Capacitor&&window.Capacitor.getPlatform&&window.Capacitor.getPlatform())||'?'));
  try{
   const {store,ProductType,Platform}=window.CdvPurchase;
   const plats=[];
@@ -36,7 +45,7 @@ function storeInit(){
   plats.push(isApple?Platform.APPLE_APPSTORE:Platform.GOOGLE_PLAY);
   store.register(plats.map(p=>({id:PAY_ID,type:ProductType.NON_CONSUMABLE,platform:p})));
   store.when()
-   .productUpdated(p=>{if(p.id===PAY_ID){const o=p.getOffer&&p.getOffer();if(o&&o.pricingPhases&&o.pricingPhases[0]&&o.pricingPhases[0].price)STORE.price=o.pricingPhases[0].price;}})
+   .productUpdated(p=>{if(p.id===PAY_ID){console.log('[hs-store] product loaded '+p.id);const o=p.getOffer&&p.getOffer();if(o&&o.pricingPhases&&o.pricingPhases[0]&&o.pricingPhases[0].price)STORE.price=o.pricingPhases[0].price;}})
    .approved(tr=>{try{tr.verify();}catch(e){try{tr.finish();}catch(_){}ownedSave(true);}})
    .verified(rc=>{try{rc.finish();}catch(e){}ownedSave(true);STORE.busy=false;STORE.note='Thank you. Unlocked for good.';})
    .receiptsReady(()=>{try{if(store.owned(PAY_ID))ownedSave(true);}catch(e){}STORE.ready=true;});
@@ -48,6 +57,7 @@ let buyWait=0;
 function storeBuy(retry){
  if(STORE.busy)return;
  if(!STORE.native||!window.CdvPurchase){STORE.note='no store on this device';return;}
+ if(!storeStarted)storeInit();
  const n=retry||0;
  if(!n&&buyWait)return;                          // one wait at a time, however many times it is tapped
  try{const {store}=window.CdvPurchase;const p=store.get(PAY_ID);

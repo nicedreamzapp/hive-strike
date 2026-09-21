@@ -31,7 +31,7 @@ eid = gq("POST", B + "/edits")["id"]
 tr = gq("GET", B + "/edits/" + eid + "/tracks/production")
 rel = (tr.get("releases") or [{}])[0]
 chk(rel.get("name") == "1.4.1", "production version name", rel.get("name"))
-chk(rel.get("versionCodes") == ["4"], "production versionCode", rel.get("versionCodes"))
+chk(rel.get("versionCodes") == ["5"], "production versionCode", rel.get("versionCodes"))
 chk(rel.get("status") == "completed", "release status", rel.get("status"))
 chk(rel.get("userFraction") in (None, 1, 1.0), "rollout fraction (None = 100%)", rel.get("userFraction"))
 notes = rel.get("releaseNotes") or []
@@ -56,7 +56,7 @@ chk(v["versionString"] == "1.4.1", "version string", v["versionString"])
 chk(v["appStoreState"] in ("WAITING_FOR_REVIEW","IN_REVIEW","PENDING_DEVELOPER_RELEASE","READY_FOR_SALE"),
     "version state", v["appStoreState"])
 b = call(f"/v1/appStoreVersions/{V}/build")["data"]["attributes"]
-chk(b["version"] == "7", "attached build number", b["version"])
+chk(b["version"] == "8", "attached build number", b["version"])
 chk(b["processingState"] == "VALID", "build processing state", b["processingState"])
 bid = call(f"/v1/appStoreVersions/{V}/build")["data"]["id"]
 enc = call(f"/v1/builds/{bid}")["data"]["attributes"].get("usesNonExemptEncryption")

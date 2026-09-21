@@ -61,6 +61,21 @@ repeated iOS build number is rejected after a successful-looking upload.
 plist carries `signingStyle: manual` and a `provisioningProfiles` dict mapping
 `com.nicedreamz.hivestrike` to **HiveStrike AppStore M5 20260911**.
 
+### 8. The billing plugin can be silently missing from the build
+**Rejected 2026-09-21 (1.4.1 build 7, 2.1(b)): "no action occur after selecting Unlock for $1.99".**
+Build 7 and Android versionCode 4 were built from the MINI's tree, where `npx cap sync` cannot run
+(no cordova-plugin-purchase in its node_modules). Both shipped an empty `cordova_plugins.js`, no
+`plugins/` folder and no `CordovaPlugins.framework`, so the buy button said "no store on this device".
+Android 1.4.1 was live on Play for five days with a dead purchase. Nothing failed at build, upload,
+validation or the audit.
+- `npx cap sync` runs on the M5 only, then rsync the synced native trees to the mini.
+- Run `tools/check_billing_payload.sh <ipa|aab>` on EVERY artifact before upload. It must say PASS.
+- Walk the purchase on a clean install of the exact build (iPad simulator + WebDriverAgent works:
+  `~/Scripts/WebDriverAgent`, tap the bottom UNLOCK pill, then UNLOCK FOR $1.99, the Apple sign-in
+  sheet must appear). The console must show `[hs-store] billing plugin loaded` and `product loaded`.
+- The plugin also loads AFTER our script runs (the sim log shows "not loaded yet" first), so
+  `storeInit` now waits for `deviceready`. Before build 8 that race alone could strand the store.
+
 ---
 
 ## The sequence that worked
