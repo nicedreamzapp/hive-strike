@@ -2,7 +2,10 @@
 
 [![Downloads, both stores](https://img.shields.io/endpoint?url=https%3A%2F%2Fnicedreamzwholesale.com%2Fsoftware%2Fbadge-hive-strike.json&style=for-the-badge&logo=appstore&logoColor=white&labelColor=1a7f37)](https://nicedreamzwholesale.com/software/#apps) [![Download on the App Store](https://img.shields.io/badge/Download_on_the-App_Store-0D96F6?style=for-the-badge&logo=apple&logoColor=white)](https://apps.apple.com/us/app/id6808332314) [![Get it on Google Play](https://img.shields.io/badge/Get_it_on-Google_Play-01875f?style=for-the-badge&logo=googleplay&logoColor=white)](https://play.google.com/store/apps/details?id=com.nicedreamz.hivestrike)
 
-A vertical bug shooter. You are one bee. Sixteen worlds, sixteen bosses, forty-eight
+A vertical bug shooter for iPhone, Android and the browser, written in plain Canvas 2D
+JavaScript and live on both app stores. [Twenty seconds of gameplay](media/gameplay.mp4).
+
+You are one bee. Sixteen worlds, sixteen bosses, forty-eight
 kinds of insect, and every single asset in it was generated on the Mac sitting on my desk.
 
 <p align="center">
@@ -28,6 +31,17 @@ kinds of insect, and every single asset in it was generated on the Mac sitting o
   differently on a phone because the game knows it is on one.</em>
 </p>
 
+## What I built
+
+Matt Macosko wrote the game and the pipeline around it. The AI models are upstream tools (listed in the next section); everything here is his:
+
+- **The game itself**, 24 source files in [`src/`](src/): game state and per-tick update ([`05_state.js`](src/05_state.js), [`14_update.js`](src/14_update.js)), enemies and waves ([`08_enemies.js`](src/08_enemies.js), [`10_waves.js`](src/10_waves.js)), 16 bosses with a rage phase ([`11_bosses.js`](src/11_bosses.js), [`12_boss_phase_two.js`](src/12_boss_phase_two.js)), gamepad support ([`19_gamepad.js`](src/19_gamepad.js)) and the fixed 60 Hz loop with sleep/resume handling ([`20_suspend_resume.js`](src/20_suspend_resume.js))
+- **Synthesized sound**: every bug voice built from oscillators and noise in [`01_audio.js`](src/01_audio.js) and [`02_bug_voices.js`](src/02_bug_voices.js)
+- **The in-app purchase flow**: a thirty-day trial and one-time unlock in [`22_store.js`](src/22_store.js)
+- **Asset generators**: sprites ([`tools/gen_sprites.py`](tools/gen_sprites.py)), depth parallax ([`tools/gen_parallax.py`](tools/gen_parallax.py)), sprite orientation checks ([`tools/classify_orient.py`](tools/classify_orient.py), [`tools/check_orient.py`](tools/check_orient.py), [`tools/audit_sprites.py`](tools/audit_sprites.py)) and music fetching ([`tools/fetch_music.py`](tools/fetch_music.py))
+- **Build and test tooling**: [`tools/assemble.py`](tools/assemble.py), [`tools/build_mobile.py`](tools/build_mobile.py) for the store bundle, and the headless walkthrough test [`tools/test_walkthrough.mjs`](tools/test_walkthrough.mjs)
+- **The iOS and Android shells** in [`ios/`](ios/) and [`android/`](android/), built on Capacitor (upstream)
+
 ## Made entirely with local AI
 
 No cloud API was called to make this game. Everything below ran on one Mac, offline,
@@ -39,11 +53,13 @@ under a memory broker that made the models take turns instead of fighting over R
 | Level backgrounds | **FLUX.1-dev** | 16 painted bird's-eye scenes, one per world, in one consistent style |
 | Depth parallax | **Depth-Anything-V2-Small** | Each painting is measured for depth once, then drawn in 32 strips that slide with the bee: the flowers at your feet move further than the hills. No video, no extra assets, ~2 KB of numbers |
 | Music | **ACE-Step 1.5**, driven by my own Song Forge | 16 level beds and 16 boss themes, a different genre per world, so no two levels sound alike |
-| Sprite QC | **Qwen3-VL-32B-Instruct** (4-bit MLX) | Every sprite has to be stored head-down. Pixel heuristics scored 50%, so I asked a model that can actually see the insect |
+| Sprite QC | **Qwen3-VL-32B-Instruct** (4-bit MLX) | Every sprite has to be stored head-down. Pixel heuristics scored 50%, so I asked a model that can actually see the insect. It is not perfect either, so [`check_orient.py`](tools/check_orient.py) also records a human sign-off per sprite |
 | Sound effects | none — hand-written Web Audio | 49 individual bug voices, every one synthesized live from oscillators and filtered noise. No sample files at all |
 
 The generators are all in [`tools/`](tools/) if you want to see how any of it was done.
-They are ordinary Python scripts, not a framework.
+They are ordinary Python scripts, not a framework. They are a record, not a one-command
+rebuild: they expect the models, ComfyUI and my own memory broker and Song Forge (which
+live outside this repo) at paths on my machine.
 
 Credit where it is due: Black Forest Labs for FLUX, the Depth Anything team, the ACE-Step
 team, and the Qwen team. ComfyUI does the heavy lifting for the image side. I just
@@ -67,12 +83,13 @@ whether you chase the green rings.
 
 ## How it is built
 
-Canvas 2D. No engine, no framework, no dependencies. The game ships as a single
+Canvas 2D. No engine, no framework, no runtime dependencies in the web build (the npm
+packages in `package.json` are Capacitor and its plugins, used only by the phone shells). The game ships as a single
 `index.html` with the assets beside it in `art/` and `music/`.
 
-You edit it in `src/` though — twenty-one files split at the code's own section
+You edit it in `src/` though — twenty-four files split at the code's own section
 boundaries (`01_audio.js`, `11_bosses.js`, `14_update.js`, and so on) instead of one
-1,600-line scroll. `python3 tools/assemble.py` concatenates them back into
+3,100-line scroll. `python3 tools/assemble.py` concatenates them back into
 `index.html`. The join is plain concatenation in filename order, so the result is
 byte-identical to what the pieces came from — the splitter refused to write until it
 had proved that, and `assemble.py` prints the before/after hash every time it runs.
@@ -94,9 +111,14 @@ Drives a headless browser through all 16 levels — normal play, the boss warnin
 fight, the rage phase, the kill — and reports JS errors and draw time per frame. Current
 run: 16/16 levels to the win screen, 0 errors, 0.36 ms/frame.
 
+Known limit: the test launches Brave from its macOS install path
+(`/Applications/Brave Browser.app`), so as written it only runs on a Mac with Brave
+installed. There is no CI.
+
 ## Shipping to phones
 
-`ios/` and `android/` are Capacitor shells around the same `dist/` build. See
+`ios/` and `android/` are Capacitor shells around the same `dist/` build. `npm run build` needs Python 3 with Pillow
+and ffmpeg. See
 [docs/SHIPPING.md](docs/SHIPPING.md) for the build loop, what the compression does
 (source assets become a ~43 MB bundle), and how each store build is made.
 
