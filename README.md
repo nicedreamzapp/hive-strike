@@ -1,5 +1,7 @@
 # Hive Strike
 
+[![Downloads, both stores](https://img.shields.io/endpoint?url=https%3A%2F%2Fnicedreamzwholesale.com%2Fsoftware%2Fbadge-hive-strike.json&style=for-the-badge&logo=appstore&logoColor=white&labelColor=1a7f37)](https://nicedreamzwholesale.com/software/#apps) [![Download on the App Store](https://img.shields.io/badge/Download_on_the-App_Store-0D96F6?style=for-the-badge&logo=apple&logoColor=white)](https://apps.apple.com/us/app/id6808332314) [![Get it on Google Play](https://img.shields.io/badge/Get_it_on-Google_Play-01875f?style=for-the-badge&logo=googleplay&logoColor=white)](https://play.google.com/store/apps/details?id=com.nicedreamz.hivestrike)
+
 A vertical bug shooter. You are one bee. Sixteen worlds, sixteen bosses, forty-eight
 kinds of insect, and every single asset in it was generated on the Mac sitting on my desk.
 
