@@ -98,11 +98,7 @@ run: 16/16 levels to the win screen, 0 errors, 0.36 ms/frame.
 
 `ios/` and `android/` are Capacitor shells around the same `dist/` build. See
 [docs/SHIPPING.md](docs/SHIPPING.md) for the build loop, what the compression does
-(source assets become a ~43 MB bundle), and what is
-still needed before either store will accept it.
-
-The iOS app builds and runs today. Android is scaffolded and portrait-locked but
-needs Android Studio and a JDK installed to compile.
+(source assets become a ~43 MB bundle), and how each store build is made.
 
 ## Twenty seconds of it
 
@@ -112,9 +108,8 @@ Level 12, the Tide Pool. Also on the [product page](https://nicedreamzwholesale.
 
 ## Status
 
-**Live on Google Play** — [Hive Strike](https://play.google.com/store/apps/details?id=com.nicedreamz.hivestrike).
+**Live on the [App Store](https://apps.apple.com/us/app/id6808332314) and [Google Play](https://play.google.com/store/apps/details?id=com.nicedreamz.hivestrike).**
 Free for thirty days, then a one-time $1.99 unlock, no subscription and no adverts.
-The iPhone build is with App Review.
 
 ## License
 
