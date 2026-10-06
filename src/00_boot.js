@@ -37,6 +37,19 @@ const FONT='"Avenir Next Condensed","Futura","Arial Narrow","Helvetica Neue",san
 // never edit by hand. It is how you tell at a glance whether the phone in your hand is
 // running the same build as the one next to it.
 const BUILD='dev';
+// The play field is a fixed 2:3 portrait box. In a wide or square window -- an unfolded iPhone Duo,
+// an iPad in landscape, Split View, a Stage Manager window -- that leaves big flat bars beside it.
+// The backdrop fills them with a soft, dim, live echo of the field itself (the current world's art
+// and light), so the bars read as part of the scene. It is a 30x45 copy of the canvas, refreshed
+// every 6th frame; CSS stretches and blurs it, so it costs one tiny drawImage. Off in LOW2/LOW3
+// and whenever the bars are thin (fit() decides).
+const BD=document.createElement('canvas');BD.id='bd';BD.width=30;BD.height=45;BD.setAttribute('aria-hidden','true');
+BD.style.cssText='position:fixed;left:-8%;top:-8%;width:116%;height:116%;object-fit:cover;'+
+ 'filter:blur(26px) brightness(.5) saturate(1.15);z-index:0;pointer-events:none;display:none;'+
+ 'max-width:none;max-height:none;aspect-ratio:auto;background:none;box-shadow:none';   // undo the page's canvas{} rule
+document.body.insertBefore(BD,C);C.style.position='relative';C.style.zIndex='1';
+const BDX=BD.getContext('2d');let bdOn=false,bdN=0;
+function backdropTick(){if(!bdOn||(++bdN)%6)return;try{BDX.drawImage(C,0,0,BD.width,BD.height);}catch(e){}}
 // letterbox the play field inside whatever the device actually gives us, safe-area padding
 // already removed by the body. visualViewport is the honest number on iOS.
 function fit(){const cs=getComputedStyle(document.body),
@@ -46,6 +59,8 @@ function fit(){const cs=getComputedStyle(document.body),
  aw=Math.max(1,(vv?vv.width:innerWidth)-px), ah=Math.max(1,(vv?vv.height:innerHeight)-py),
  sc=Math.min(aw/W,ah/H);
  C.style.width=Math.round(W*sc)+'px';C.style.height=Math.round(H*sc)+'px';
+ // the backdrop earns its keep only when the bars beside/above the field are real space
+ bdOn=!LOW2&&((aw-W*sc)>aw*.12||(ah-H*sc)>ah*.12);BD.style.display=bdOn?'block':'none';
  // render exactly the pixels this screen will show -- no upscale on a tablet, no waste
  // on a phone. Capped at 4 so a huge display cannot blow the memory budget.
  const want=Math.max(LOW3?0.85:1,Math.min(RASTER_MAX(),+(sc*(window.devicePixelRatio||1)).toFixed(3)));
@@ -54,8 +69,13 @@ function fit(){const cs=getComputedStyle(document.body),
   X.setTransform(DPR,0,0,DPR,0,0);
   rasterReset();                       // every cached surface was built at the old scale
  }}
-addEventListener('resize',fit);addEventListener('orientationchange',()=>setTimeout(fit,120));
-if(window.visualViewport)visualViewport.addEventListener('resize',fit);
+// Re-fit whenever the WINDOW changes size, never on what the device says its orientation is:
+// on a foldable (iPhone Duo), in iPad Split View and in a Stage Manager window the size changes
+// with no rotation at all, and a live drag fires dozens of these -- coalesce to one fit a frame.
+let fitQ=0;const fitSoon=()=>{if(!fitQ)fitQ=requestAnimationFrame(()=>{fitQ=0;fit();});};
+addEventListener('resize',fitSoon);
+if(window.visualViewport)visualViewport.addEventListener('resize',fitSoon);
+if(window.ResizeObserver)new ResizeObserver(fitSoon).observe(document.documentElement);
 fit();
 const keys={};addEventListener('keydown',e=>{keys[e.code]=1;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.code==='KeyP')paused=!paused;if(e.code==='Escape'&&state==='play'){if(paused)quitToHome();else paused=true;}if(e.code==='KeyL'){setLow(!LOW);say('DETAIL '+(LOW?'LOW':'FULL'));}if(e.code==='Minus'){VOL=Math.max(0,+(VOL-.05).toFixed(2));localStorage.hs_vol=VOL;applyVol();say('VOLUME '+Math.round(VOL*100)+'%');}if(e.code==='Equal'){VOL=Math.min(1,+(VOL+.05).toFixed(2));localStorage.hs_vol=VOL;applyVol();say('VOLUME '+Math.round(VOL*100)+'%');}if(e.code==='KeyN')musicToggle();if(e.code==='KeyM')sfxToggle();if(dexOpen){if(e.code==='Escape'||e.code==='KeyD')dexOpen=false;else if(e.code==='ArrowLeft')dexPage(-1);else if(e.code==='ArrowRight')dexPage(1);else if(e.code==='Enter'||e.code==='Space')dexPick=null;return;}
  if(state!=='play'&&e.code==='KeyD'){dexOpen=true;return;}

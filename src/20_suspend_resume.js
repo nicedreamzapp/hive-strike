@@ -57,7 +57,7 @@ function frame(now){const dt=now-last,_w0=performance.now();
    if(resumeCountdown>0){resumeCountdown--;if(resumeCountdown===0)paused=false;t++;}
    else if(state==='play'&&!paused)update();else t++;}
   if(holdBtn&&!cardOpen&&state!=='play'&&t-holdT>=HOLD_FRAMES){cardOpen=holdBtn;click(900,.02);}   // a held title button opens its card
-  musicTick();ambTick();draw();
+  musicTick();ambTick();draw();backdropTick();
   if(!shownOnce){shownOnce=true;nativeReady();}
   if(state==='play'&&!paused&&dt>0&&dt<200){_pt+=dt;_pw+=performance.now()-_w0;
    if(++_pn>=120||(LOW&&!LOW3&&_pn>=30)){const gap=_pt/_pn,work=_pw/_pn;_pn=0;_pt=0;_pw=0;
