@@ -58,7 +58,7 @@ const FONT='"Avenir Next Condensed","Futura","Arial Narrow","Helvetica Neue",san
 // stamped by tools/assemble.py from the version in package.json and the git commit --
 // never edit by hand. It is how you tell at a glance whether the phone in your hand is
 // running the same build as the one next to it.
-const BUILD='v1.5.0  ·  2eddd6c  ·  Oct 7';
+const BUILD='v1.5.0  ·  8491362  ·  Oct 7';
 // The play field is a fixed 2:3 portrait box. In a wide or square window -- an unfolded iPhone Duo,
 // an iPad in landscape, Split View, a Stage Manager window -- that leaves big flat bars beside it.
 // The backdrop fills them with a soft, dim, live echo of the field itself (the current world's art
@@ -73,12 +73,18 @@ document.body.insertBefore(BD,C);C.style.position='relative';C.style.zIndex='1';
 const BDX=BD.getContext('2d');let bdOn=false,bdN=0;
 function backdropTick(){if(!bdOn||(++bdN)%6)return;try{BDX.drawImage(C,0,0,BD.width,BD.height);}catch(e){}}
 // letterbox the play field inside whatever the device actually gives us, safe-area padding
-// already removed by the body. visualViewport is the honest number on iOS.
+// already removed by the body. visualViewport is the honest number on iOS -- except for height
+// under a keyboard. A keyboard only ever makes the visual viewport SHORTER than the layout
+// viewport, and the play field must never shrink for one. Worse, WebKit can leave it short for
+// good: Apple's own sign-in alert (UNLOCK, not signed in) brings up a keyboard, and after Cancel
+// visualViewport.height stayed 636 on a 956pt iPhone while innerHeight was back to 956, so the
+// whole game sat at 2/3 size until the next fold or rotation (iOS 27, 2026-10-07). So: never
+// take a height smaller than the layout viewport's.
 function fit(){const cs=getComputedStyle(document.body),
  px=(parseFloat(cs.paddingLeft)||0)+(parseFloat(cs.paddingRight)||0),
  py=(parseFloat(cs.paddingTop)||0)+(parseFloat(cs.paddingBottom)||0),
  vv=window.visualViewport,
- aw=Math.max(1,(vv?vv.width:innerWidth)-px), ah=Math.max(1,(vv?vv.height:innerHeight)-py),
+ aw=Math.max(1,(vv?vv.width:innerWidth)-px), ah=Math.max(1,(vv?Math.max(vv.height,innerHeight):innerHeight)-py),
  sc=Math.min(aw/W,ah/H);
  C.style.width=Math.round(W*sc)+'px';C.style.height=Math.round(H*sc)+'px';
  // the backdrop earns its keep only when the bars beside/above the field are real space
@@ -98,6 +104,10 @@ let fitQ=0;const fitSoon=()=>{if(!fitQ)fitQ=requestAnimationFrame(()=>{fitQ=0;fi
 addEventListener('resize',fitSoon);
 if(window.visualViewport)visualViewport.addEventListener('resize',fitSoon);
 if(window.ResizeObserver)new ResizeObserver(fitSoon).observe(document.documentElement);
+// a system sheet (purchase, sign-in) can change the viewport without a resize reaching us;
+// measure again whenever the page gets the screen back
+addEventListener('focus',fitSoon);addEventListener('pageshow',fitSoon);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)fitSoon();});
 fit();
 const keys={};addEventListener('keydown',e=>{keys[e.code]=1;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();if(e.code==='KeyP')paused=!paused;if(e.code==='Escape'&&state==='play'){if(paused)quitToHome();else paused=true;}if(e.code==='KeyL'){setLow(!LOW);say('DETAIL '+(LOW?'LOW':'FULL'));}if(e.code==='Minus'){VOL=Math.max(0,+(VOL-.05).toFixed(2));localStorage.hs_vol=VOL;applyVol();say('VOLUME '+Math.round(VOL*100)+'%');}if(e.code==='Equal'){VOL=Math.min(1,+(VOL+.05).toFixed(2));localStorage.hs_vol=VOL;applyVol();say('VOLUME '+Math.round(VOL*100)+'%');}if(e.code==='KeyN')musicToggle();if(e.code==='KeyM')sfxToggle();if(dexOpen){if(e.code==='Escape'||e.code==='KeyD')dexOpen=false;else if(e.code==='ArrowLeft')dexPage(-1);else if(e.code==='ArrowRight')dexPage(1);else if(e.code==='Enter'||e.code==='Space')dexPick=null;return;}
  if(state!=='play'&&e.code==='KeyD'){dexOpen=true;return;}
