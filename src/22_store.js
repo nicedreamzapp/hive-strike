@@ -81,11 +81,16 @@ function storeRestore(){                        // Apple requires this button to
  }catch(e){STORE.busy=false;STORE.note='could not reach the store';}
 }
 
+// Typed gift codes are Android and web only. Apple rejects any typed code that unlocks paid
+// content (guideline 3.1.1, RealTime Space 1.3.3 on 2026-09-28), so on iPhone and iPad the
+// field is not drawn, not tappable and askCode refuses. Codes already redeemed stay unlocked
+// (ownedSave persisted them). Ask Capacitor, never the user agent: iPadOS says Macintosh.
+function codeAllowed(){try{return !(window.Capacitor&&window.Capacitor.getPlatform&&window.Capacitor.getPlatform()==='ios');}catch(e){return true;}}
 // ---- the paywall, drawn in the title's own language: glass over the painting ----
 const PAYB={buy:{x:56,y:492,w:W-112,h:54},restore:{x:56,y:562,w:(W-122)/2,h:40},later:{x:66+(W-122)/2,y:562,w:(W-122)/2,h:40},code:{x:W/2-92,y:610,w:184,h:34}};
 function payHit(p){
  if(inBtn(p,PAYB.buy)){storeBuy();return true;}
- if(inBtn(p,PAYB.code)){askCode();return true;}
+ if(codeAllowed()&&inBtn(p,PAYB.code)){askCode();return true;}
  if(inBtn(p,locked()?{x:W/2-90,y:PAYB.restore.y,w:180,h:PAYB.restore.h}:PAYB.restore)){storeRestore();return true;}
  if(inBtn(p,PAYB.later)){if(!locked()){payOpen=false;}return true;}
  return false;
@@ -113,7 +118,7 @@ function drawPaywall(){
  pill(PAYB.buy,STORE.busy?'ONE MOMENT...':'UNLOCK FOR '+STORE.price,'#1a1400','rgba(255,210,63,.94)','rgba(255,236,160,.95)');
  if(locked())pill({x:W/2-90,y:PAYB.restore.y,w:180,h:PAYB.restore.h},'RESTORE PURCHASE','#fff','rgba(0,0,0,.35)','rgba(255,255,255,.55)');
  else{pill(PAYB.restore,'RESTORE','#fff','rgba(0,0,0,.35)','rgba(255,255,255,.55)');pill(PAYB.later,'NOT YET','#fff','rgba(0,0,0,.35)','rgba(255,255,255,.55)');}
- pill(PAYB.code,'ENTER A CODE','#cfe8ff','rgba(255,255,255,.07)','rgba(255,255,255,.3)');
+ if(codeAllowed())pill(PAYB.code,'ENTER A CODE','#cfe8ff','rgba(255,255,255,.07)','rgba(255,255,255,.3)');
  if(STORE.note){X.font='11px '+FONT;X.fillStyle='rgba(220,235,255,.8)';X.strokeStyle='rgba(0,0,0,.8)';X.lineWidth=3;X.strokeText(STORE.note,W/2,662);X.fillText(STORE.note,W/2,662);}
  X.restore();
 }
@@ -135,6 +140,7 @@ async function sha256hex(str){
 // Canvas cannot take keyboard input, so the field is a real HTML input laid over the game
 // and removed the moment it is done. Autocapitalised, no autocorrect, Go key submits.
 function askCode(){
+ if(!codeAllowed())return;
  if(document.getElementById('codewrap'))return;
  const wrap=document.createElement('div');wrap.id='codewrap';
  wrap.setAttribute('style','position:fixed;inset:0;z-index:99;display:flex;align-items:center;justify-content:center;background:rgba(2,6,14,.88);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);padding:24px;box-sizing:border-box');
