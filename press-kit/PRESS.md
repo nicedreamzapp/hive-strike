@@ -76,7 +76,7 @@ Hive Strike is a vertical shooter you play with one thumb. You are one bee again
 
 ## 150-word description
 
-Hive Strike is a vertical bug shooter for iPhone, iPad and Android. You are one bee. It fires on its own, so you play with one thumb: drag anywhere and the bee rides just above your finger.
+Hive Strike is a vertical bug shooter for iPhone, iPad and Android. You are one bee. It fires on its own, so you play with one thumb: drag anywhere and the bee rides above your finger.
 
 There are sixteen worlds, from a sunlit meadow to the inside of the hive, a volcano floor and a crystal cavern, and each ends in a boss. At half health the bosses change what they are doing. The Centipede Mother splits in two and pinches. The Atlas Moth turns its wings into shields.
 
