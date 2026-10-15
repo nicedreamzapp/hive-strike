@@ -104,7 +104,7 @@ function drawPaywall(){
  line(locked()?'YOUR THIRTY DAYS ARE UP':'KEEP HIVE STRIKE',108,24,'#ffd23f',4);
  line(locked()?'One payment. Yours for good.':d+(d===1?' day left of your free month':' days left of your free month'),136,14,'#cfe8ff',3);
  {const hs=SPR.hero;X.save();X.translate(W/2,58);X.globalAlpha=.92;if(hs&&hs.width)drawSprite(hs,64,0);else bee(0,0,20,'#ffd23f','#1a1a1a','#fff');X.restore();}
- const rows=[['All sixteen worlds','and all sixteen bosses'],['Every bug in the Bug-Dex','forty-eight of them'],['No adverts, ever','and nothing else to buy'],['One payment','not a subscription']];
+ const rows=[['All sixteen worlds','and all sixteen bosses'],['Every bug in the Bug-Dex','all ninety-one of them'],['No adverts, ever','and nothing else to buy'],['One payment','not a subscription']];
  let y=206;
  for(const r of rows){X.textAlign='left';X.font='bold 14px '+FONT;X.strokeStyle='rgba(0,0,0,.85)';X.lineWidth=3;
   X.strokeText('•  '+r[0],46,y);X.fillStyle='#fff';X.fillText('•  '+r[0],46,y);

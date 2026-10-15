@@ -537,7 +537,7 @@ function draw(){X.save();if(shake>0)X.translate(R(-shake,shake)*.4,R(-shake,shak
   if(!sp)emboss(W/2,265,150,()=>bee(0,0,26,'#ffd23f','#1a1a1a','#fff'),{alt:0});
   X.fillStyle='#fff';X.font='14px '+FONT;
   X.shadowColor='#000';X.shadowBlur=6;if(state==='won'){X.font='bold 30px '+FONT;X.fillStyle='#8dff9a';X.fillText('THE HIVE IS SAFE!',W/2,sp?158:320);X.font='14px '+FONT;X.fillStyle='#fff';X.fillText('all sixteen worlds cleared   ·   SCORE '+score+'   HI '+hi,W/2,sp?182:348);X.font='12px '+FONT;X.fillStyle='#cfe8ff';X.fillText('best chain x'+Math.min(8,1+Math.floor(chainBest/6))+'  ('+chainBest+' kills)   ·   '+grazed+' grazes',W/2,sp?204:368);}else if(state==='over'){X.font='bold 26px '+FONT;X.fillStyle='#ff4d6d';X.fillText('THE HIVE HAS FALLEN',W/2,sp?306:320);X.font='14px '+FONT;X.fillStyle='#fff';X.fillText('SCORE '+score+'   HI '+hi+'   LEVEL '+stage,W/2,sp?332:348);X.font='12px '+FONT;X.fillStyle='#cfe8ff';X.fillText('best chain x'+Math.min(8,1+Math.floor(chainBest/6))+'  ('+chainBest+' kills)   ·   '+grazed+' grazes',W/2,sp?352:368);}
-  else{X.font='bold 16px '+FONT;X.lineJoin='round';X.strokeStyle='rgba(0,0,0,.85)';X.lineWidth=3.5;X.strokeText('sixteen worlds. sixteen bosses. forty-eight bugs. one bee.',W/2,sp?94:335);X.fillText('sixteen worlds. sixteen bosses. forty-eight bugs. one bee.',W/2,sp?94:335);}
+  else{X.font='bold 16px '+FONT;X.lineJoin='round';X.strokeStyle='rgba(0,0,0,.85)';X.lineWidth=3.5;X.strokeText('sixteen worlds. sixteen bosses. seventy-five bugs. one bee.',W/2,sp?94:335);X.fillText('sixteen worlds. sixteen bosses. seventy-five bugs. one bee.',W/2,sp?94:335);}
   drawTitleUI(sp);
   X.shadowBlur=0;}
  if(dexOpen&&state!=='play')drawDex();
