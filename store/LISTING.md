@@ -48,7 +48,7 @@ Sixteen guns, each with five levels and a look of its own. A honey fan for a cro
 stinger beam for one thing you want gone, seeker pollen that never misses, a resin wall
 you hide behind, a swarm of drones that hunt for you.
 
-Forty-eight bugs, and a Bug-Dex that fills in as you beat them, each card carrying one
+Seventy-five bugs, and a Bug-Dex that fills in as you beat them, each card carrying one
 true fact about the real animal.
 
 **One payment.** Play the whole game free for thirty days. After that, $1.99 unlocks it
@@ -57,7 +57,7 @@ else to buy, and no adverts anywhere in it.
 
 - Sixteen worlds and sixteen bosses, every frame of art generated locally on one Mac
 - Sixteen weapons, five levels each
-- A Bug-Dex of forty-eight real insects
+- A Bug-Dex of 91 cards, seventy-five bugs and sixteen bosses
 - Daily runs and eight contracts that change the rules
 - One thumb, portrait, no tutorial to sit through
 - Plays offline
@@ -115,3 +115,7 @@ Free for thirty days, then one payment of $1.99, forever.
 - Marketing: (optional)
 - Privacy policy: **required by both stores** — `store/privacy.html` is written and
   needs to be published at a public URL before submitting.
+
+<!-- 2026-10-15: NEXT RELEASE, update the live App Store + Play descriptions. They still say
+"Forty-eight insects that would rather you left.", "Forty-eight bugs, and a Bug-Dex..." and
+"A Bug-Dex of forty-eight real insects". Shipping 1.5.0 has 75 bug types + 16 bosses = 91 Bug-Dex cards. -->
