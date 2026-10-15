@@ -48,7 +48,7 @@ Sixteen guns, each with five levels and a look of its own. A honey fan for a cro
 stinger beam for one thing you want gone, seeker pollen that never misses, a resin wall
 you hide behind, a swarm of drones that hunt for you.
 
-Forty-eight bugs, and a Bug-Dex that fills in as you beat them, each card carrying one
+Seventy-five bugs, and a Bug-Dex that fills in as you beat them, each card carrying one
 true fact about the real animal.
 
 **One payment.** Play the whole game free for thirty days. After that, $1.99 unlocks it
@@ -57,7 +57,7 @@ else to buy, and no adverts anywhere in it.
 
 - Sixteen worlds and sixteen bosses, every frame of art generated locally on one Mac
 - Sixteen weapons, five levels each
-- A Bug-Dex of forty-eight real insects
+- A Bug-Dex of 91 cards, seventy-five bugs and sixteen bosses
 - Daily runs and eight contracts that change the rules
 - One thumb, portrait, no tutorial to sit through
 - Plays offline

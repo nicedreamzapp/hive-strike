@@ -5,8 +5,8 @@
 A vertical bug shooter for iPhone, Android and the browser, written in plain Canvas 2D
 JavaScript and live on both app stores. [Twenty seconds of gameplay](media/gameplay.mp4).
 
-You are one bee. Sixteen worlds, sixteen bosses, forty-eight
-kinds of insect, and every single asset in it was generated on the Mac sitting on my desk.
+You are one bee. Sixteen worlds, sixteen bosses, seventy-five
+kinds of bug, and every single asset in it was generated on the Mac sitting on my desk.
 
 <p align="center">
   <img src="docs/shots/title.jpg" width="330" alt="Hive Strike title screen">
@@ -49,7 +49,7 @@ under a memory broker that made the models take turns instead of fighting over R
 
 | Asset | Model | What it made |
 |---|---|---|
-| Bug + boss sprites | **FLUX.1-dev** (fp8, ComfyUI) | 48 insects and 16 bosses, each rendered as a photoreal top-down macro shot on pure white, then keyed to an alpha PNG |
+| Bug + boss sprites | **FLUX.1-dev** (fp8, ComfyUI) | The bugs and 16 bosses, each rendered as a photoreal top-down macro shot on pure white, then keyed to an alpha PNG |
 | Level backgrounds | **FLUX.1-dev** | 16 painted bird's-eye scenes, one per world, in one consistent style |
 | Depth parallax | **Depth-Anything-V2-Small** | Each painting is measured for depth once, then drawn in 32 strips that slide with the bee: the flowers at your feet move further than the hills. No video, no extra assets, ~2 KB of numbers |
 | Music | **ACE-Step 1.5**, driven by my own Song Forge | 16 level beds and 16 boss themes, a different genre per world, so no two levels sound alike |
