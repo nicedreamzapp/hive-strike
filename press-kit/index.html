@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hive Strike</title>
+<meta name="description" content="A vertical bug shooter you play with one thumb. Sixteen worlds, sixteen bosses, forty-eight kinds of bug. Free for thirty days, then $1.99 once. No ads, no accounts, no tracking.">
+<meta name="theme-color" content="#0b1a0c">
+<!-- TODO-VERIFY: final public URL of this page. The product page below is the one linked from README.md. -->
+<link rel="canonical" href="https://nicedreamzwholesale.com/software/hive-strike/">
+
+<!-- Open Graph -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Nice Dreamz">
+<meta property="og:title" content="Hive Strike: one bee, sixteen worlds">
+<meta property="og:description" content="A vertical bug shooter you play with one thumb. Sixteen bosses, forty-eight kinds of bug, no ads, no tracking. Free for thirty days, then $1.99 once.">
+<meta property="og:url" content="https://nicedreamzwholesale.com/software/hive-strike/">
+<meta property="og:image" content="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/store/graphics/feature-1024x500.png">
+<meta property="og:image:width" content="1024">
+<meta property="og:image:height" content="500">
+<meta property="og:image:alt" content="Hive Strike feature graphic">
+
+<!-- Twitter / X -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Hive Strike: one bee, sixteen worlds">
+<meta name="twitter:description" content="A vertical bug shooter you play with one thumb. No ads, no tracking. Free for thirty days, then $1.99 once.">
+<meta name="twitter:image" content="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/store/graphics/feature-1024x500.png">
+<meta name="twitter:image:alt" content="Hive Strike feature graphic">
+
+<link rel="icon" href="../icons/icon-192.webp" type="image/webp">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Hive Strike",
+  "applicationCategory": "GameApplication",
+  "applicationSubCategory": "Arcade",
+  "operatingSystem": "iOS, Android",
+  "softwareVersion": "1.4.1",
+  "description": "A vertical bug shooter played with one thumb. Sixteen worlds, sixteen bosses, forty-eight kinds of bug. Free for thirty days, then a one-time $1.99 unlock. No ads, no subscription, no data collection.",
+  "image": "https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/store/graphics/feature-1024x500.png",
+  "url": "https://nicedreamzwholesale.com/software/hive-strike/",
+  "downloadUrl": [
+    "https://apps.apple.com/us/app/id6808332314",
+    "https://play.google.com/store/apps/details?id=com.nicedreamz.hivestrike"
+  ],
+  "contentRating": "Apple 9+, IARC Everyone 10+",
+  "offers": [
+    {"@type": "Offer", "name": "Download, full game free for 30 days", "price": "0", "priceCurrency": "USD"},
+    {"@type": "Offer", "name": "Unlock Hive Strike (one-time)", "price": "1.99", "priceCurrency": "USD"}
+  ],
+  "author": {"@type": "Person", "name": "Matt Macosko"},
+  "publisher": {"@type": "Organization", "name": "Nice Dreamz", "url": "https://nicedreamzwholesale.com/software/"}
+}
+</script>
+
+<style>
+:root{
+  --bg:#0b1a0c; --bg2:#122714; --card:#16301a; --ink:#f3f1e6; --dim:#b9c4b0;
+  --honey:#ffd23f; --honey-ink:#1a1400; --line:rgba(255,255,255,.12); --link:#ffd23f;
+  --shadow:0 10px 30px rgba(0,0,0,.35);
+}
+@media (prefers-color-scheme: light){
+  :root:not([data-theme="dark"]){
+    --bg:#fbf9f2; --bg2:#f1eedf; --card:#ffffff; --ink:#1b1d16; --dim:#4d5446;
+    --honey:#e0ae00; --honey-ink:#1a1400; --line:rgba(0,0,0,.12); --link:#8a6500;
+    --shadow:0 8px 24px rgba(0,0,0,.10);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0b1a0c; --bg2:#122714; --card:#16301a; --ink:#f3f1e6; --dim:#b9c4b0;
+  --honey:#ffd23f; --link:#ffd23f; --line:rgba(255,255,255,.12);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:17px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  overflow-wrap:anywhere}
+img{max-width:100%;height:auto;display:block}
+a{color:var(--link)}
+a:focus-visible,button:focus-visible,summary:focus-visible{outline:3px solid var(--honey);outline-offset:3px;border-radius:6px}
+.wrap{max-width:1040px;margin:0 auto;padding:0 16px}
+.skip{position:absolute;left:-999px;top:0;background:var(--honey);color:var(--honey-ink);padding:8px 12px;z-index:10}
+.skip:focus{left:16px}
+
+header.hero{padding:40px 0 32px;background:linear-gradient(180deg,var(--bg2),var(--bg))}
+.hero-grid{display:grid;gap:28px;align-items:center}
+.brand{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+.brand img{width:64px;height:64px;border-radius:15px;box-shadow:var(--shadow)}
+.brand span{font-size:14px;color:var(--dim)}
+h1{font-size:clamp(34px,9vw,58px);line-height:1.02;margin:0 0 12px;letter-spacing:-.5px}
+.pitch{font-size:clamp(19px,4.6vw,23px);margin:0 0 18px;color:var(--ink)}
+.price{color:var(--dim);margin:0 0 22px;font-size:16px}
+.badges{display:flex;flex-wrap:wrap;gap:12px}
+.badge{display:inline-flex;align-items:center;gap:10px;min-height:52px;padding:8px 18px;border-radius:12px;
+  background:#000;color:#fff;text-decoration:none;border:1px solid rgba(255,255,255,.25);line-height:1.15}
+.badge small{display:block;font-size:11px;opacity:.85}
+.badge strong{display:block;font-size:18px}
+.badge svg{width:24px;height:24px;flex:none;fill:#fff}
+.hero-shot{justify-self:center;width:min(100%,260px)}
+.hero-shot img{border-radius:22px;box-shadow:var(--shadow)}
+
+section{padding:40px 0;border-top:1px solid var(--line)}
+h2{font-size:clamp(24px,6vw,32px);margin:0 0 14px;line-height:1.15}
+h3{font-size:18px;margin:0 0 6px}
+p{margin:0 0 14px}
+.lede{max-width:44em}
+.cols{display:grid;gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px}
+.card p:last-child{margin:0}
+
+.shots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:8px}
+.shots figure{margin:0}
+.shots img{border-radius:14px;width:100%;aspect-ratio:2/3;object-fit:cover;background:var(--card)}
+.shots figcaption{font-size:14px;color:var(--dim);margin-top:6px}
+
+table{width:100%;border-collapse:collapse;font-size:16px}
+th,td{text-align:left;vertical-align:top;padding:10px 8px;border-bottom:1px solid var(--line)}
+th{width:34%;color:var(--dim);font-weight:600}
+
+details{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:4px 16px;margin-bottom:10px}
+summary{cursor:pointer;font-weight:650;padding:12px 0;list-style-position:outside}
+details p{margin:0 0 14px;color:var(--ink)}
+
+.credits{font-size:15px;color:var(--dim)}
+footer{padding:32px 0 48px;border-top:1px solid var(--line);color:var(--dim);font-size:15px}
+.todo{background:rgba(255,80,80,.18);border:1px dashed #ff7b7b;border-radius:6px;padding:0 4px;font-size:.9em}
+
+@media (min-width:700px){
+  .hero-grid{grid-template-columns:1.25fr .75fr}
+  .cols{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .shots{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media (min-width:1000px){
+  .cols.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .shots{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important}}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="brand">
+        <img src="../store/graphics/icon-512.png" alt="Hive Strike app icon" width="64" height="64">
+        <span>Nice Dreamz &middot; iPhone, iPad and Android</span>
+      </div>
+      <h1>Hive Strike</h1>
+      <p class="pitch">One bee against sixteen worlds of bugs, flown with one thumb.</p>
+      <p class="price">Free for thirty days. Then $1.99, once, forever. No subscription, no ads, no accounts.</p>
+      <div class="badges">
+        <a class="badge" href="https://apps.apple.com/us/app/id6808332314" aria-label="Download Hive Strike on the App Store">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.4 12.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9-1.7 0-3.3 1-4.2 2.6-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.3 3.1-2.5 1-1.4 1.4-2.8 1.4-2.9-.1 0-2.7-1-2.7-4.1zM13.9 5c.7-.9 1.2-2 1.1-3.2-1 0-2.3.7-3 1.6-.7.8-1.2 2-1.1 3.1 1.1.1 2.3-.6 3-1.5z"/></svg>
+          <span><small>Download on the</small><strong>App Store</strong></span>
+        </a>
+        <a class="badge" href="https://play.google.com/store/apps/details?id=com.nicedreamz.hivestrike" aria-label="Get Hive Strike on Google Play">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.6 1.8c-.3.3-.4.7-.4 1.2v18c0 .5.1.9.4 1.2l10-10.2-10-10.2zm11.2 9L5.2.9 16.9 7.6l-2.1 3.2zm0 2.4 2.1 3.2L5.2 23.1l9.6-9.9zm3.4-4.8 3 1.7c.9.5.9 1.4 0 1.9l-3 1.7-2.3-2.6 2.3-2.7z"/></svg>
+          <span><small>Get it on</small><strong>Google Play</strong></span>
+        </a>
+      </div>
+      <!-- TODO-VERIFY: swap these text buttons for the official Apple and Google badge artwork before publishing (not in the repo). -->
+    </div>
+    <div class="hero-shot">
+      <img src="../docs/shots/title.jpg" width="480" height="720" alt="Hive Strike title screen: a bee over a sunlit meadow">
+    </div>
+  </div>
+</header>
+
+<main id="main">
+  <section aria-labelledby="what">
+    <div class="wrap">
+      <h2 id="what">What it is</h2>
+      <p class="lede">Hive Strike is a vertical shooter. You are one bee. The bee fires on its own, so the game is about where you put it: drag anywhere on the screen and the bee rides just above your finger, out from under your thumb. Each world ends in a boss, and every boss changes what it is doing halfway through the fight. The Centipede Mother splits into two snakes that pinch. The Scorpion King plants its tail as a turret and flanks you with its body. The Atlas Moth turns its wings into shields you have to break.</p>
+      <p class="lede">It is written in plain Canvas 2D JavaScript with no game engine, and it runs the same build on iPhone, iPad and Android.</p>
+    </div>
+  </section>
+
+  <section aria-labelledby="who">
+    <div class="wrap">
+      <h2 id="who">Who it's for</h2>
+      <div class="cols three">
+        <div class="card"><h3>People who play one-handed</h3><p>Firing is automatic. Movement is a drag anywhere on the screen. The bomb button sits bottom right, and in-game help says the bomb also fires itself when you are about to be hit.</p></div>
+        <div class="card"><h3>Arcade and shmup fans</h3><p>Score chains up to x8, grazing bullets for points and bombs, sixteen weapons with five levels each, a Daily Hive seeded from the date, and eight Queen's Contracts that trade risk for a score multiplier.</p></div>
+        <div class="card"><h3>Kids and anyone who hates ads</h3><p>Rated 9+ on Apple and Everyone 10+ on Google Play. No ads, no chat, no accounts, nothing collected. The Bug-Dex gives each bug one true fact about the real animal.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="shots">
+    <div class="wrap">
+      <h2 id="shots">Screenshots</h2>
+      <p class="lede">Real frames taken off the game canvas.</p>
+      <div class="shots">
+        <figure><img src="../docs/shots/iphone_title.jpg" width="414" height="900" loading="lazy" alt="Title screen running as the native app on an iPhone"><figcaption>On an iPhone 17 Pro</figcaption></figure>
+        <figure><img src="../docs/shots/level1_meadow.jpg" width="480" height="720" loading="lazy" alt="Level 1, the meadow, with bugs flying in from the top"><figcaption>World 1, the Meadow</figcaption></figure>
+        <figure><img src="../docs/shots/boss1_meadow.jpg" width="480" height="720" loading="lazy" alt="The first boss fight in the meadow"><figcaption>First boss</figcaption></figure>
+        <figure><img src="../docs/shots/boss6_hive.jpg" width="480" height="720" loading="lazy" alt="Centipede Mother boss inside the honeycomb hive"><figcaption>Centipede Mother, the Hive</figcaption></figure>
+        <figure><img src="../docs/shots/level13_volcano.jpg" width="480" height="720" loading="lazy" alt="Level 13, the volcano floor"><figcaption>World 13, the Volcano</figcaption></figure>
+        <figure><img src="../docs/shots/boss16_crystal.jpg" width="480" height="720" loading="lazy" alt="Atlas Moth, the final boss, in the crystal cavern"><figcaption>Atlas Moth, the final boss</figcaption></figure>
+        <figure><img src="../store/screens/07_bugdex.png" width="1290" height="2796" loading="lazy" alt="Bug-Dex collection screen"><figcaption>The Bug-Dex</figcaption></figure>
+        <figure><img src="../store/screens/08_howto.png" width="1290" height="2796" loading="lazy" alt="How to play screen showing move, bomb and pause controls"><figcaption>How to play</figcaption></figure>
+      </div>
+      <p style="margin-top:16px"><a href="../media/gameplay.mp4">Twenty seconds of gameplay (MP4, Level 12, the Tide Pool)</a></p>
+    </div>
+  </section>
+
+  <section aria-labelledby="features">
+    <div class="wrap">
+      <h2 id="features">What's in it</h2>
+      <div class="cols">
+        <div class="card"><h3>Sixteen worlds, sixteen bosses</h3><p>From the Meadow to the Crystal, through the Night Wood, the Hive, the Cave, the Tide Pool, the Volcano and the Rooftops. No two bosses are the same species.</p></div>
+        <div class="card"><h3>Bosses that change jobs</h3><p>Each boss gets a second phase at half health. Some get angrier, and some turn into a different fight.</p></div>
+        <div class="card"><h3>Sixteen weapons, five levels each</h3><p>Honey Spray for a crowd, Stinger Beam to pierce, Pollen Seekers that home in, a Propolis Wall to hide behind, Guard Bees that hunt for you, and eleven more.</p></div>
+        <div class="card"><h3>Forty-eight kinds of bug</h3><p>The Bug-Dex fills in as you beat them, each card with one true fact about the real insect.</p></div>
+        <div class="card"><h3>A reason to come back</h3><p>The Daily Hive picks the roster and rules from the date on your device. Queen's Contracts let you pick harder terms for a higher score, up to x3 for Death Wish.</p></div>
+        <div class="card"><h3>Sound made from scratch</h3><p>49 bug voices, every one synthesized live from oscillators and filtered noise, with no sample files. Each world has its own music.</p></div>
+        <div class="card"><h3>Runs on budget phones</h3><p>If frames start dropping the game lowers its own detail in steps, down to a bare-bones mode, and raises it again when the phone keeps up.</p></div>
+        <div class="card"><h3>Stops when you stop</h3><p>Lock the phone or switch apps and the game, music and sound all pause together. You come back to a 3-2-1 countdown. Quit from the pause menu and resume from the home screen later.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="access">
+    <div class="wrap">
+      <h2 id="access">Controls and accessibility</h2>
+      <p class="lede">These are what the game does today, taken from its code. Where something is missing, it says so.</p>
+      <table>
+        <tr><th scope="row">Touch</th><td>Drag anywhere. Auto-fire. One bomb button, bottom right. Pause, top right.</td></tr>
+        <tr><th scope="row">Keyboard</th><td>Arrows or WASD to move, Shift for slow precise movement, X or B to bomb, P to pause.</td></tr>
+        <tr><th scope="row">Game controller</th><td>Stick or d-pad to move, A, B, RB or RT to bomb, LT or LB for precision, Start to pause.</td></tr>
+        <tr><th scope="row">Sound</th><td>Music and effects mute separately (M for effects, N for music, or the on-screen toggles).</td></tr>
+        <tr><th scope="row">Haptics</th><td>The phone taps back on pickups, bombs, getting hit and boss moments. Muting effects turns haptics off too.</td></tr>
+        <tr><th scope="row">Danger colours</th><td>The how-to screen teaches two signals: green means grab it, glowing magenta means dodge it. Enemy shots glow red from the inside.</td></tr>
+        <tr><th scope="row">Not there yet</th><td>No screen reader support (the game is drawn on a canvas), no setting to turn off screen shake, and no colour-blind mode. <span class="todo">TODO-VERIFY: has it been tried with colour-blind players?</span></td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="privacy">
+    <div class="wrap">
+      <h2 id="privacy">Privacy</h2>
+      <p class="lede">Hive Strike collects nothing. There are no accounts, no sign-in, no analytics, no ads and no trackers. It does not use your location, contacts, photos, microphone or camera.</p>
+      <p class="lede">Your scores, unlocked worlds, Bug-Dex, settings, saved run, the date you first opened the game (that is how the free month is counted) and whether you have bought the unlock all stay on your device. Deleting the app deletes them.</p>
+      <p class="lede">The game plays offline. It only goes online when you tap Unlock or Restore, and then only to talk to the App Store or Google Play, which handle the payment. The developer never sees your card or account.</p>
+      <!-- TODO-VERIFY: public URL of the privacy policy. Source is store/privacy.html in this repo. -->
+      <p><a href="../store/privacy.html">Read the full privacy policy</a> <span class="todo">TODO-VERIFY public URL</span></p>
+    </div>
+  </section>
+
+  <section aria-labelledby="faq">
+    <div class="wrap">
+      <h2 id="faq">FAQ</h2>
+      <details><summary>How much does it cost?</summary><p>The download is free and the whole game is playable for thirty days. After that, one in-app purchase of $1.99 unlocks it for good on every device signed in to the same store account. There is nothing else to buy.</p></details>
+      <details><summary>Is there a subscription or ads?</summary><p>No subscription and no ads anywhere in the game.</p></details>
+      <details><summary>Does it work offline?</summary><p>Yes. The network is only used to buy or restore the unlock.</p></details>
+      <details><summary>I bought it on another phone. Do I pay again?</summary><p>No. Tap Restore Purchase on the unlock screen while signed in to the same App Store or Google Play account.</p></details>
+      <details><summary>What is "Enter a code"?</summary><p>The unlock screen takes short gift codes from the developer. A valid code unlocks the game on either store, offline.</p></details>
+      <details><summary>Can I play with one hand?</summary><p>Yes. It was designed for one thumb: auto-fire, drag-anywhere movement, and a single bomb button. A keyboard or game controller works too.</p></details>
+      <details><summary>Will it run on an older or cheaper phone?</summary><p>The game measures its own frame rate and steps detail down automatically when a phone struggles, then back up when it can. <span class="todo">TODO-VERIFY: minimum iOS and Android versions from the store listings.</span></p></details>
+      <details><summary>Is it OK for kids?</summary><p>It is rated 9+ on the App Store and Everyone 10+ on Google Play for cartoon fantasy violence. No blood, no chat, no user content, no ads, no data collected.</p></details>
+      <details><summary>How was the art and music made?</summary><p>Every sprite, background and music track was generated on one Mac, offline, with open models: FLUX.1-dev from Black Forest Labs (through ComfyUI) for the bugs and worlds, Depth-Anything-V2 for the parallax, ACE-Step 1.5 for the music, and Qwen3-VL running on Apple's MLX to help check sprite orientation. The sound effects are synthesized in code.</p></details>
+      <details><summary>Is the code open?</summary><p>The code is MIT licensed on <a href="https://github.com/nicedreamzapp/hive-strike">GitHub</a>. The art, music, icons and the Hive Strike name are not open licensed.</p></details>
+    </div>
+  </section>
+
+  <section aria-labelledby="contact">
+    <div class="wrap">
+      <h2 id="contact">Press and contact</h2>
+      <p class="lede">Made by Matt Macosko at Nice Dreamz. Review copies and gift codes are available on request.</p>
+      <p><a href="mailto:matt@ineedhemp.com?subject=Hive%20Strike">matt@ineedhemp.com</a> &middot; <a href="https://nicedreamzwholesale.com/software/">More apps from Nice Dreamz</a> &middot; <a href="../store/graphics/feature-1024x500.png">Feature graphic</a> &middot; <a href="../store/graphics/icon-512.png">Icon (512px)</a></p>
+      <p class="credits">Built on open work by others: FLUX.1-dev (Black Forest Labs), ComfyUI, Depth-Anything-V2, ACE-Step, Qwen3-VL (Qwen team) via Apple's MLX, and Capacitor for the iOS and Android shells. Development used Anthropic's Claude Code.</p>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">Hive Strike &copy; Nice Dreamz LLC. App Store is a service mark of Apple Inc. Google Play is a trademark of Google LLC.</div>
+</footer>
+</body>
+</html>
