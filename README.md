@@ -31,7 +31,8 @@ kinds of bug, and every single asset in it was generated on the Mac sitting on m
   differently on a phone because the game knows it is on one.</em>
 </p>
 
-## What I built
+<picture><source media="(max-width: 610px), (min-width: 768px) and (max-width: 895px)" srcset="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/assets/readme/s01-banner-m.svg"><source media="(max-width: 1149px)" srcset="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/assets/readme/s01-banner-mid.svg"><img src="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/assets/readme/s01-banner.svg" width="100%" alt="01. What I built. One bee, sixteen worlds"></picture>
+<picture><source media="(max-width: 610px), (min-width: 768px) and (max-width: 895px)" srcset="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/assets/readme/s01-r1-m.svg"><source media="(max-width: 1149px)" srcset="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/assets/readme/s01-r1-mid.svg"><img src="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/assets/readme/s01-r1.svg" width="100%" alt="16 16. worlds, each with a boss. 75 75. kinds of bug. 24 24. source files in src/."></picture>
 
 Matt Macosko wrote the game and the pipeline around it. The AI models are upstream tools (listed in the next section); everything here is his:
 
@@ -42,7 +43,10 @@ Matt Macosko wrote the game and the pipeline around it. The AI models are upstre
 - **Build and test tooling**: [`tools/assemble.py`](tools/assemble.py), [`tools/build_mobile.py`](tools/build_mobile.py) for the store bundle, and the headless walkthrough test [`tools/test_walkthrough.mjs`](tools/test_walkthrough.mjs)
 - **The iOS and Android shells** in [`ios/`](ios/) and [`android/`](android/), built on Capacitor (upstream)
 
-## Made entirely with local AI
+<img src="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/assets/readme/s01-rule.svg" width="100%" alt="">
+
+<picture><source media="(max-width: 610px), (min-width: 768px) and (max-width: 895px)" srcset="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/assets/readme/s02-banner-m.svg"><source media="(max-width: 1149px)" srcset="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/assets/readme/s02-banner-mid.svg"><img src="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/assets/readme/s02-banner.svg" width="100%" alt="02. Made entirely with local AI. No cloud API, one Mac, offline"></picture>
+<picture><source media="(max-width: 610px), (min-width: 768px) and (max-width: 895px)" srcset="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/assets/readme/s02-r1-m.svg"><source media="(max-width: 1149px)" srcset="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/assets/readme/s02-r1-mid.svg"><img src="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/assets/readme/s02-r1.svg" width="100%" alt="No cloud API. Everything ran on one Mac, offline. Memory broker. Models took turns instead of fighting over RAM. Tools are a record. The generators are in tools/, not a one-command rebuild."></picture>
 
 No cloud API was called to make this game. Everything below ran on one Mac, offline,
 under a memory broker that made the models take turns instead of fighting over RAM.
@@ -65,7 +69,10 @@ Credit where it is due: Black Forest Labs for FLUX, the Depth Anything team, the
 team, and the Qwen team. ComfyUI does the heavy lifting for the image side. I just
 pointed them at bugs.
 
-## Playing it
+<img src="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/assets/readme/s02-rule.svg" width="100%" alt="">
+
+<picture><source media="(max-width: 610px), (min-width: 768px) and (max-width: 895px)" srcset="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/assets/readme/s03-banner-m.svg"><source media="(max-width: 1149px)" srcset="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/assets/readme/s03-banner-mid.svg"><img src="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/assets/readme/s03-banner.svg" width="100%" alt="03. Playing and building. Plain Canvas 2D, no engine"></picture>
+<picture><source media="(max-width: 610px), (min-width: 768px) and (max-width: 895px)" srcset="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/assets/readme/s03-r1-m.svg"><source media="(max-width: 1149px)" srcset="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/assets/readme/s03-r1-mid.svg"><img src="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/assets/readme/s03-r1.svg" width="100%" alt="Open index.html. That is the whole install. Canvas 2D. No engine, no framework, no runtime dependencies in the web build. 16/16 levels. Headless walkthrough: 0 errors, 0.36 ms/frame."></picture>
 
 Open `index.html`. That is the whole install.
 
@@ -81,7 +88,7 @@ Open `index.html`. That is the whole install.
 Firing is automatic. The interesting decisions are where you stand, when you bomb, and
 whether you chase the green rings.
 
-## How it is built
+### How it is built
 
 Canvas 2D. No engine, no framework, no runtime dependencies in the web build (the npm
 packages in `package.json` are Capacitor and its plugins, used only by the phone shells). The game ships as a single
@@ -101,7 +108,7 @@ goes to sleep, the game, the music and the audio context all suspend together,
 and you come back to a 3-2-1 countdown instead of dropping into a boss fight already
 taking hits.
 
-## Testing
+### Testing
 
 ```
 node tools/test_walkthrough.mjs
@@ -115,26 +122,31 @@ Known limit: the test launches Brave from its macOS install path
 (`/Applications/Brave Browser.app`), so as written it only runs on a Mac with Brave
 installed. There is no CI.
 
-## Shipping to phones
+### Shipping to phones
 
 `ios/` and `android/` are Capacitor shells around the same `dist/` build. `npm run build` needs Python 3 with Pillow
 and ffmpeg. See
 [docs/SHIPPING.md](docs/SHIPPING.md) for the build loop, what the compression does
 (source assets become a ~43 MB bundle), and how each store build is made.
 
-## Twenty seconds of it
+<img src="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/assets/readme/s03-rule.svg" width="100%" alt="">
+
+<picture><source media="(max-width: 610px), (min-width: 768px) and (max-width: 895px)" srcset="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/assets/readme/s04-banner-m.svg"><source media="(max-width: 1149px)" srcset="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/assets/readme/s04-banner-mid.svg"><img src="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/assets/readme/s04-banner.svg" width="100%" alt="04. Status and license. Live on both stores"></picture>
+<picture><source media="(max-width: 610px), (min-width: 768px) and (max-width: 895px)" srcset="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/assets/readme/s04-r1-m.svg"><source media="(max-width: 1149px)" srcset="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/assets/readme/s04-r1-mid.svg"><img src="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/assets/readme/s04-r1.svg" width="100%" alt="Live on both stores. App Store and Google Play. $1.99 unlock. Free for thirty days, no subscription, no adverts. Code is MIT. Art, music and the name are all rights reserved."></picture>
 
 https://github.com/nicedreamzapp/hive-strike/raw/main/media/gameplay.mp4
 
 Level 12, the Tide Pool. Also on the [product page](https://nicedreamzwholesale.com/software/hive-strike/).
 
-## Status
+### Status
 
 **Live on the [App Store](https://apps.apple.com/us/app/id6808332314) and [Google Play](https://play.google.com/store/apps/details?id=com.nicedreamz.hivestrike).**
 Free for thirty days, then a one-time $1.99 unlock, no subscription and no adverts.
 
-## License
+### License
 
 The code is [MIT](LICENSE), so you are free to read it, run it and reuse it. The art, music,
 icons, store graphics and the Hive Strike name are not open licensed (all rights reserved, Nice
 Dreamz LLC), so a copy of the game cannot be republished to the app stores; the exact list is in [ASSETS-LICENSE.md](ASSETS-LICENSE.md).
+
+<img src="https://raw.githubusercontent.com/nicedreamzapp/hive-strike/main/assets/readme/s04-rule.svg" width="100%" alt="">
