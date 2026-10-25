@@ -20,7 +20,7 @@
     "@capacitor/android": "^7.0.0",
     "@capacitor/core": "^7.0.0",
     "@capacitor/haptics": "^7.0.5",
-    "@capacitor/ios": "^7.0.0",
+    "@capacitor/ios": "^7.6.9",
     "@capacitor/splash-screen": "^7.0.0",
     "@capacitor/status-bar": "^7.0.0",
     "cordova-plugin-purchase": "^13.18.0"
