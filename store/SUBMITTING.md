@@ -76,6 +76,19 @@ validation or the audit.
 - The plugin also loads AFTER our script runs (the sim log shows "not loaded yet" first), so
   `storeInit` now waits for `deviceready`. Before build 8 that race alone could strand the store.
 
+### 9. Homebrew rsync on PATH kills the iOS export ("Copy failed")
+**Hit 2026-11-04 (1.5.1 build 12), twice before the cause was found.** `xcodebuild -exportArchive`
+runs `/usr/bin/rsync` (openrsync) with `-E`, which starts the *server* side from PATH. With
+`/opt/homebrew/bin` first, that is rsync 3.5.x, which answers "--extended-attributes: unknown option",
+and the export dies with only `error: exportArchive Copy failed`. The real line is in
+`IDEDistributionPipeline.log` inside the .xcdistributionlogs bundle. Fix: build and export with
+`PATH=/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin` (system tools first).
+
+### 10. Sim walks must be silent
+Matt hears the mini. Never touch the mini's system volume or mute. Turn the game's own MUSIC and FX
+off on the sound sheet (gear, top right) before any tap that arms audio; Android walks run the
+emulator with `-no-audio`.
+
 ---
 
 ## The sequence that worked
