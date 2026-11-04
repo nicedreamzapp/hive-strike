@@ -58,7 +58,7 @@ const FONT='"Avenir Next Condensed","Futura","Arial Narrow","Helvetica Neue",san
 // stamped by tools/assemble.py from the version in package.json and the git commit --
 // never edit by hand. It is how you tell at a glance whether the phone in your hand is
 // running the same build as the one next to it.
-const BUILD='v1.5.0  ·  8491362  ·  Oct 7';
+const BUILD='v1.5.1  ·  4599bb7+  ·  Nov 4';
 // The play field is a fixed 2:3 portrait box. In a wide or square window -- an unfolded iPhone Duo,
 // an iPad in landscape, Split View, a Stage Manager window -- that leaves big flat bars beside it.
 // The backdrop fills them with a soft, dim, live echo of the field itself (the current world's art
@@ -1627,7 +1627,7 @@ function updateInner(){t++;juiceTick();if(collapse>0){collapse--;if(collapse%9==
  else if(boss&&boss.dying>0){boss.dying--;boss.fl=2;boss.x+=R(-3,3);if(boss.dying%7===0){boom(boss.x+R(-40,40),boss.y+R(-40,40),['#fff','#ffd166',boss.col][RI(0,2)],18,6);shake=8;rumble(.35,.06);noise(.12,.03,900,.7,250,'lowpass');click(R(1500,3000),.02);}if(boss.dying%20===0)hiss(.3,.03,R(2000,5000),800);if(boss.dying===0){boss.hp=0;}}
  else if(boss){updBoss(boss);if(boss.hp<=0&&boss.dying==null){boss.dying=90;ebullets=[];say(boss.name+' IS GOING DOWN!');announce('BOSS DOWN!');stop(8);slowmo=56;buzz('heavy');ring(boss.x,boss.y,boss.col,440);ring(boss.x,boss.y,'#fff',300);for(let k=0;k<16;k++)parts.push({x:boss.x+R(-30,30),y:boss.y+R(-30,30),vx:R(-5,5),vy:R(-7,2),l:R(45,90),c:k%3?boss.col:'#2a1a08',r:R(3,7),gib:1,rx:R(1,2.4),a:R(0,7),va:R(-.2,.2)});STAT.bdex[LV().boss]=(STAT.bdex[LV().boss]||0)+1;statSave();rumble(1.5,.07);swell(80,1.4,'triangle',.05,.3,30);return;}if(boss.hp<=0){addScore(5000*(stage+loop));boom(boss.x,boss.y,boss.col,80,9);boom(boss.x,boss.y,'#fff',40,5);sparks(boss.x,boss.y,'#fff',40,12);flash=.6;shake=22;rumble(1.8,.1);swell(60,1.8,'sine',.07,.2,30);noise(.6,.05,700,.6,120,'lowpass');jingle([660,880,1108,1318,1760],'sine',.03,.09);
   for(let i=0;i<3;i++)drop(clamp(P.x-80+i*80,50,W-50),Math.min(boss.y+i*10,P.y-140),i===0?'nectar':i===1?randWeapon():['nectar','bomb','bomb',(stage%2===0?'life':'bomb')][RI(0,3)],1);
-  const bi=LV().boss,bx=boss.x,by=boss.y;boss=null;bossAlive=false;ebullets=[];enemies=[];levelClear=220;msgT=0;STAT.bosses++;statSave();SFX.levelClear();
+  const bi=LV().boss,bx=boss.x,by=boss.y;boss=null;bossAlive=false;ebullets=[];enemies=[];levelClear=220;msgT=0;STAT.bosses++;statSave();SFX.levelClear();rateOnBossWin();
   if(bi===5){collapse=170;levelClear=170;collapseAt={x:bx,y:by};say('THE COMB IS GIVING WAY!');music(null);}          // hive collapse: no score screen, you fall straight into the swamp
   else if(bi===15){music(null);slowmo=130;stop(14);flash=1;say('...');}                                                // atlas moth: the music stops on the last wingbeat
   else{const w=MUSIC.tracks.win;if(w&&!w.bad){w.currentTime=0;music('win');}else music(null);}}}
@@ -3162,4 +3162,21 @@ function drawTrialLine(){
 }
 
 storeInit();
+// ---------- rating prompt ----------
+// Asks the store's own rating sheet (StoreKit on iPhone/iPad, Play In-App Review on Android)
+// right after a boss goes down, on the LEVEL CLEAR card, never during a fight. Rules:
+// not before the 3rd boss win on this device, at most once every 60 days, no pre-screen of our
+// own (Apple 5.6.1). The OS may still decide not to show it; that is its call, not ours.
+const RATE_MIN_WINS=3, RATE_GAP_MS=60*24*3600*1000;
+function rateNative(){try{const C=window.Capacitor;return !!(C&&C.isNativePlatform&&C.isNativePlatform()&&C.Plugins&&C.Plugins.InAppReview);}catch(e){return false;}}
+function rateOnBossWin(){
+ let n=0;try{n=(+localStorage.hs_rate_wins||0)+1;localStorage.hs_rate_wins=n;}catch(e){return;}
+ if(n<RATE_MIN_WINS||!rateNative())return;
+ const last=+localStorage.hs_rate_last||0;if(last&&Date.now()-last<RATE_GAP_MS)return;
+ // let the BOSS DEFEATED card land first; only ask if we are still on that card
+ setTimeout(()=>{
+  if(state!=='play'||levelClear<=0||bossAlive||paused||collapse>0)return;
+  try{localStorage.hs_rate_last=Date.now();window.Capacitor.Plugins.InAppReview.requestReview().catch(()=>{});console.log('[hs-rate] asked after boss win '+n);}catch(e){}
+ },1400);
+}
 </script></body></html>
