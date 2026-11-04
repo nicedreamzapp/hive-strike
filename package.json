@@ -1,6 +1,6 @@
 {
   "name": "hive-strike",
-  "version": "1.5.1",
+  "version": "1.5.2",
   "private": true,
   "description": "Vertical bug shooter. Every asset generated locally on one Mac.",
   "scripts": {
@@ -19,6 +19,7 @@
   "dependencies": {
     "@capacitor-community/in-app-review": "^7.1.0",
     "@capacitor/android": "^7.0.0",
+    "@capacitor/app": "^7.1.2",
     "@capacitor/core": "^7.0.0",
     "@capacitor/haptics": "^7.0.5",
     "@capacitor/ios": "^7.0.0",

@@ -58,7 +58,7 @@ const FONT='"Avenir Next Condensed","Futura","Arial Narrow","Helvetica Neue",san
 // stamped by tools/assemble.py from the version in package.json and the git commit --
 // never edit by hand. It is how you tell at a glance whether the phone in your hand is
 // running the same build as the one next to it.
-const BUILD='v1.5.1  ·  e252ee5  ·  Nov 4';
+const BUILD='v1.5.2  ·  9bc87f9+  ·  Nov 4';
 // The play field is a fixed 2:3 portrait box. In a wide or square window -- an unfolded iPhone Duo,
 // an iPad in landscape, Split View, a Stage Manager window -- that leaves big flat bars beside it.
 // The backdrop fills them with a soft, dim, live echo of the field itself (the current world's art
@@ -3179,4 +3179,26 @@ function rateOnBossWin(){
   try{localStorage.hs_rate_last=Date.now();window.Capacitor.Plugins.InAppReview.requestReview().catch(()=>{});console.log('[hs-rate] asked after boss win '+n);}catch(e){}
  },1400);
 }
+// ---------- deep links ----------
+// hivestrike://event/black-friday (the App Store in-app event "Black Friday Bug Hunt") and any other
+// hivestrike:// link open the title screen with the world grid. A run in progress is checkpointed
+// by quitToHome() first, so RESUME still works. Cards and the Bug-Dex close; the paywall stays
+// if the trial is over (a link never unlocks anything).
+function deepLink(url){
+ try{
+  const u=String(url||'');if(!/^hivestrike:/i.test(u))return;
+  console.log('[hs-link] '+u);
+  if(state==='play')quitToHome();
+  else if(state==='won'){state='title';music('title');}
+  dexOpen=false;cardOpen=null;settingsOpen=false;holdBtn=null;
+  if(!locked())payOpen=false;
+  if(/event\/black-friday/i.test(u))say('BLACK FRIDAY BUG HUNT  ·  PICK YOUR WORLD');
+ }catch(e){}
+}
+(function linkInit(){
+ const go=()=>{try{const A=window.Capacitor&&window.Capacitor.Plugins&&window.Capacitor.Plugins.App;if(!A)return;
+  A.addListener('appUrlOpen',e=>deepLink(e&&e.url));
+  if(A.getLaunchUrl)A.getLaunchUrl().then(r=>{if(r&&r.url)deepLink(r.url);}).catch(()=>{});}catch(e){}};
+ if(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform())go();
+})();
 </script></body></html>
